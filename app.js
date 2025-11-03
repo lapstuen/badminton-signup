@@ -126,6 +126,15 @@ function handleSignup(e) {
     // Save name for future visits
     localStorage.setItem('userName', name);
 
+    // Auto-login if user is authorized
+    const authorizedUser = state.authorizedUsers.find(u => u.name === name);
+    if (authorizedUser) {
+        state.loggedInUser = {
+            name: authorizedUser.name
+        };
+        localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+    }
+
     showSuccessMessage(player);
     updateUI();
 
@@ -160,15 +169,22 @@ function generatePaymentQR() {
 
 // Mark player as paid
 function markAsPaid() {
-    // Check if user is logged in
-    if (!state.loggedInUser) {
-        alert('Please login first to mark payment / กรุณาเข้าสู่ระบบก่อนเพื่อบันทึกการชำระเงิน');
-        document.getElementById('userLogin').style.display = 'block';
+    // Get current player from localStorage
+    const userName = localStorage.getItem('userName');
+    if (!userName) {
+        alert('Please sign up first / กรุณาลงทะเบียนก่อน');
         return;
     }
 
-    // Find the player by logged in user's name
-    const currentPlayer = state.players.find(p => p.name === state.loggedInUser.name);
+    // Check if user is authorized
+    const authorizedUser = state.authorizedUsers.find(u => u.name === userName);
+    if (!authorizedUser) {
+        alert('You are not authorized. Contact admin. / คุณไม่มีสิทธิ์ ติดต่อผู้ดูแล');
+        return;
+    }
+
+    // Find the player and mark as paid
+    const currentPlayer = state.players.find(p => p.name === userName);
     if (currentPlayer) {
         currentPlayer.paid = true;
         currentPlayer.markedPaidAt = new Date().toISOString();
@@ -224,16 +240,16 @@ function logoutUser() {
 
 // Update UI
 function updateUI() {
-    // Update login UI
+    // Update login UI - always hide login form since users login via signup
     const userLoginEl = document.getElementById('userLogin');
     const loggedInInfoEl = document.getElementById('loggedInInfo');
 
+    userLoginEl.style.display = 'none'; // Login not needed - auto-login on signup
+
     if (state.loggedInUser) {
-        userLoginEl.style.display = 'none';
         loggedInInfoEl.style.display = 'block';
         document.getElementById('loggedInName').textContent = state.loggedInUser.name;
     } else {
-        userLoginEl.style.display = 'block';
         loggedInInfoEl.style.display = 'none';
     }
 
