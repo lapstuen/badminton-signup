@@ -13,7 +13,7 @@ let state = {
     sessionDay: 'Monday / วันจันทร์',
     sessionTime: '18:00 - 20:00',
     isAdmin: false,
-    promptPayNumber: '0812345678', // Bytt til ditt PromptPay nummer
+    promptPayNumber: '0943869220', // Ditt PromptPay nummer
     regularPlayers: [] // Regular players for each day
 };
 
@@ -130,14 +130,14 @@ function generatePaymentQR() {
     const qrContainer = document.getElementById('qrCode');
     
     // PromptPay QR format
-    const promptPayData = generatePromptPayString(state.promptPayNumber, 100);
+    const promptPayData = generatePromptPayString(state.promptPayNumber, 150);
     
     // Using QR code placeholder - you can integrate a QR library here
     qrContainer.innerHTML = `
         <div style="padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
             <p style="font-size: 12px; color: #666;">PromptPay</p>
             <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">${state.promptPayNumber}</p>
-            <p style="font-size: 16px; color: #10b981;">100 THB</p>
+            <p style="font-size: 16px; color: #10b981;">150 THB</p>
         </div>
     `;
 }
