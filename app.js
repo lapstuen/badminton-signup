@@ -355,7 +355,7 @@ Enter names separated by commas for ${state.sessionDay}:`;
                     id: Date.now() + Math.random(),
                     name: name + ' (Regular)',
                     phone: 'regular',
-                    paid: true,
+                    paid: false,
                     timestamp: new Date().toISOString(),
                     position: state.players.length + 1,
                     isRegular: true
