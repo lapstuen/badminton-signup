@@ -348,17 +348,17 @@ function addAuthorizedUser() {
         return;
     }
 
-    const password = prompt('Enter password (default is phone number) / ใส่รหัสผ่าน (ค่าเริ่มต้นคือเบอร์โทรศัพท์):', phone);
+    const password = prompt('Enter password (default is 123) / ใส่รหัสผ่าน (ค่าเริ่มต้นคือ 123):', '123');
 
     state.authorizedUsers.push({
         name: name,
         phone: phone,
-        password: password || phone
+        password: password || '123'
     });
 
     saveState();
     updateAuthorizedUsersList();
-    alert('User added successfully! / เพิ่มผู้ใช้สำเร็จ!');
+    alert('User added successfully! Default password: 123 / เพิ่มผู้ใช้สำเร็จ! รหัสผ่านเริ่มต้น: 123');
 }
 
 function editUserPassword(index) {
