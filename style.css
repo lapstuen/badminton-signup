@@ -144,8 +144,8 @@ input:focus {
 }
 
 .qr-code {
-    width: 200px;
-    height: 200px;
+    width: 100%;
+    max-width: 400px;
     margin: 0 auto;
     background: white;
     border-radius: 8px;
@@ -364,10 +364,5 @@ input:focus {
     
     header h1 {
         font-size: 20px;
-    }
-    
-    .qr-code {
-        width: 150px;
-        height: 150px;
     }
 }

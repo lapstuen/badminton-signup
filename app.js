@@ -138,21 +138,21 @@ function generatePaymentQR() {
     
     // Create clickable PromptPay link
     qrContainer.innerHTML = `
-        <div style="padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
-            <p style="font-size: 12px; color: #666;">PromptPay</p>
-            <p id="promptPayDisplay" style="font-size: 22px; font-weight: bold; margin: 10px 0; color: #1e40af;">${state.promptPayNumber}</p>
-            <p style="font-size: 20px; color: #059669; font-weight: bold;">${state.paymentAmount} THB</p>
+        <div style="width: 100%; max-width: 400px; margin: 0 auto; padding: 25px; background: #f0f0f0; border-radius: 12px; text-align: center;">
+            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">PromptPay</p>
+            <p id="promptPayDisplay" style="font-size: 28px; font-weight: bold; margin: 15px 0; color: #1e40af; letter-spacing: 1px;">${state.promptPayNumber}</p>
+            <p style="font-size: 26px; color: #059669; font-weight: bold; margin-bottom: 20px;">${state.paymentAmount} THB</p>
             
-            <button onclick="copyPromptPayNumber()" style="margin-top: 10px; padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%;">
+            <button onclick="copyPromptPayNumber()" style="margin-top: 10px; padding: 15px 30px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold;">
                 📋 Copy Number / คัดลอกเบอร์
             </button>
             
-            <button onclick="openPromptPay()" style="margin-top: 8px; padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%;">
+            <button onclick="openPromptPay()" style="margin-top: 10px; padding: 15px 30px; background: #059669; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold;">
                 🏦 Open Banking App / เปิดแอปธนาคาร
             </button>
             
-            <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; text-align: left; font-size: 13px;">
-                <strong>How to pay / วิธีชำระเงิน:</strong><br>
+            <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 10px; text-align: left; font-size: 14px; line-height: 1.6;">
+                <strong style="font-size: 16px;">How to pay / วิธีชำระเงิน:</strong><br><br>
                 1. Copy number above / คัดลอกเบอร์ด้านบน<br>
                 2. Open your banking app / เปิดแอปธนาคาร<br>
                 3. Choose PromptPay transfer / เลือกโอนเงิน PromptPay<br>
