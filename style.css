@@ -360,12 +360,131 @@ input:focus {
     }
 }
 
+/* User Login */
+.user-login {
+    background: #f0f9ff;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.user-login h2 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.login-note {
+    font-size: 12px;
+    color: #666;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* Logged In Info */
+.logged-in-info {
+    background: #d1fae5;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logged-in-info p {
+    margin: 0;
+    color: #065f46;
+}
+
+.btn-logout {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-logout:hover {
+    background: #dc2626;
+}
+
+/* Authorized Users Management */
+.authorized-users-management {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.authorized-users-management h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.btn-add-user {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.btn-add-user:hover {
+    background: #059669;
+}
+
+.authorized-user-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-actions {
+    display: flex;
+    gap: 5px;
+}
+
 @media (max-width: 480px) {
     .container {
         max-width: 100%;
     }
-    
+
     header h1 {
         font-size: 20px;
+    }
+
+    .authorized-user-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .user-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .user-actions button {
+        width: 100%;
+    }
+
+    .logged-in-info {
+        flex-direction: column;
+        gap: 10px;
     }
 }

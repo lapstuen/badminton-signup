@@ -23,6 +23,23 @@
         </header>
 
         <main id="mainContent">
+            <!-- User Login Section -->
+            <div class="user-login" id="userLogin" style="display: none;">
+                <h2>Login / เข้าสู่ระบบ</h2>
+                <form id="loginForm">
+                    <input type="tel" id="loginPhone" placeholder="Phone Number / เบอร์โทรศัพท์" required>
+                    <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
+                    <button type="submit" class="btn btn-primary">Login / เข้าสู่ระบบ</button>
+                </form>
+                <p class="login-note">Only authorized players can login / เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
+            </div>
+
+            <!-- Logged In User Info -->
+            <div class="logged-in-info" id="loggedInInfo" style="display: none;">
+                <p>Logged in as: <strong id="loggedInName"></strong></p>
+                <button onclick="logoutUser()" class="btn-logout">Logout / ออกจากระบบ</button>
+            </div>
+
             <div class="registration-form" id="registrationForm">
                 <h2>Sign Up / ลงทะเบียน</h2>
                 <form id="signupForm">
@@ -64,8 +81,14 @@
                     <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
                     <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
                     <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
+                    <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
                     <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
                 </div>
+            </div>
+            <div class="authorized-users-management" id="authorizedUsersSection" style="display: none;">
+                <h3>Authorized Users / ผู้ใช้ที่ได้รับอนุญาต</h3>
+                <button onclick="addAuthorizedUser()" class="btn-add-user">+ Add User / เพิ่มผู้ใช้</button>
+                <div id="authorizedUsersList"></div>
             </div>
             <div class="payment-tracking">
                 <h3>Payment Status / สถานะการชำระเงิน</h3>

@@ -14,7 +14,9 @@ let state = {
     sessionTime: '18:00 - 20:00',
     paymentAmount: 150, // Payment amount in THB
     isAdmin: false,
-    regularPlayers: [] // Regular players for each day
+    regularPlayers: [], // Regular players for each day
+    authorizedUsers: [], // Users who can log in and mark payment
+    loggedInUser: null // Currently logged in user {phone, name}
 };
 
 // Initialize app
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Setup event listeners
 function setupEventListeners() {
     document.getElementById('signupForm').addEventListener('submit', handleSignup);
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
 }
 
 // Load state from localStorage
@@ -54,6 +57,13 @@ function loadState() {
         state.sessionTime = session.time || '18:00 - 20:00';
         state.paymentAmount = session.paymentAmount || 150;
         state.regularPlayers = session.regularPlayers || [];
+        state.authorizedUsers = session.authorizedUsers || [];
+    }
+
+    // Check if user is logged in
+    const loggedInData = localStorage.getItem('loggedInUser');
+    if (loggedInData) {
+        state.loggedInUser = JSON.parse(loggedInData);
     }
 
     // Check if already registered
@@ -69,7 +79,8 @@ function saveState() {
         day: state.sessionDay,
         time: state.sessionTime,
         paymentAmount: state.paymentAmount,
-        regularPlayers: state.regularPlayers
+        regularPlayers: state.regularPlayers,
+        authorizedUsers: state.authorizedUsers
     }));
 }
 
@@ -151,13 +162,23 @@ function generatePaymentQR() {
 
 // Mark player as paid
 function markAsPaid() {
-    const currentPlayer = getCurrentPlayer();
+    // Check if user is logged in
+    if (!state.loggedInUser) {
+        alert('Please login first to mark payment / กรุณาเข้าสู่ระบบก่อนเพื่อบันทึกการชำระเงิน');
+        document.getElementById('userLogin').style.display = 'block';
+        return;
+    }
+
+    // Find the player by logged in user's phone
+    const currentPlayer = state.players.find(p => p.phone === state.loggedInUser.phone);
     if (currentPlayer) {
         currentPlayer.paid = true;
         currentPlayer.markedPaidAt = new Date().toISOString();
         saveState();
         updateUI();
         alert('Payment marked! / บันทึกการชำระเงินแล้ว!');
+    } else {
+        alert('You must be registered first / คุณต้องลงทะเบียนก่อน');
     }
 }
 
@@ -170,9 +191,55 @@ function getCurrentPlayer() {
     return null;
 }
 
+// Handle user login
+function handleLogin(e) {
+    e.preventDefault();
+
+    const phone = document.getElementById('loginPhone').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    // Check if user is authorized
+    const authorizedUser = state.authorizedUsers.find(u => u.phone === phone && u.password === password);
+
+    if (authorizedUser) {
+        state.loggedInUser = {
+            phone: authorizedUser.phone,
+            name: authorizedUser.name
+        };
+        localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+
+        document.getElementById('loginForm').reset();
+        updateUI();
+        alert(`Welcome ${authorizedUser.name}! / ยินดีต้อนรับ ${authorizedUser.name}!`);
+    } else {
+        alert('Invalid phone or password / เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง');
+    }
+}
+
+// Logout user
+function logoutUser() {
+    state.loggedInUser = null;
+    localStorage.removeItem('loggedInUser');
+    updateUI();
+    alert('Logged out successfully / ออกจากระบบสำเร็จ');
+}
+
 
 // Update UI
 function updateUI() {
+    // Update login UI
+    const userLoginEl = document.getElementById('userLogin');
+    const loggedInInfoEl = document.getElementById('loggedInInfo');
+
+    if (state.loggedInUser) {
+        userLoginEl.style.display = 'none';
+        loggedInInfoEl.style.display = 'block';
+        document.getElementById('loggedInName').textContent = state.loggedInUser.name;
+    } else {
+        userLoginEl.style.display = 'block';
+        loggedInInfoEl.style.display = 'none';
+    }
+
     // Update session info
     document.getElementById('sessionDate').textContent = state.sessionDate;
     document.getElementById('sessionDay').textContent = state.sessionDay;
@@ -230,6 +297,89 @@ function updateUI() {
     // Update admin payment list
     if (state.isAdmin) {
         updatePaymentList();
+    }
+}
+
+// Manage authorized users
+function manageAuthorizedUsers() {
+    const section = document.getElementById('authorizedUsersSection');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    if (section.style.display === 'block') {
+        updateAuthorizedUsersList();
+    }
+}
+
+function updateAuthorizedUsersList() {
+    const list = document.getElementById('authorizedUsersList');
+    list.innerHTML = '';
+
+    if (state.authorizedUsers.length === 0) {
+        list.innerHTML = '<p style="color: #666;">No authorized users yet / ยังไม่มีผู้ใช้ที่ได้รับอนุญาต</p>';
+        return;
+    }
+
+    state.authorizedUsers.forEach((user, index) => {
+        const item = document.createElement('div');
+        item.className = 'authorized-user-item';
+        item.innerHTML = `
+            <div class="user-info">
+                <strong>${user.name}</strong><br>
+                <span style="font-size: 12px; color: #666;">${user.phone}</span>
+            </div>
+            <div class="user-actions">
+                <button onclick="editUserPassword(${index})" style="background: #3b82f6; color: white; padding: 5px 10px; border: none; border-radius: 5px; margin-right: 5px; cursor: pointer;">Change Password</button>
+                <button onclick="removeAuthorizedUser(${index})" style="background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">Remove</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function addAuthorizedUser() {
+    const name = prompt('Enter name / ใส่ชื่อ:');
+    if (!name) return;
+
+    const phone = prompt('Enter phone number / ใส่เบอร์โทรศัพท์:');
+    if (!phone) return;
+
+    // Check if user already exists
+    if (state.authorizedUsers.find(u => u.phone === phone)) {
+        alert('User with this phone number already exists / มีผู้ใช้ที่มีเบอร์นี้อยู่แล้ว');
+        return;
+    }
+
+    const password = prompt('Enter password (default is phone number) / ใส่รหัสผ่าน (ค่าเริ่มต้นคือเบอร์โทรศัพท์):', phone);
+
+    state.authorizedUsers.push({
+        name: name,
+        phone: phone,
+        password: password || phone
+    });
+
+    saveState();
+    updateAuthorizedUsersList();
+    alert('User added successfully! / เพิ่มผู้ใช้สำเร็จ!');
+}
+
+function editUserPassword(index) {
+    const user = state.authorizedUsers[index];
+    const newPassword = prompt(`Change password for ${user.name} / เปลี่ยนรหัสผ่านสำหรับ ${user.name}:`, user.password);
+
+    if (newPassword) {
+        state.authorizedUsers[index].password = newPassword;
+        saveState();
+        updateAuthorizedUsersList();
+        alert('Password changed! / เปลี่ยนรหัสผ่านสำเร็จ!');
+    }
+}
+
+function removeAuthorizedUser(index) {
+    const user = state.authorizedUsers[index];
+    if (confirm(`Remove ${user.name}? / ลบ ${user.name}?`)) {
+        state.authorizedUsers.splice(index, 1);
+        saveState();
+        updateAuthorizedUsersList();
+        alert('User removed / ลบผู้ใช้แล้ว');
     }
 }
 
