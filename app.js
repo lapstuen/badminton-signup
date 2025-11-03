@@ -34,11 +34,18 @@ function setupEventListeners() {
 function loadState() {
     const savedPlayers = localStorage.getItem(STORAGE_KEYS.players);
     const savedSession = localStorage.getItem(STORAGE_KEYS.session);
-    
+
     if (savedPlayers) {
         state.players = JSON.parse(savedPlayers);
+
+        // Clean up old (Regular) suffix from player names
+        state.players.forEach(player => {
+            if (player.name && player.name.includes(' (Regular)')) {
+                player.name = player.name.replace(' (Regular)', '');
+            }
+        });
     }
-    
+
     if (savedSession) {
         const session = JSON.parse(savedSession);
         state.maxPlayers = session.maxPlayers || 12;
@@ -48,7 +55,7 @@ function loadState() {
         state.paymentAmount = session.paymentAmount || 150;
         state.regularPlayers = session.regularPlayers || [];
     }
-    
+
     // Check if already registered
     checkExistingRegistration();
 }
