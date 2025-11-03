@@ -14,7 +14,6 @@ let state = {
     sessionTime: '18:00 - 20:00',
     paymentAmount: 150, // Payment amount in THB
     isAdmin: false,
-    promptPayNumber: '0943869220', // Ditt PromptPay nummer
     regularPlayers: [] // Regular players for each day
 };
 
@@ -132,93 +131,26 @@ function showSuccessMessage(player) {
 function generatePaymentQR() {
     const qrContainer = document.getElementById('qrCode');
     const currentPlayer = getCurrentPlayer();
-    
-    // PromptPay QR format
-    const promptPayData = generatePromptPayString(state.promptPayNumber, 150);
-    
-    // Create clickable PromptPay link
+
+    // Simple payment button - details are handled elsewhere
     qrContainer.innerHTML = `
-        <div style="width: 100%; max-width: 400px; margin: 0 auto; padding: 25px; background: #f0f0f0; border-radius: 12px; text-align: center;">
-            <p style="font-size: 14px; color: #666; margin-bottom: 10px;">PromptPay</p>
-            <p id="promptPayDisplay" style="font-size: 28px; font-weight: bold; margin: 15px 0; color: #1e40af; letter-spacing: 1px;">${state.promptPayNumber}</p>
-            <p style="font-size: 26px; color: #059669; font-weight: bold; margin-bottom: 20px;">${state.paymentAmount} THB</p>
-            
-            <button onclick="copyPromptPayNumber()" style="margin-top: 10px; padding: 15px 30px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold;">
-                📋 Copy Number / คัดลอกเบอร์
+        <div style="width: 100%; max-width: 400px; margin: 0 auto; padding: 25px; text-align: center;">
+            <button onclick="markAsPaid()" style="margin-top: 10px; padding: 20px 40px; background: #10b981; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; width: 100%; font-weight: bold;">
+                I have paid
             </button>
-            
-            <button onclick="openPromptPay()" style="margin-top: 10px; padding: 15px 30px; background: #059669; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold;">
-                🏦 Open Banking App / เปิดแอปธนาคาร
-            </button>
-            
-            <div style="margin-top: 20px; padding: 20px; background: white; border-radius: 10px; text-align: left; font-size: 14px; line-height: 1.6;">
-                <strong style="font-size: 16px;">How to pay / วิธีชำระเงิน:</strong><br><br>
-                1. Copy number above / คัดลอกเบอร์ด้านบน<br>
-                2. Open your banking app / เปิดแอปธนาคาร<br>
-                3. Choose PromptPay transfer / เลือกโอนเงิน PromptPay<br>
-                4. Paste number & amount / วางเบอร์และจำนวนเงิน<br>
-                5. Confirm transfer / ยืนยันการโอน
-            </div>
         </div>
     `;
 }
 
-// Copy PromptPay number to clipboard
-function copyPromptPayNumber() {
-    const number = state.promptPayNumber;
-    
-    // Track the copy action
+// Mark player as paid
+function markAsPaid() {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer) {
-        currentPlayer.copiedNumber = true;
-        currentPlayer.copiedAt = new Date().toISOString();
+        currentPlayer.paid = true;
+        currentPlayer.markedPaidAt = new Date().toISOString();
         saveState();
-    }
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(number).then(() => {
-        // Visual feedback
-        const button = event.target;
-        const originalText = button.innerHTML;
-        button.innerHTML = '✅ Copied! / คัดลอกแล้ว!';
-        button.style.background = '#10b981';
-        
-        // Show amount reminder
-        setTimeout(() => {
-            alert(`Number copied: ${number}\nAmount to transfer: ${state.paymentAmount} THB\n\nเบอร์คัดลอกแล้ว: ${number}\nจำนวนเงิน: ${state.paymentAmount} บาท`);
-        }, 300);
-        
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.style.background = '#3b82f6';
-        }, 2000);
-    }).catch(err => {
-        // Fallback for older browsers
-        alert(`PromptPay: ${number}\nAmount: ${state.paymentAmount} THB`);
-    });
-}
-
-// Track PromptPay clicks
-function openPromptPay() {
-    const currentPlayer = getCurrentPlayer();
-    if (currentPlayer) {
-        // Mark that this player clicked payment link
-        currentPlayer.clickedPaymentLink = true;
-        currentPlayer.paymentLinkClickedAt = new Date().toISOString();
-        saveState();
-        
-        // Show confirmation
-        alert('Opening PromptPay app... / เปิดแอป PromptPay...\n\nPayment link clicked recorded! / บันทึกการคลิกลิงก์แล้ว!');
-    }
-    
-    // Create PromptPay deep link (if supported)
-    const promptPayUrl = `promptpay://pay?mobileno=${state.promptPayNumber}&amount=${state.paymentAmount}`;
-    
-    // Try to open PromptPay app, fallback to showing number
-    try {
-        window.open(promptPayUrl, '_blank');
-    } catch (error) {
-        alert(`PromptPay Number: ${state.promptPayNumber}\nAmount: ${state.paymentAmount} THB\n\nCopy this number to your banking app / คัดลอกหมายเลขนี้ไปยังแอปธนาคาร`);
+        updateUI();
+        alert('Payment marked! / บันทึกการชำระเงินแล้ว!');
     }
 }
 
@@ -231,12 +163,6 @@ function getCurrentPlayer() {
     return null;
 }
 
-// Generate PromptPay string (simplified version)
-function generatePromptPayString(phoneNumber, amount) {
-    // This would normally generate the actual PromptPay QR data
-    // For production, use a proper PromptPay QR generator library
-    return `promptpay://${phoneNumber}/${amount}`;
-}
 
 // Update UI
 function updateUI() {
@@ -310,9 +236,10 @@ function loginAdmin() {
     const password = document.getElementById('adminPassword').value;
     if (password === 'admin123') { // Change this password!
         state.isAdmin = true;
+        document.getElementById('adminPassword').style.display = 'none';
+        event.target.style.display = 'none';
         document.getElementById('adminActions').style.display = 'block';
         updatePaymentList();
-        alert('Logged in as admin / เข้าสู่ระบบสำเร็จ');
     } else {
         alert('Wrong password / รหัสผ่านไม่ถูกต้อง');
     }
@@ -417,35 +344,34 @@ function generateShareLink() {
 function changeSessionDetails() {
     const days = [
         'Monday / วันจันทร์',
-        'Tuesday / วันอังคาร', 
+        'Tuesday / วันอังคาร',
         'Wednesday / วันพุธ',
         'Thursday / วันพฤหัสบดี',
         'Friday / วันศุกร์',
         'Saturday / วันเสาร์',
         'Sunday / วันอาทิตย์'
     ];
-    
+
     const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-7):`;
     const dayChoice = prompt(dayPrompt);
-    
+
     if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
         state.sessionDay = days[dayChoice - 1];
-        
+
         const timePrompt = 'Enter time / ใส่เวลา (e.g., 18:00 - 20:00):';
         const time = prompt(timePrompt, state.sessionTime);
-        
+
         if (time) {
             state.sessionTime = time;
             saveState();
             updateUI();
-            alert('Session updated / อัปเดตเซสชันแล้ว');
-        }
-    }
-}
 
-function addRegularPlayers() {
-    const regularPlayersList = `Regular players / ผู้เล่นประจำ:
-    
+            // Ask if they want to add regular players
+            const addPlayers = confirm('Do you want to add regular players? / ต้องการเพิ่มผู้เล่นประจำหรือไม่?');
+
+            if (addPlayers) {
+                const regularPlayersList = `Regular players / ผู้เล่นประจำ:
+
 Monday: John, Sarah, Mike (3 players)
 Tuesday: Tom, Lisa, David, Anna (4 players)
 Wednesday: Peter, Emma (2 players)
@@ -455,30 +381,36 @@ Saturday: Free play
 Sunday: Tournament
 
 Enter names separated by commas for ${state.sessionDay}:`;
-    
-    const names = prompt(regularPlayersList);
-    
-    if (names) {
-        const playerNames = names.split(',').map(n => n.trim()).filter(n => n);
-        
-        // Add regular players with special marking
-        playerNames.forEach(name => {
-            if (!state.players.find(p => p.name === name)) {
-                const player = {
-                    id: Date.now() + Math.random(),
-                    name: name + ' (Regular)',
-                    phone: 'regular',
-                    paid: false,
-                    timestamp: new Date().toISOString(),
-                    position: state.players.length + 1,
-                    isRegular: true
-                };
-                state.players.push(player);
+
+                const names = prompt(regularPlayersList);
+
+                if (names) {
+                    const playerNames = names.split(',').map(n => n.trim()).filter(n => n);
+
+                    // Add regular players with special marking
+                    playerNames.forEach(name => {
+                        if (!state.players.find(p => p.name === name)) {
+                            const player = {
+                                id: Date.now() + Math.random(),
+                                name: name + ' (Regular)',
+                                phone: 'regular',
+                                paid: false,
+                                timestamp: new Date().toISOString(),
+                                position: state.players.length + 1,
+                                isRegular: true
+                            };
+                            state.players.push(player);
+                        }
+                    });
+
+                    saveState();
+                    updateUI();
+                    alert(`Added ${playerNames.length} regular players / เพิ่มผู้เล่นประจำ ${playerNames.length} คน`);
+                }
+            } else {
+                alert('Session updated / อัปเดตเซสชันแล้ว');
             }
-        });
-        
-        saveState();
-        updateUI();
-        alert(`Added ${playerNames.length} regular players / เพิ่มผู้เล่นประจำ ${playerNames.length} คน`);
+        }
     }
 }
+

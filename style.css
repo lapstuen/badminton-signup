@@ -288,6 +288,7 @@ input:focus {
     border-radius: 8px;
     cursor: pointer;
     margin-bottom: 5px;
+    font-size: 16px;
 }
 
 .admin-controls button:hover {
@@ -297,6 +298,7 @@ input:focus {
 #adminActions button {
     background: #f3f4f6;
     color: #333;
+    font-size: 16px;
 }
 
 #adminActions button:hover {
