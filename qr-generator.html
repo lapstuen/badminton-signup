@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR-kode for Badminton Påmelding</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        #qrcode {
+            margin: 30px auto;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 15px;
+            display: inline-block;
+        }
+        .url-display {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-size: 14px;
+            color: #666;
+        }
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .line-btn {
+            background: #00B900;
+            color: white;
+        }
+        .line-btn:hover {
+            background: #009900;
+            transform: translateY(-2px);
+        }
+        .copy-btn {
+            background: #6366f1;
+            color: white;
+        }
+        .copy-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+        .download-btn {
+            background: #f59e0b;
+            color: white;
+        }
+        .download-btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+        .instructions {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏸 Badminton QR Code / รหัส QR แบดมินตัน</h1>
+        
+        <div id="qrcode"></div>
+        
+        <div class="url-display" id="urlDisplay"></div>
+        
+        <div class="share-buttons">
+            <button class="line-btn" onclick="shareToLine()">Share on Line / แชร์ผ่าน Line</button>
+            <button class="copy-btn" onclick="copyLink()">Copy Link / คัดลอกลิงก์</button>
+        </div>
+        
+        <button class="download-btn" onclick="downloadQR()">Download QR / ดาวน์โหลด QR</button>
+        
+        <div class="instructions">
+            <strong>How to use / วิธีใช้:</strong><br>
+            1. Share QR code or link in Line group<br>
+            แชร์ QR โค้ดหรือลิงก์ในกลุ่ม Line<br><br>
+            2. Players scan or click to join<br>
+            ผู้เล่นสแกนหรือคลิกเพื่อเข้าร่วม<br><br>
+            3. Sign up directly from phone<br>
+            ลงทะเบียนจากโทรศัพท์ได้เลย<br><br>
+            4. Check registrations in admin panel<br>
+            ตรวจสอบการลงทะเบียนในแผงควบคุม
+        </div>
+    </div>
+
+    <script>
+        // Get the base URL
+        const baseUrl = window.location.origin + window.location.pathname.replace('qr-generator.html', 'index.html');
+        
+        // Display URL
+        document.getElementById('urlDisplay').textContent = baseUrl;
+        
+        // Generate QR code
+        const qrcode = new QRCode(document.getElementById("qrcode"), {
+            text: baseUrl,
+            width: 200,
+            height: 200,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+        
+        // Share to Line
+        function shareToLine() {
+            const message = `🏸 Join Badminton! / ลงทะเบียนแบดมินตัน!\n\nClick to sign up / คลิกเพื่อลงทะเบียน:\n${baseUrl}\n\nOr scan QR code / หรือสแกน QR โค้ด`;
+            const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
+            window.open(lineUrl, '_blank');
+        }
+        
+        // Copy link
+        function copyLink() {
+            navigator.clipboard.writeText(baseUrl).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied! / คัดลอกแล้ว!';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#6366f1';
+                }, 2000);
+            });
+        }
+        
+        // Download QR code
+        function downloadQR() {
+            const canvas = document.querySelector('#qrcode canvas');
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'badminton-qr.png';
+            a.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton Påmelding</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#10b981">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏸 Badminton / แบดมินตัน</h1>
+            <div class="session-details">
+                <p class="session-day" id="sessionDay">Monday / วันจันทร์</p>
+                <p class="session-time" id="sessionTime">18:00 - 20:00</p>
+            </div>
+            <div class="session-info">
+                <p class="date" id="sessionDate"></p>
+                <p class="spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
+            </div>
+        </header>
+
+        <main id="mainContent">
+            <div class="registration-form" id="registrationForm">
+                <h2>Sign Up / ลงทะเบียน</h2>
+                <form id="signupForm">
+                    <input type="text" id="playerName" placeholder="Name / ชื่อ" required>
+                    <input type="tel" id="playerPhone" placeholder="Phone Number / เบอร์โทรศัพท์" required>
+                    <button type="submit" class="btn btn-primary">Join / เข้าร่วม</button>
+                </form>
+            </div>
+
+            <div class="success-message" id="successMessage" style="display: none;">
+                <div class="success-icon">✅</div>
+                <h2>Success! / สำเร็จ!</h2>
+                <p>You are number / คุณคือหมายเลข <span id="playerNumber"></span></p>
+                <div class="payment-info">
+                    <h3>Payment / ชำระเงิน (100 THB)</h3>
+                    <div class="qr-code" id="qrCode"></div>
+                    <p class="payment-note">Scan QR code with PromptPay<br>สแกน QR โค้ดด้วย PromptPay</p>
+                </div>
+            </div>
+
+            <div class="players-list">
+                <h2>Players / ผู้เล่น</h2>
+                <ol id="playersList"></ol>
+                <h3>Waiting List / รายชื่อสำรอง</h3>
+                <ol id="waitingList" start="13"></ol>
+            </div>
+        </main>
+
+        <button class="admin-btn" onclick="toggleAdmin()">👤</button>
+        
+        <div class="admin-panel" id="adminPanel" style="display: none;">
+            <div class="admin-header">
+                <h2>Admin Panel / ผู้ดูแล</h2>
+                <button class="close-btn" onclick="toggleAdmin()">✕</button>
+            </div>
+            <div class="admin-controls">
+                <input type="password" id="adminPassword" placeholder="Admin password / รหัสผ่าน">
+                <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
+                <div id="adminActions" style="display: none;">
+                    <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
+                    <button onclick="addRegularPlayers()">Add Regular Players / เพิ่มผู้เล่นประจำ</button>
+                    <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
+                    <button onclick="clearSession()">New Session / เริ่มใหม่</button>
+                    <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
+                </div>
+            </div>
+            <div class="payment-tracking">
+                <h3>Payment Status / สถานะการชำระเงิน</h3>
+                <div id="paymentList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
