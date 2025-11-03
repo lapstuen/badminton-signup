@@ -37,7 +37,7 @@
                 <h2>Success! / สำเร็จ!</h2>
                 <p>You are number / คุณคือหมายเลข <span id="playerNumber"></span></p>
                 <div class="payment-info">
-                    <h3>Payment / ชำระเงิน (150 THB)</h3>
+                    <h3>Payment / ชำระเงิน (<span id="paymentAmount">150</span> THB)</h3>
                     <div class="qr-code" id="qrCode"></div>
                     <p class="payment-note">Scan QR code with PromptPay<br>สแกน QR โค้ดด้วย PromptPay</p>
                 </div>
@@ -63,6 +63,7 @@
                 <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
                 <div id="adminActions" style="display: none;">
                     <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
+                    <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
                     <button onclick="addRegularPlayers()">Add Regular Players / เพิ่มผู้เล่นประจำ</button>
                     <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
                     <button onclick="clearSession()">New Session / เริ่มใหม่</button>

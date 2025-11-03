@@ -12,6 +12,7 @@ let state = {
     sessionDate: new Date().toLocaleDateString('en-GB'),
     sessionDay: 'Monday / วันจันทร์',
     sessionTime: '18:00 - 20:00',
+    paymentAmount: 150, // Payment amount in THB
     isAdmin: false,
     promptPayNumber: '0943869220', // Ditt PromptPay nummer
     regularPlayers: [] // Regular players for each day
@@ -45,6 +46,7 @@ function loadState() {
         state.sessionDate = session.date || new Date().toLocaleDateString('en-GB');
         state.sessionDay = session.day || 'Monday / วันจันทร์';
         state.sessionTime = session.time || '18:00 - 20:00';
+        state.paymentAmount = session.paymentAmount || 150;
         state.regularPlayers = session.regularPlayers || [];
     }
     
@@ -60,6 +62,7 @@ function saveState() {
         date: state.sessionDate,
         day: state.sessionDay,
         time: state.sessionTime,
+        paymentAmount: state.paymentAmount,
         regularPlayers: state.regularPlayers
     }));
 }
@@ -138,7 +141,7 @@ function generatePaymentQR() {
         <div style="padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
             <p style="font-size: 12px; color: #666;">PromptPay</p>
             <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">${state.promptPayNumber}</p>
-            <p style="font-size: 16px; color: #10b981;">150 THB</p>
+            <p style="font-size: 16px; color: #10b981;">${state.paymentAmount} THB</p>
             <button onclick="openPromptPay()" style="margin-top: 15px; padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
                 Open PromptPay App / เปิดแอป PromptPay
             </button>
@@ -160,7 +163,7 @@ function openPromptPay() {
     }
     
     // Create PromptPay deep link (if supported)
-    const promptPayUrl = `promptpay://pay?mobileno=${state.promptPayNumber}&amount=150`;
+    const promptPayUrl = `promptpay://pay?mobileno=${state.promptPayNumber}&amount=${state.paymentAmount}`;
     
     // Try to open PromptPay app, fallback to showing number
     try {
@@ -194,6 +197,12 @@ function updateUI() {
     document.getElementById('sessionTime').textContent = state.sessionTime;
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
     document.getElementById('maxPlayers').textContent = state.maxPlayers;
+    
+    // Update payment amount display
+    const paymentAmountElement = document.getElementById('paymentAmount');
+    if (paymentAmountElement) {
+        paymentAmountElement.textContent = state.paymentAmount;
+    }
     
     // Update players list
     const playersList = document.getElementById('playersList');
@@ -287,6 +296,16 @@ function togglePayment(playerId) {
         player.paid = !player.paid;
         saveState();
         updateUI();
+    }
+}
+
+function changePaymentAmount() {
+    const newAmount = prompt('New payment amount in THB / ราคาใหม่ (บาท):', state.paymentAmount);
+    if (newAmount && !isNaN(newAmount) && newAmount > 0) {
+        state.paymentAmount = parseInt(newAmount);
+        saveState();
+        updateUI();
+        alert(`Payment amount updated to ${state.paymentAmount} THB / อัปเดตราคาเป็น ${state.paymentAmount} บาทแล้ว`);
     }
 }
 
