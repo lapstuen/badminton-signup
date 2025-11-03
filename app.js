@@ -140,13 +140,62 @@ function generatePaymentQR() {
     qrContainer.innerHTML = `
         <div style="padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
             <p style="font-size: 12px; color: #666;">PromptPay</p>
-            <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">${state.promptPayNumber}</p>
-            <p style="font-size: 16px; color: #10b981;">${state.paymentAmount} THB</p>
-            <button onclick="openPromptPay()" style="margin-top: 15px; padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
-                Open PromptPay App / เปิดแอป PromptPay
+            <p id="promptPayDisplay" style="font-size: 22px; font-weight: bold; margin: 10px 0; color: #1e40af;">${state.promptPayNumber}</p>
+            <p style="font-size: 20px; color: #059669; font-weight: bold;">${state.paymentAmount} THB</p>
+            
+            <button onclick="copyPromptPayNumber()" style="margin-top: 10px; padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%;">
+                📋 Copy Number / คัดลอกเบอร์
             </button>
+            
+            <button onclick="openPromptPay()" style="margin-top: 8px; padding: 12px 24px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%;">
+                🏦 Open Banking App / เปิดแอปธนาคาร
+            </button>
+            
+            <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; text-align: left; font-size: 13px;">
+                <strong>How to pay / วิธีชำระเงิน:</strong><br>
+                1. Copy number above / คัดลอกเบอร์ด้านบน<br>
+                2. Open your banking app / เปิดแอปธนาคาร<br>
+                3. Choose PromptPay transfer / เลือกโอนเงิน PromptPay<br>
+                4. Paste number & amount / วางเบอร์และจำนวนเงิน<br>
+                5. Confirm transfer / ยืนยันการโอน
+            </div>
         </div>
     `;
+}
+
+// Copy PromptPay number to clipboard
+function copyPromptPayNumber() {
+    const number = state.promptPayNumber;
+    
+    // Track the copy action
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer) {
+        currentPlayer.copiedNumber = true;
+        currentPlayer.copiedAt = new Date().toISOString();
+        saveState();
+    }
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(number).then(() => {
+        // Visual feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied! / คัดลอกแล้ว!';
+        button.style.background = '#10b981';
+        
+        // Show amount reminder
+        setTimeout(() => {
+            alert(`Number copied: ${number}\nAmount to transfer: ${state.paymentAmount} THB\n\nเบอร์คัดลอกแล้ว: ${number}\nจำนวนเงิน: ${state.paymentAmount} บาท`);
+        }, 300);
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '#3b82f6';
+        }, 2000);
+    }).catch(err => {
+        // Fallback for older browsers
+        alert(`PromptPay: ${number}\nAmount: ${state.paymentAmount} THB`);
+    });
 }
 
 // Track PromptPay clicks
@@ -169,7 +218,7 @@ function openPromptPay() {
     try {
         window.open(promptPayUrl, '_blank');
     } catch (error) {
-        alert(`PromptPay Number: ${state.promptPayNumber}\nAmount: 150 THB\n\nCopy this number to your banking app / คัดลอกหมายเลขนี้ไปยังแอปธนาคาร`);
+        alert(`PromptPay Number: ${state.promptPayNumber}\nAmount: ${state.paymentAmount} THB\n\nCopy this number to your banking app / คัดลอกหมายเลขนี้ไปยังแอปธนาคาร`);
     }
 }
 
