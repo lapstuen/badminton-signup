@@ -190,18 +190,18 @@ function updateUI() {
         const li = document.createElement('li');
         const playerInfo = document.createElement('div');
         playerInfo.className = 'player-info';
-        playerInfo.textContent = player.name;
-        
+        playerInfo.textContent = `${index + 1}. ${player.name}`;
+
         const statusDiv = document.createElement('div');
         statusDiv.className = 'player-status';
-        
+
         if (player.paid) {
             const badge = document.createElement('span');
             badge.className = 'paid-badge';
             badge.textContent = 'Paid ✓';
             statusDiv.appendChild(badge);
         }
-        
+
         if (player.clickedPaymentLink) {
             const clickBadge = document.createElement('span');
             clickBadge.className = 'clicked-badge';
@@ -209,10 +209,10 @@ function updateUI() {
             clickBadge.title = 'Clicked payment link / คลิกลิงก์ชำระเงินแล้ว';
             statusDiv.appendChild(clickBadge);
         }
-        
+
         li.appendChild(playerInfo);
         li.appendChild(statusDiv);
-        
+
         if (index < state.maxPlayers) {
             playersList.appendChild(li);
         } else {
@@ -392,7 +392,7 @@ Enter names separated by commas for ${state.sessionDay}:`;
                         if (!state.players.find(p => p.name === name)) {
                             const player = {
                                 id: Date.now() + Math.random(),
-                                name: name + ' (Regular)',
+                                name: name,
                                 phone: 'regular',
                                 paid: false,
                                 timestamp: new Date().toISOString(),

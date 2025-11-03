@@ -175,8 +175,9 @@ input:focus {
     color: #666;
 }
 
-.players-list ol {
-    padding-left: 20px;
+.players-list ul {
+    padding-left: 0;
+    list-style: none;
 }
 
 .players-list li {
