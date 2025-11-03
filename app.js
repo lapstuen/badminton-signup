@@ -128,18 +128,55 @@ function showSuccessMessage(player) {
 // Generate payment QR code
 function generatePaymentQR() {
     const qrContainer = document.getElementById('qrCode');
+    const currentPlayer = getCurrentPlayer();
     
     // PromptPay QR format
     const promptPayData = generatePromptPayString(state.promptPayNumber, 150);
     
-    // Using QR code placeholder - you can integrate a QR library here
+    // Create clickable PromptPay link
     qrContainer.innerHTML = `
         <div style="padding: 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
             <p style="font-size: 12px; color: #666;">PromptPay</p>
             <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">${state.promptPayNumber}</p>
             <p style="font-size: 16px; color: #10b981;">150 THB</p>
+            <button onclick="openPromptPay()" style="margin-top: 15px; padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                Open PromptPay App / เปิดแอป PromptPay
+            </button>
         </div>
     `;
+}
+
+// Track PromptPay clicks
+function openPromptPay() {
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer) {
+        // Mark that this player clicked payment link
+        currentPlayer.clickedPaymentLink = true;
+        currentPlayer.paymentLinkClickedAt = new Date().toISOString();
+        saveState();
+        
+        // Show confirmation
+        alert('Opening PromptPay app... / เปิดแอป PromptPay...\n\nPayment link clicked recorded! / บันทึกการคลิกลิงก์แล้ว!');
+    }
+    
+    // Create PromptPay deep link (if supported)
+    const promptPayUrl = `promptpay://pay?mobileno=${state.promptPayNumber}&amount=150`;
+    
+    // Try to open PromptPay app, fallback to showing number
+    try {
+        window.open(promptPayUrl, '_blank');
+    } catch (error) {
+        alert(`PromptPay Number: ${state.promptPayNumber}\nAmount: 150 THB\n\nCopy this number to your banking app / คัดลอกหมายเลขนี้ไปยังแอปธนาคาร`);
+    }
+}
+
+// Get current player from localStorage
+function getCurrentPlayer() {
+    const phone = localStorage.getItem('userPhone');
+    if (phone) {
+        return state.players.find(p => p.phone === phone);
+    }
+    return null;
 }
 
 // Generate PromptPay string (simplified version)
@@ -179,6 +216,14 @@ function updateUI() {
             badge.className = 'paid-badge';
             badge.textContent = 'Paid ✓';
             statusDiv.appendChild(badge);
+        }
+        
+        if (player.clickedPaymentLink) {
+            const clickBadge = document.createElement('span');
+            clickBadge.className = 'clicked-badge';
+            clickBadge.textContent = '💳';
+            clickBadge.title = 'Clicked payment link / คลิกลิงก์ชำระเงินแล้ว';
+            statusDiv.appendChild(clickBadge);
         }
         
         li.appendChild(playerInfo);

@@ -212,6 +212,16 @@ input:focus {
     font-size: 12px;
 }
 
+.clicked-badge {
+    background: #3b82f6;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-left: 5px;
+    cursor: help;
+}
+
 .admin-btn {
     position: fixed;
     bottom: 20px;
