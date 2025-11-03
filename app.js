@@ -15,8 +15,8 @@ let state = {
     paymentAmount: 150, // Payment amount in THB
     isAdmin: false,
     regularPlayers: [], // Regular players for each day
-    authorizedUsers: [], // Users who can log in and mark payment
-    loggedInUser: null // Currently logged in user {phone, name}
+    authorizedUsers: [], // Users who can log in and mark payment {name, password}
+    loggedInUser: null // Currently logged in user {name}
 };
 
 // Initialize app
@@ -86,9 +86,9 @@ function saveState() {
 
 // Check if user already registered
 function checkExistingRegistration() {
-    const phone = localStorage.getItem('userPhone');
-    if (phone) {
-        const player = state.players.find(p => p.phone === phone);
+    const name = localStorage.getItem('userName');
+    if (name) {
+        const player = state.players.find(p => p.name === name);
         if (player) {
             showSuccessMessage(player);
         }
@@ -98,39 +98,37 @@ function checkExistingRegistration() {
 // Handle signup
 function handleSignup(e) {
     e.preventDefault();
-    
+
     const name = document.getElementById('playerName').value.trim();
-    const phone = document.getElementById('playerPhone').value.trim();
-    
-    if (!name || !phone) {
-        alert('Please fill all fields / กรุณากรอกข้อมูลให้ครบ');
+
+    if (!name) {
+        alert('Please enter your name / กรุณากรอกชื่อ');
         return;
     }
-    
-    // Check if already registered
-    if (state.players.find(p => p.phone === phone)) {
-        alert('This phone number is already registered / หมายเลขนี้ลงทะเบียนแล้ว');
+
+    // Check if already registered (by name)
+    if (state.players.find(p => p.name === name)) {
+        alert('This name is already registered / ชื่อนี้ลงทะเบียนแล้ว');
         return;
     }
-    
+
     const player = {
         id: Date.now(),
         name,
-        phone,
         paid: false,
         timestamp: new Date().toISOString(),
         position: state.players.length + 1
     };
-    
+
     state.players.push(player);
     saveState();
-    
-    // Save phone for future visits
-    localStorage.setItem('userPhone', phone);
-    
+
+    // Save name for future visits
+    localStorage.setItem('userName', name);
+
     showSuccessMessage(player);
     updateUI();
-    
+
     // Reset form
     document.getElementById('signupForm').reset();
 }
@@ -169,8 +167,8 @@ function markAsPaid() {
         return;
     }
 
-    // Find the player by logged in user's phone
-    const currentPlayer = state.players.find(p => p.phone === state.loggedInUser.phone);
+    // Find the player by logged in user's name
+    const currentPlayer = state.players.find(p => p.name === state.loggedInUser.name);
     if (currentPlayer) {
         currentPlayer.paid = true;
         currentPlayer.markedPaidAt = new Date().toISOString();
@@ -184,9 +182,9 @@ function markAsPaid() {
 
 // Get current player from localStorage
 function getCurrentPlayer() {
-    const phone = localStorage.getItem('userPhone');
-    if (phone) {
-        return state.players.find(p => p.phone === phone);
+    const name = localStorage.getItem('userName');
+    if (name) {
+        return state.players.find(p => p.name === name);
     }
     return null;
 }
@@ -195,15 +193,14 @@ function getCurrentPlayer() {
 function handleLogin(e) {
     e.preventDefault();
 
-    const phone = document.getElementById('loginPhone').value.trim();
+    const name = document.getElementById('loginName').value.trim();
     const password = document.getElementById('loginPassword').value;
 
     // Check if user is authorized
-    const authorizedUser = state.authorizedUsers.find(u => u.phone === phone && u.password === password);
+    const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
 
     if (authorizedUser) {
         state.loggedInUser = {
-            phone: authorizedUser.phone,
             name: authorizedUser.name
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
@@ -212,7 +209,7 @@ function handleLogin(e) {
         updateUI();
         alert(`Welcome ${authorizedUser.name}! / ยินดีต้อนรับ ${authorizedUser.name}!`);
     } else {
-        alert('Invalid phone or password / เบอร์โทรศัพท์หรือรหัสผ่านไม่ถูกต้อง');
+        alert('Invalid name or password / ชื่อหรือรหัสผ่านไม่ถูกต้อง');
     }
 }
 
@@ -323,8 +320,7 @@ function updateAuthorizedUsersList() {
         item.className = 'authorized-user-item';
         item.innerHTML = `
             <div class="user-info">
-                <strong>${user.name}</strong><br>
-                <span style="font-size: 12px; color: #666;">${user.phone}</span>
+                <strong>${user.name}</strong>
             </div>
             <div class="user-actions">
                 <button onclick="editUserPassword(${index})" style="background: #3b82f6; color: white; padding: 5px 10px; border: none; border-radius: 5px; margin-right: 5px; cursor: pointer;">Change Password</button>
@@ -339,12 +335,9 @@ function addAuthorizedUser() {
     const name = prompt('Enter name / ใส่ชื่อ:');
     if (!name) return;
 
-    const phone = prompt('Enter phone number / ใส่เบอร์โทรศัพท์:');
-    if (!phone) return;
-
     // Check if user already exists
-    if (state.authorizedUsers.find(u => u.phone === phone)) {
-        alert('User with this phone number already exists / มีผู้ใช้ที่มีเบอร์นี้อยู่แล้ว');
+    if (state.authorizedUsers.find(u => u.name === name)) {
+        alert('User with this name already exists / มีผู้ใช้ชื่อนี้อยู่แล้ว');
         return;
     }
 
@@ -352,7 +345,6 @@ function addAuthorizedUser() {
 
     state.authorizedUsers.push({
         name: name,
-        phone: phone,
         password: password || '123'
     });
 
@@ -411,12 +403,12 @@ function updatePaymentList() {
         item.className = 'payment-item';
         
         const info = document.createElement('span');
-        info.textContent = `${player.name} - ${player.phone}`;
-        
+        info.textContent = player.name;
+
         const button = document.createElement('button');
         button.textContent = player.paid ? 'Mark Unpaid' : 'Mark Paid ✓';
         button.onclick = () => togglePayment(player.id);
-        
+
         item.appendChild(info);
         item.appendChild(button);
         paymentList.appendChild(item);
@@ -455,7 +447,7 @@ function clearSession() {
     if (confirm('Start new session? This will delete all registrations.\nเริ่มใหม่? จะลบการลงทะเบียนทั้งหมด')) {
         state.players = [];
         state.sessionDate = new Date().toLocaleDateString('en-GB');
-        localStorage.removeItem('userPhone');
+        localStorage.removeItem('userName');
         saveState();
         location.reload();
     }
@@ -465,15 +457,15 @@ function exportList() {
     let text = `Badminton ${state.sessionDate}\n`;
     text += '=' .repeat(30) + '\n\n';
     text += 'PLAYERS / ผู้เล่น:\n';
-    
+
     state.players.slice(0, state.maxPlayers).forEach((player, index) => {
-        text += `${index + 1}. ${player.name} - ${player.phone} ${player.paid ? '✓' : '○'}\n`;
+        text += `${index + 1}. ${player.name} ${player.paid ? '✓' : '○'}\n`;
     });
-    
+
     if (state.players.length > state.maxPlayers) {
         text += '\nWAITING LIST / รายชื่อสำรอง:\n';
         state.players.slice(state.maxPlayers).forEach((player, index) => {
-            text += `${index + 1}. ${player.name} - ${player.phone}\n`;
+            text += `${index + 1}. ${player.name}\n`;
         });
     }
     
