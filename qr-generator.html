@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR-kode for Badminton Påmelding</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
     <style>
         body {
             font-family: -apple-system, sans-serif;
@@ -129,14 +129,26 @@
         document.getElementById('urlDisplay').textContent = baseUrl;
         
         // Generate QR code
-        const qrcode = new QRCode(document.getElementById("qrcode"), {
-            text: baseUrl,
-            width: 200,
-            height: 200,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-        });
+        function generateQR() {
+            const qr = qrcode(0, 'M');
+            qr.addData(baseUrl);
+            qr.make();
+            
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = qr.createImgTag(4, 8);
+            
+            // Style the generated image
+            const img = qrContainer.querySelector('img');
+            if (img) {
+                img.style.width = '200px';
+                img.style.height = '200px';
+                img.style.border = '10px solid white';
+                img.style.borderRadius = '10px';
+            }
+        }
+        
+        // Generate QR when page loads
+        setTimeout(generateQR, 500);
         
         // Share to Line
         function shareToLine() {
@@ -161,32 +173,48 @@
         
         // Download QR code
         function downloadQR() {
-            const canvas = document.querySelector('#qrcode canvas');
-            if (!canvas) {
-                alert('QR code not ready. Please wait a moment and try again.');
+            const img = document.querySelector('#qrcode img');
+            if (!img) {
+                alert('QR code not ready. Please wait a moment and try again. / QR โค้ดยังไม่พร้อม รอสักครู่');
                 return;
             }
             
             try {
-                const url = canvas.toDataURL('image/png');
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'badminton-qr-code.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                // Create canvas to convert img to downloadable format
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 200;
+                canvas.height = 200;
                 
-                // Show success message
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = 'Downloaded! / ดาวน์โหลดแล้ว!';
-                btn.style.background = '#10b981';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '#f59e0b';
-                }, 2000);
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    ctx.drawImage(tempImg, 0, 0, 200, 200);
+                    
+                    // Download
+                    const url = canvas.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'badminton-qr-code.png';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    
+                    // Show success message
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Downloaded! / ดาวน์โหลดแล้ว!';
+                    btn.style.background = '#10b981';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '#f59e0b';
+                    }, 2000);
+                };
+                tempImg.crossOrigin = 'anonymous';
+                tempImg.src = img.src;
+                
             } catch (error) {
-                alert('Download failed. Try right-clicking the QR code and save image.');
+                alert('Download failed. Try right-clicking the QR code and "Save image as..." / ดาวน์โหลดล้มเหลว ลองคลิกขวาที่ QR แล้วเลือก "Save image as..."');
+                console.error('Download error:', error);
             }
         }
     </script>
