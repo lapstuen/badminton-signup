@@ -614,8 +614,12 @@ async function clearSession() {
             state.sessionDate = new Date().toLocaleDateString('en-GB');
             await saveSessionData();
 
+            // Remove old userName (deprecated)
             localStorage.removeItem('userName');
-            location.reload();
+
+            // Players will be automatically updated via real-time listener
+            // No need to reload - admin stays logged in
+            console.log('✅ Session cleared successfully');
         } catch (error) {
             console.error('Error clearing session:', error);
             alert('Error clearing session. Please try again.');
