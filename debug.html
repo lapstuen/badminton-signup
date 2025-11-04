@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Badminton App</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        .section {
+            background: #2d2d2d;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4ec9b0;
+        }
+        .error {
+            border-left-color: #f44747;
+        }
+        .success {
+            border-left-color: #4ec9b0;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            color: #ce9178;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Badminton App Debug</h1>
+
+    <div class="section">
+        <h2>Quick Actions</h2>
+        <button onclick="clearLocalStorage()">Clear LocalStorage</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div id="output"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+        let currentSessionId = new Date().toISOString().split('T')[0];
+        const currentSessionRef = () => sessionsRef.doc(currentSessionId);
+        const playersRef = () => currentSessionRef().collection('players');
+
+        function log(title, content, type = 'success') {
+            const section = document.createElement('div');
+            section.className = `section ${type}`;
+            section.innerHTML = `<h2>${title}</h2><pre>${content}</pre>`;
+            output.appendChild(section);
+        }
+
+        function clearLocalStorage() {
+            if (confirm('Clear all localStorage? This will log you out.')) {
+                localStorage.clear();
+                log('LocalStorage Cleared', 'All localStorage data has been removed.\nRefresh the page to see the effect.', 'success');
+            }
+        }
+
+        async function runAllTests() {
+            output.innerHTML = '';
+
+            // Test 1: LocalStorage
+            log('1. LocalStorage Data',
+                `Session: ${localStorage.getItem('badminton_session') || 'NONE'}\n` +
+                `Players: ${localStorage.getItem('badminton_players') || 'NONE'}\n` +
+                `UserName: ${localStorage.getItem('userName') || 'NONE'}\n` +
+                `LoggedInUser: ${localStorage.getItem('loggedInUser') || 'NONE'}`
+            );
+
+            // Test 2: Current Session ID
+            log('2. Current Session ID',
+                `Session ID: ${currentSessionId}\n` +
+                `Format: YYYY-MM-DD (today's date)`
+            );
+
+            // Test 3: Session Document
+            try {
+                const sessionDoc = await currentSessionRef().get();
+                if (sessionDoc.exists) {
+                    log('3. Session Document (Firestore)',
+                        JSON.stringify(sessionDoc.data(), null, 2),
+                        'success'
+                    );
+                } else {
+                    log('3. Session Document (Firestore)',
+                        'Session document does NOT exist in Firestore!',
+                        'error'
+                    );
+                }
+            } catch (error) {
+                log('3. Session Document ERROR', error.message, 'error');
+            }
+
+            // Test 4: Players in Firestore
+            try {
+                const playersSnapshot = await playersRef().get();
+                if (playersSnapshot.size === 0) {
+                    log('4. Players in Firestore',
+                        '⚠️ NO PLAYERS in Firestore!\n' +
+                        'Count: 0\n\n' +
+                        'This means players are probably in localStorage (old data).',
+                        'error'
+                    );
+                } else {
+                    let playersData = `Count: ${playersSnapshot.size}\n\nPlayers:\n`;
+                    playersSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        playersData += `\n${doc.id}:\n${JSON.stringify(data, null, 2)}\n`;
+                    });
+                    log('4. Players in Firestore', playersData, 'success');
+                }
+            } catch (error) {
+                log('4. Players in Firestore ERROR', error.message, 'error');
+            }
+
+            // Test 5: Authorized Users
+            try {
+                const usersSnapshot = await usersRef.get();
+                let usersData = `Count: ${usersSnapshot.size}\n\nUsers:\n`;
+                usersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    usersData += `\n- ${data.name} (password: ${data.password})\n`;
+                });
+                log('5. Authorized Users in Firestore', usersData, 'success');
+            } catch (error) {
+                log('5. Authorized Users ERROR', error.message, 'error');
+            }
+
+            // Test 6: Try to add a test player
+            log('6. Testing Write to Firestore',
+                'Click the button below to test if we can write to Firestore...'
+            );
+
+            const testSection = document.createElement('div');
+            testSection.className = 'section';
+            testSection.innerHTML = '<button onclick="testAddPlayer()">Test Add Player to Firestore</button><div id="testResult"></div>';
+            output.appendChild(testSection);
+        }
+
+        async function testAddPlayer() {
+            const testResult = document.getElementById('testResult');
+            try {
+                const testPlayer = {
+                    name: 'TEST_PLAYER_' + Date.now(),
+                    paid: false,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    position: 999,
+                    test: true
+                };
+
+                const docRef = await playersRef().add(testPlayer);
+                testResult.innerHTML = `<pre style="color: #4ec9b0;">✅ SUCCESS!\n\nTest player added with ID: ${docRef.id}\n\nNow check Firestore Console:\nsessions → ${currentSessionId} → players\n\nYou should see TEST_PLAYER there!\n\nDelete it manually from Firebase Console.</pre>`;
+            } catch (error) {
+                testResult.innerHTML = `<pre style="color: #f44747;">❌ ERROR!\n\n${error.message}\n\nThis is why players are not being added!</pre>`;
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 500);
+        });
+    </script>
+</body>
+</html>

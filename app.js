@@ -342,8 +342,6 @@ async function handleLogin(e) {
 function showSuccessMessage(player) {
     document.getElementById('registrationForm').style.display = 'none';
     document.getElementById('successMessage').style.display = 'block';
-    // Don't show player number - just hide it
-    document.getElementById('playerNumber').style.display = 'none';
 
     // Generate QR code for payment
     generatePaymentQR();

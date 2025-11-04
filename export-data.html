@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Export Firestore Data</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        pre {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            color: #ce9178;
+        }
+        .success {
+            color: #4ec9b0;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Export Firestore Data</h1>
+
+    <button onclick="exportAllData()">Export All Data to Console</button>
+    <button onclick="showFirestorePath()">Show Exact Firestore Path</button>
+
+    <div id="output"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <script>
+        const output = document.getElementById('output');
+        let currentSessionId = new Date().toISOString().split('T')[0];
+        const currentSessionRef = () => sessionsRef.doc(currentSessionId);
+        const playersRef = () => currentSessionRef().collection('players');
+
+        async function showFirestorePath() {
+            output.innerHTML = `
+                <pre class="success">
+📍 EXACT FIRESTORE PATH TO YOUR PLAYERS:
+
+Database: (default)
+└── sessions (collection)
+    └── ${currentSessionId} (document) ← CLICK THIS IN FIREBASE CONSOLE!
+        └── players (subcollection) ← Should appear AFTER clicking above
+            ├── [player IDs here]
+
+🔍 IN FIREBASE CONSOLE:
+1. Go to: Firestore Database
+2. Click: "sessions" collection
+3. You will see document: "${currentSessionId}"
+4. CLICK on the document ID: "${currentSessionId}" (not just hover)
+5. Document will open showing fields
+6. SCROLL DOWN - you should see "Subcollections" section
+7. "players" subcollection should be listed there
+
+If you still don't see it, try:
+- Refresh the page (F5)
+- Clear browser cache
+- Try in incognito mode
+                </pre>
+            `;
+        }
+
+        async function exportAllData() {
+            output.innerHTML = '<pre>Loading data...</pre>';
+
+            try {
+                // Get session data
+                const sessionDoc = await currentSessionRef().get();
+
+                // Get all players
+                const playersSnapshot = await playersRef().get();
+
+                let data = {
+                    sessionId: currentSessionId,
+                    sessionData: sessionDoc.exists ? sessionDoc.data() : null,
+                    playersCount: playersSnapshot.size,
+                    players: []
+                };
+
+                playersSnapshot.forEach(doc => {
+                    data.players.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+
+                // Sort by position
+                data.players.sort((a, b) => a.position - b.position);
+
+                output.innerHTML = `
+                    <pre class="success">
+✅ DATA EXPORTED SUCCESSFULLY!
+
+Session ID: ${currentSessionId}
+Players Count: ${data.playersCount}
+
+FULL DATA:
+${JSON.stringify(data, null, 2)}
+
+---
+
+FIRESTORE PATH:
+sessions/${currentSessionId}/players
+
+This data EXISTS in Firestore!
+To see it in Firebase Console, follow the path above.
+                    </pre>
+                `;
+
+                // Also log to console
+                console.log('=== FIRESTORE DATA ===');
+                console.log('Session ID:', currentSessionId);
+                console.log('Session Data:', sessionDoc.data());
+                console.log('Players Count:', playersSnapshot.size);
+                console.log('Players:', data.players);
+                console.log('Full Path: sessions/' + currentSessionId + '/players');
+
+            } catch (error) {
+                output.innerHTML = `<pre style="color: #f44747;">ERROR: ${error.message}</pre>`;
+                console.error(error);
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            setTimeout(showFirestorePath, 500);
+        });
+    </script>
+</body>
+</html>
