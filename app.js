@@ -187,14 +187,19 @@ function setupEventListeners() {
 async function handleSignup(e) {
     e.preventDefault();
 
-    const name = document.getElementById('playerName').value.trim();
-
-    if (!name) {
-        alert('Please enter your name / กรุณากรอกชื่อ');
-        return;
+    // Use logged-in user's name if available, otherwise get from form
+    let name;
+    if (state.loggedInUser) {
+        name = state.loggedInUser.name;
+    } else {
+        name = document.getElementById('playerName').value.trim();
+        if (!name) {
+            alert('Please enter your name / กรุณากรอกชื่อ');
+            return;
+        }
     }
 
-    // Check if user is authorized FIRST
+    // Check if user is authorized
     const authorizedUser = state.authorizedUsers.find(u => u.name === name);
     if (!authorizedUser) {
         alert('You are not authorized. Contact admin. / คุณไม่มีสิทธิ์ ติดต่อผู้ดูแล');
@@ -371,17 +376,40 @@ function getCurrentPlayer() {
 // ============================================
 
 function updateUI() {
-    // Update login UI - always hide login form since users login via signup
+    // Update login UI
     const userLoginEl = document.getElementById('userLogin');
     const loggedInInfoEl = document.getElementById('loggedInInfo');
+    const registrationFormEl = document.getElementById('registrationForm');
 
-    userLoginEl.style.display = 'none'; // Login not needed - auto-login on signup
-
+    // If user is logged in - show who they are and hide login form
     if (state.loggedInUser) {
+        userLoginEl.style.display = 'none';
         loggedInInfoEl.style.display = 'block';
         document.getElementById('loggedInName').textContent = state.loggedInUser.name;
+
+        // Check if already registered this session
+        const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
+        if (alreadyRegistered) {
+            registrationFormEl.style.display = 'none';
+        } else {
+            registrationFormEl.style.display = 'block';
+            // Hide name input field and update button text
+            const nameInput = document.getElementById('playerName');
+            const signupButton = document.querySelector('#signupForm button[type="submit"]');
+            nameInput.style.display = 'none';
+            signupButton.textContent = `Join as ${state.loggedInUser.name} / ลงทะเบียน`;
+        }
     } else {
+        // Not logged in - show login form, hide logged-in info and registration form
+        userLoginEl.style.display = 'block';
         loggedInInfoEl.style.display = 'none';
+        registrationFormEl.style.display = 'none';
+
+        // Reset name input and button (in case it was changed)
+        const nameInput = document.getElementById('playerName');
+        const signupButton = document.querySelector('#signupForm button[type="submit"]');
+        if (nameInput) nameInput.style.display = 'block';
+        if (signupButton) signupButton.textContent = 'Join / เข้าร่วม';
     }
 
     // Update session info
