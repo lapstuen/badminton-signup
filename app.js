@@ -652,29 +652,22 @@ async function changeSessionDetails() {
             await saveSessionData();
             updateUI();
 
-            // Ask if they want to add regular players
-            const addPlayers = confirm('Do you want to add regular players? / ต้องการเพิ่มผู้เล่นประจำหรือไม่?');
+            // Get regular players for this day from Firestore
+            const regularPlayers = await getRegularPlayersForDay(dayChoice);
 
-            if (addPlayers) {
-                const regularPlayersList = `Regular players / ผู้เล่นประจำ:
+            if (regularPlayers && regularPlayers.length > 0) {
+                // Show which players will be added
+                const confirm = window.confirm(
+                    `Add regular players for ${state.sessionDay}?\n` +
+                    `จะเพิ่มผู้เล่นประจำหรือไม่?\n\n` +
+                    `${regularPlayers.join(', ')}\n\n` +
+                    `(${regularPlayers.length} players)`
+                );
 
-Monday: John, Sarah, Mike (3 players)
-Tuesday: Tom, Lisa, David, Anna (4 players)
-Wednesday: Peter, Emma (2 players)
-Thursday: Mark, Julia, Chris (3 players)
-Friday: Alex, Sophie (2 players)
-Saturday: Free play
-Sunday: Tournament
-
-Enter names separated by commas for ${state.sessionDay}:`;
-
-                const names = prompt(regularPlayersList);
-
-                if (names) {
-                    const playerNames = names.split(',').map(n => n.trim()).filter(n => n);
-
+                if (confirm) {
                     // Add regular players
-                    for (const name of playerNames) {
+                    for (const name of regularPlayers) {
+                        // Check if player already registered
                         if (!state.players.find(p => p.name === name)) {
                             await playersRef().add({
                                 name: name,
@@ -685,12 +678,28 @@ Enter names separated by commas for ${state.sessionDay}:`;
                             });
                         }
                     }
-
-                    // Players added - will show up automatically via realtime listener
+                    console.log(`✅ Added ${regularPlayers.length} regular players`);
                 }
+            } else {
+                console.log('ℹ️ No regular players configured for this day');
             }
-            // Session updated - no alert needed
         }
+    }
+}
+
+// Get regular players for a specific day
+async function getRegularPlayersForDay(dayNumber) {
+    try {
+        const configDoc = await db.collection('config').doc('regularPlayers').get();
+        if (configDoc.exists) {
+            const data = configDoc.data();
+            const dayKey = `day${dayNumber}`;
+            return data[dayKey] || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('Error getting regular players:', error);
+        return [];
     }
 }
 
@@ -710,6 +719,81 @@ async function changeMaxPlayers() {
         state.maxPlayers = parseInt(newMax);
         await saveSessionData();
         updateUI();
+    }
+}
+
+// ============================================
+// REGULAR PLAYERS MANAGEMENT
+// ============================================
+
+async function manageRegularPlayers() {
+    const days = [
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
+    ];
+
+    // Load current configuration
+    let config = {};
+    try {
+        const configDoc = await db.collection('config').doc('regularPlayers').get();
+        if (configDoc.exists) {
+            config = configDoc.data();
+        }
+    } catch (error) {
+        console.error('Error loading config:', error);
+    }
+
+    // Show current configuration
+    let configText = 'Current regular players configuration:\n';
+    configText += '═'.repeat(50) + '\n\n';
+
+    for (let i = 1; i <= 7; i++) {
+        const dayKey = `day${i}`;
+        const players = config[dayKey] || [];
+        configText += `${i}. ${days[i-1]}\n`;
+        configText += `   Players: ${players.length > 0 ? players.join(', ') : 'None'}\n\n`;
+    }
+
+    configText += '\nEnter day number (1-7) to edit, or Cancel:';
+
+    const dayChoice = prompt(configText);
+
+    if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
+        const dayKey = `day${dayChoice}`;
+        const currentPlayers = config[dayKey] || [];
+
+        const newPlayers = prompt(
+            `Edit regular players for ${days[dayChoice - 1]}:\n\n` +
+            `Current: ${currentPlayers.join(', ') || 'None'}\n\n` +
+            `Enter names separated by commas:\n` +
+            `(Leave empty to clear all)`,
+            currentPlayers.join(', ')
+        );
+
+        if (newPlayers !== null) {
+            // Update configuration
+            config[dayKey] = newPlayers
+                .split(',')
+                .map(n => n.trim())
+                .filter(n => n.length > 0);
+
+            try {
+                await db.collection('config').doc('regularPlayers').set(config);
+                alert(
+                    `✅ Updated regular players for ${days[dayChoice - 1]}!\n` +
+                    `อัปเดตผู้เล่นประจำแล้ว!\n\n` +
+                    `Players: ${config[dayKey].length > 0 ? config[dayKey].join(', ') : 'None'}`
+                );
+            } catch (error) {
+                console.error('Error saving config:', error);
+                alert('Error saving configuration. Please try again.');
+            }
+        }
     }
 }
 
