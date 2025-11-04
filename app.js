@@ -186,16 +186,13 @@ function setupEventListeners() {
 
 async function handleSignup(e) {
     e.preventDefault();
-    console.log('🔵 handleSignup called');
 
     // Use logged-in user's name if available, otherwise get from form
     let name;
     if (state.loggedInUser) {
         name = state.loggedInUser.name;
-        console.log('✅ Using logged-in user name:', name);
     } else {
         name = document.getElementById('playerName').value.trim();
-        console.log('📝 Using form input name:', name);
         if (!name) {
             alert('Please enter your name / กรุณากรอกชื่อ');
             return;
@@ -203,28 +200,19 @@ async function handleSignup(e) {
     }
 
     // Check if user is authorized
-    console.log('🔍 Checking if user is authorized...');
-    console.log('Authorized users:', state.authorizedUsers.map(u => u.name));
     const authorizedUser = state.authorizedUsers.find(u => u.name === name);
     if (!authorizedUser) {
-        console.log('❌ User NOT authorized:', name);
         alert('You are not authorized. Contact admin. / คุณไม่มีสิทธิ์ ติดต่อผู้ดูแล');
         return;
     }
-    console.log('✅ User is authorized:', name);
 
     // Check if already registered (by name)
-    console.log('🔍 Checking if already registered...');
-    console.log('Current players:', state.players.map(p => p.name));
     if (state.players.find(p => p.name === name)) {
-        console.log('❌ Already registered:', name);
         alert('This name is already registered / ชื่อนี้ลงทะเบียนแล้ว');
         return;
     }
-    console.log('✅ Not yet registered, proceeding...');
 
     try {
-        console.log('💾 Adding player to Firestore...');
         // Add player to Firestore
         const playerData = {
             name,
@@ -232,10 +220,8 @@ async function handleSignup(e) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             position: state.players.length + 1
         };
-        console.log('Player data:', playerData);
 
-        const docRef = await playersRef().add(playerData);
-        console.log('✅ Player added to Firestore with ID:', docRef.id);
+        await playersRef().add(playerData);
 
         // Save name for future visits
         localStorage.setItem('userName', name);
@@ -246,18 +232,16 @@ async function handleSignup(e) {
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
-        // Show success message - use the same position we saved to Firestore
+        // Show success message
         const player = { name, position: playerData.position };
         showSuccessMessage(player);
 
         // Reset form
         document.getElementById('signupForm').reset();
 
-        console.log('✅ Player registered successfully:', name);
+        console.log('✅ Player registered:', name);
     } catch (error) {
-        console.error('❌ Error registering player:', error);
-        console.error('Error details:', error.message);
-        console.error('Error code:', error.code);
+        console.error('Error registering player:', error);
         alert('Error registering. Please try again.');
     }
 }
@@ -358,7 +342,8 @@ async function handleLogin(e) {
 function showSuccessMessage(player) {
     document.getElementById('registrationForm').style.display = 'none';
     document.getElementById('successMessage').style.display = 'block';
-    document.getElementById('playerNumber').textContent = player.position;
+    // Don't show player number - just hide it
+    document.getElementById('playerNumber').style.display = 'none';
 
     // Generate QR code for payment
     generatePaymentQR();
