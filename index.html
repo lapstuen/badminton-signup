@@ -25,37 +25,36 @@
         <main id="mainContent">
             <!-- User Login Section -->
             <div class="user-login" id="userLogin" style="display: none;">
-                <h2>Login / เข้าสู่ระบบ</h2>
+                <h2>Login<br>เข้าสู่ระบบ</h2>
                 <form id="loginForm">
                     <input type="text" id="loginName" placeholder="Name / ชื่อ" required>
                     <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
-                    <button type="submit" class="btn btn-primary">Login / เข้าสู่ระบบ</button>
+                    <button type="submit" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
                 </form>
-                <p class="login-note">Only authorized players can login / เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
+                <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
             </div>
 
             <!-- Logged In User Info -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
                 <p>Logged in as: <strong id="loggedInName"></strong></p>
-                <button onclick="logoutUser()" class="btn-logout">Logout / ออกจากระบบ</button>
+                <button onclick="logoutUser()" class="btn-logout">Logout<br>ออกจากระบบ</button>
             </div>
 
             <div class="registration-form" id="registrationForm">
                 <h2>Sign Up / ลงทะเบียน</h2>
                 <form id="signupForm">
                     <input type="text" id="playerName" placeholder="Name / ชื่อ" required>
-                    <button type="submit" class="btn btn-primary">Join / เข้าร่วม</button>
+                    <button type="submit" class="btn btn-primary">Join<br>เข้าร่วม</button>
                 </form>
             </div>
 
             <div class="success-message" id="successMessage" style="display: none;">
-                <div class="success-icon">✅</div>
-                <h2>You are registered! / คุณลงทะเบียนแล้ว!</h2>
+                <h2 style="margin-top: 0;">You are registered!<br>คุณลงทะเบียนแล้ว!</h2>
                 <div class="payment-info">
                     <div class="qr-code" id="qrCode"></div>
                 </div>
                 <button onclick="cancelRegistration()" class="btn-cancel" style="margin-top: 20px; background: #ef4444; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-                    Cancel Registration / ยกเลิก
+                    Cancel Registration<br>ยกเลิก
                 </button>
             </div>
 

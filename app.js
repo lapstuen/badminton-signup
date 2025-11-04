@@ -404,8 +404,8 @@ function generatePaymentQR() {
         // Already paid - show green button with "Paid ✓"
         qrContainer.innerHTML = `
             <div style="width: 100%; max-width: 400px; margin: 0 auto; padding: 25px; text-align: center;">
-                <button style="margin-top: 10px; padding: 20px 40px; background: #10b981; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: not-allowed; width: 100%; font-weight: bold;" disabled>
-                    Paid ✓ / ชำระแล้ว ✓
+                <button style="margin-top: 10px; padding: 20px 40px; background: #10b981; color: white; border: none; outline: none; border-radius: 10px; font-size: 18px; cursor: not-allowed; width: 100%; font-weight: bold;" disabled>
+                    Paid ✓<br>ชำระแล้ว ✓
                 </button>
             </div>
         `;
@@ -413,8 +413,8 @@ function generatePaymentQR() {
         // Not paid yet - show gray button with "I have paid"
         qrContainer.innerHTML = `
             <div style="width: 100%; max-width: 400px; margin: 0 auto; padding: 25px; text-align: center;">
-                <button onclick="markAsPaid()" id="paymentButton" style="margin-top: 10px; padding: 20px 40px; background: #6b7280; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; width: 100%; font-weight: bold;">
-                    I have paid / ฉันจ่ายแล้ว
+                <button onclick="markAsPaid()" id="paymentButton" style="margin-top: 10px; padding: 20px 40px; background: #6b7280; color: white; border: none; outline: none; border-radius: 10px; font-size: 18px; cursor: pointer; width: 100%; font-weight: bold;">
+                    I have paid<br>ฉันจ่ายแล้ว
                 </button>
             </div>
         `;
@@ -461,7 +461,7 @@ function updateUI() {
             const signupButton = document.querySelector('#signupForm button[type="submit"]');
             nameInput.style.display = 'none';
             nameInput.removeAttribute('required'); // Remove required when hidden!
-            signupButton.textContent = `Join as ${state.loggedInUser.name} / ลงทะเบียน`;
+            signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
         }
     } else {
         // Not logged in - show login form, hide logged-in info and registration form
@@ -476,7 +476,7 @@ function updateUI() {
             nameInput.style.display = 'block';
             nameInput.setAttribute('required', ''); // Add required back when visible!
         }
-        if (signupButton) signupButton.textContent = 'Join / เข้าร่วม';
+        if (signupButton) signupButton.innerHTML = 'Join<br>เข้าร่วม';
     }
 
     // Update session info
