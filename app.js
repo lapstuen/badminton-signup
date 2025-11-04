@@ -51,6 +51,9 @@ async function initializeApp() {
         // Update UI
         updateUI();
 
+        // Check if user is already registered and show success message
+        checkExistingRegistration();
+
         // Generate share link
         generateShareLink();
 
@@ -169,6 +172,22 @@ function setupRealtimeListeners() {
     }, (error) => {
         console.error('Error listening to users:', error);
     });
+}
+
+// ============================================
+// CHECK EXISTING REGISTRATION
+// ============================================
+
+function checkExistingRegistration() {
+    const userName = localStorage.getItem('userName');
+    if (!userName) return;
+
+    // Find the player in current session
+    const player = state.players.find(p => p.name === userName);
+    if (player) {
+        // User is registered - show success message
+        showSuccessMessage(player);
+    }
 }
 
 // ============================================
