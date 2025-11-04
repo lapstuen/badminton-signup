@@ -404,6 +404,13 @@ input:focus {
     font-size: 12px;
 }
 
+.bottom-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
 .btn-cancel-bottom {
     background: #9ca3af;
     color: white;
@@ -412,7 +419,6 @@ input:focus {
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
-    max-width: 200px;
 }
 
 .btn-cancel-bottom:hover {
@@ -427,7 +433,6 @@ input:focus {
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
-    max-width: 200px;
 }
 
 .btn-logout-bottom:hover {
