@@ -251,12 +251,13 @@ async function handleSignup(e) {
 // ============================================
 
 async function cancelRegistration() {
-    // Get current player from localStorage
-    const userName = localStorage.getItem('userName');
-    if (!userName) {
-        alert('No registration found / ไม่พบการลงทะเบียน');
+    // Check if user is logged in
+    if (!state.loggedInUser) {
+        alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
         return;
     }
+
+    const userName = state.loggedInUser.name;
 
     // Confirm cancellation
     if (!confirm(`Cancel your registration? / ยกเลิกการลงทะเบียน?\n\nThis will remove you from the player list.`)) {
@@ -293,19 +294,13 @@ async function cancelRegistration() {
 // ============================================
 
 async function markAsPaid() {
-    // Get current player from localStorage
-    const userName = localStorage.getItem('userName');
-    if (!userName) {
-        alert('Please sign up first / กรุณาลงทะเบียนก่อน');
+    // Check if user is logged in
+    if (!state.loggedInUser) {
+        alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
         return;
     }
 
-    // Check if user is authorized
-    const authorizedUser = state.authorizedUsers.find(u => u.name === userName);
-    if (!authorizedUser) {
-        alert('You are not authorized. Contact admin. / คุณไม่มีสิทธิ์ ติดต่อผู้ดูแล');
-        return;
-    }
+    const userName = state.loggedInUser.name;
 
     // Find the player and mark as paid
     const currentPlayer = state.players.find(p => p.name === userName);
@@ -396,7 +391,9 @@ function generatePaymentQR() {
     const qrContainer = document.getElementById('qrCode');
 
     // Check if current user has already paid
-    const userName = localStorage.getItem('userName');
+    if (!state.loggedInUser) return;
+
+    const userName = state.loggedInUser.name;
     const currentPlayer = state.players.find(p => p.name === userName);
     const hasPaid = currentPlayer && currentPlayer.paid;
 
