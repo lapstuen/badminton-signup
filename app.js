@@ -413,6 +413,7 @@ function updateUI() {
             const nameInput = document.getElementById('playerName');
             const signupButton = document.querySelector('#signupForm button[type="submit"]');
             nameInput.style.display = 'none';
+            nameInput.removeAttribute('required'); // Remove required when hidden!
             signupButton.textContent = `Join as ${state.loggedInUser.name} / ลงทะเบียน`;
         }
     } else {
@@ -424,7 +425,10 @@ function updateUI() {
         // Reset name input and button (in case it was changed)
         const nameInput = document.getElementById('playerName');
         const signupButton = document.querySelector('#signupForm button[type="submit"]');
-        if (nameInput) nameInput.style.display = 'block';
+        if (nameInput) {
+            nameInput.style.display = 'block';
+            nameInput.setAttribute('required', ''); // Add required back when visible!
+        }
         if (signupButton) signupButton.textContent = 'Join / เข้าร่วม';
     }
 
