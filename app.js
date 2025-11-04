@@ -48,11 +48,8 @@ async function initializeApp() {
         // Setup event listeners
         setupEventListeners();
 
-        // Update UI
+        // Update UI (this will also show success message if user is registered)
         updateUI();
-
-        // Check if user is already registered and show success message
-        checkExistingRegistration();
 
         // Generate share link
         generateShareLink();
@@ -172,22 +169,6 @@ function setupRealtimeListeners() {
     }, (error) => {
         console.error('Error listening to users:', error);
     });
-}
-
-// ============================================
-// CHECK EXISTING REGISTRATION
-// ============================================
-
-function checkExistingRegistration() {
-    const userName = localStorage.getItem('userName');
-    if (!userName) return;
-
-    // Find the player in current session
-    const player = state.players.find(p => p.name === userName);
-    if (player) {
-        // User is registered - show success message
-        showSuccessMessage(player);
-    }
 }
 
 // ============================================
@@ -468,9 +449,13 @@ function updateUI() {
         // Check if already registered this session
         const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
         if (alreadyRegistered) {
+            // User is registered - show success message instead of registration form
             registrationFormEl.style.display = 'none';
+            showSuccessMessage(alreadyRegistered);
         } else {
+            // User not registered yet - show join button
             registrationFormEl.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
             // Hide name input field and update button text
             const nameInput = document.getElementById('playerName');
             const signupButton = document.querySelector('#signupForm button[type="submit"]');
