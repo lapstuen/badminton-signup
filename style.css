@@ -381,16 +381,14 @@ input:focus {
 .logged-in-info {
     padding: 10px 15px;
     margin-bottom: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    text-align: center;
 }
 
 .logged-in-info p {
     margin: 0;
     color: #333;
-    text-align: center;
+    display: inline-block;
+    margin-right: 10px;
 }
 
 .btn-logout {
@@ -401,6 +399,7 @@ input:focus {
     border-radius: 4px;
     cursor: pointer;
     font-size: 11px;
+    display: inline-block;
 }
 
 .btn-logout:hover {
