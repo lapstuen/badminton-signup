@@ -37,7 +37,6 @@
             <!-- Logged In User Info -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
                 <p>Logged in as: <strong id="loggedInName"></strong></p>
-                <button onclick="logoutUser()" class="btn-logout">logout</button>
             </div>
 
             <div class="registration-form" id="registrationForm">
@@ -63,6 +62,11 @@
                 <ul id="playersList"></ul>
                 <h3>Waiting List / รายชื่อสำรอง</h3>
                 <ul id="waitingList"></ul>
+            </div>
+
+            <!-- Logout Button (bottom) -->
+            <div class="logout-container" id="logoutContainer" style="display: none;">
+                <button onclick="logoutUser()" class="btn-logout-bottom">Logout<br>ออกจากระบบ</button>
             </div>
         </main>
 

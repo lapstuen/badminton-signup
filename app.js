@@ -438,12 +438,14 @@ function updateUI() {
     // Update login UI
     const userLoginEl = document.getElementById('userLogin');
     const loggedInInfoEl = document.getElementById('loggedInInfo');
+    const logoutContainerEl = document.getElementById('logoutContainer');
     const registrationFormEl = document.getElementById('registrationForm');
 
     // If user is logged in - show who they are and hide login form
     if (state.loggedInUser) {
         userLoginEl.style.display = 'none';
         loggedInInfoEl.style.display = 'block';
+        logoutContainerEl.style.display = 'block';
         document.getElementById('loggedInName').textContent = state.loggedInUser.name;
 
         // Check if already registered this session
@@ -467,6 +469,7 @@ function updateUI() {
         // Not logged in - show login form, hide logged-in info and registration form
         userLoginEl.style.display = 'block';
         loggedInInfoEl.style.display = 'none';
+        logoutContainerEl.style.display = 'none';
         registrationFormEl.style.display = 'none';
 
         // Reset name input and button (in case it was changed)

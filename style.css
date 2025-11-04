@@ -117,7 +117,7 @@ input:focus {
 
 .success-message {
     text-align: center;
-    padding: 30px;
+    padding: 10px 30px 30px 30px;
     animation: fadeIn 0.5s;
 }
 
@@ -381,10 +381,7 @@ input:focus {
 .logged-in-info {
     padding: 10px 15px;
     margin-bottom: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    text-align: center;
 }
 
 .logged-in-info p {
@@ -392,17 +389,34 @@ input:focus {
     color: #333;
 }
 
-.btn-logout {
+/* Logout Button (bottom) */
+.logout-container {
+    margin-top: 30px;
+    padding-top: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logout-container::before {
+    content: "";
+    display: block;
+    height: 120px;
+}
+
+.btn-logout-bottom {
     background: #9ca3af;
     color: white;
     border: none;
-    padding: 4px 10px;
-    border-radius: 4px;
+    padding: 10px 20px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 14px;
+    max-width: 200px;
 }
 
-.btn-logout:hover {
+.btn-logout-bottom:hover {
     background: #6b7280;
 }
 
