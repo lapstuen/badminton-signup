@@ -403,8 +403,8 @@ function generatePaymentQR() {
     if (hasPaid) {
         // Already paid - show green button with "Paid ✓"
         qrContainer.innerHTML = `
-            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
-                <button style="margin-top: 10px; padding: 12px 24px; background: #10b981; color: white; border: none; outline: none; border-radius: 8px; font-size: 16px; cursor: not-allowed; width: 100%; font-weight: bold;" disabled>
+            <div style="text-align: center;">
+                <button style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: not-allowed; font-weight: bold;" disabled>
                     Paid ✓<br>ชำระแล้ว ✓
                 </button>
             </div>
@@ -412,8 +412,8 @@ function generatePaymentQR() {
     } else {
         // Not paid yet - show gray button with "I have paid"
         qrContainer.innerHTML = `
-            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
-                <button onclick="markAsPaid()" id="paymentButton" style="margin-top: 10px; padding: 12px 24px; background: #6b7280; color: white; border: none; outline: none; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold;">
+            <div style="text-align: center;">
+                <button onclick="markAsPaid()" id="paymentButton" style="padding: 12px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold;">
                     I have paid<br>ฉันจ่ายแล้ว
                 </button>
             </div>
