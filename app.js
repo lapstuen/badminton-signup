@@ -278,7 +278,7 @@ async function markAsPaid() {
             markedPaidAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert('Payment marked! / บันทึกการชำระเงินแล้ว!');
+        // No alert - payment status updates automatically via realtime listener
         console.log('✅ Payment marked for:', userName);
     } catch (error) {
         console.error('Error marking payment:', error);
@@ -305,7 +305,7 @@ function logoutUser() {
     state.loggedInUser = null;
     localStorage.removeItem('loggedInUser');
     updateUI();
-    alert('Logged out successfully / ออกจากระบบสำเร็จ');
+    // No alert - just update UI
 }
 
 // ============================================
@@ -329,7 +329,7 @@ async function handleLogin(e) {
 
         document.getElementById('loginForm').reset();
         updateUI();
-        alert(`Welcome ${authorizedUser.name}! / ยินดีต้อนรับ ${authorizedUser.name}!`);
+        // No alert - just go straight to the app
     } else {
         alert('Invalid name or password / ชื่อหรือรหัสผ่านไม่ถูกต้อง');
     }
@@ -580,11 +580,10 @@ Enter names separated by commas for ${state.sessionDay}:`;
                         }
                     }
 
-                    alert(`Added ${playerNames.length} regular players / เพิ่มผู้เล่นประจำ ${playerNames.length} คน`);
+                    // Players added - will show up automatically via realtime listener
                 }
-            } else {
-                alert('Session updated / อัปเดตเซสชันแล้ว');
             }
+            // Session updated - no alert needed
         }
     }
 }
