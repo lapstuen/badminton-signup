@@ -439,6 +439,7 @@ function updateUI() {
     const userLoginEl = document.getElementById('userLogin');
     const loggedInInfoEl = document.getElementById('loggedInInfo');
     const logoutContainerEl = document.getElementById('logoutContainer');
+    const cancelContainerEl = document.getElementById('cancelContainer');
     const registrationFormEl = document.getElementById('registrationForm');
 
     // If user is logged in - show who they are and hide login form
@@ -451,12 +452,14 @@ function updateUI() {
         // Check if already registered this session
         const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
         if (alreadyRegistered) {
-            // User is registered - show success message instead of registration form
+            // User is registered - show success message and cancel button
             registrationFormEl.style.display = 'none';
+            cancelContainerEl.style.display = 'block';
             showSuccessMessage(alreadyRegistered);
         } else {
-            // User not registered yet - show join button
+            // User not registered yet - show join button, hide cancel button
             registrationFormEl.style.display = 'block';
+            cancelContainerEl.style.display = 'none';
             document.getElementById('successMessage').style.display = 'none';
             // Hide name input field and update button text
             const nameInput = document.getElementById('playerName');
@@ -470,6 +473,7 @@ function updateUI() {
         userLoginEl.style.display = 'block';
         loggedInInfoEl.style.display = 'none';
         logoutContainerEl.style.display = 'none';
+        cancelContainerEl.style.display = 'none';
         registrationFormEl.style.display = 'none';
 
         // Reset name input and button (in case it was changed)
