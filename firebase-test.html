@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        .pending {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #f59e0b;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #output {
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-box">
+        <h1>🔥 Firebase Connection Test</h1>
+
+        <div id="status" class="status pending">
+            ⏳ Waiting to test connection...
+        </div>
+
+        <button onclick="testConnection()">Test Firebase Connection</button>
+        <button onclick="testWrite()">Test Write Data</button>
+        <button onclick="testRead()">Test Read Data</button>
+        <button onclick="clearTest()">Clear Test Data</button>
+
+        <div id="output"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const outputEl = document.getElementById('output');
+
+        function log(message) {
+            outputEl.innerHTML += message + '\n';
+            console.log(message);
+        }
+
+        function testConnection() {
+            statusEl.className = 'status pending';
+            statusEl.innerHTML = '⏳ Testing Firebase connection...';
+            outputEl.innerHTML = '';
+
+            try {
+                log('🔥 Firebase Config:');
+                log('  Project ID: ' + firebaseConfig.projectId);
+                log('  Auth Domain: ' + firebaseConfig.authDomain);
+                log('');
+
+                if (typeof db === 'undefined') {
+                    throw new Error('Firestore is not initialized!');
+                }
+
+                log('✅ Firebase SDK loaded successfully!');
+                log('✅ Firestore initialized!');
+                log('');
+                log('👉 Click "Test Write Data" to test writing to Firestore');
+
+                statusEl.className = 'status success';
+                statusEl.innerHTML = '✅ Firebase connected successfully!';
+            } catch (error) {
+                log('❌ ERROR: ' + error.message);
+                statusEl.className = 'status error';
+                statusEl.innerHTML = '❌ Connection failed: ' + error.message;
+            }
+        }
+
+        function testWrite() {
+            statusEl.className = 'status pending';
+            statusEl.innerHTML = '⏳ Writing test data to Firestore...';
+            outputEl.innerHTML = '';
+
+            const testData = {
+                name: 'Test User',
+                timestamp: new Date().toISOString(),
+                test: true
+            };
+
+            log('📝 Writing test data to Firestore...');
+            log('Collection: authorizedUsers');
+            log('Data: ' + JSON.stringify(testData, null, 2));
+            log('');
+
+            usersRef.doc('test-user').set(testData)
+                .then(() => {
+                    log('✅ SUCCESS! Data written to Firestore!');
+                    log('');
+                    log('👉 Go to Firebase Console → Firestore Database');
+                    log('   You should see "authorizedUsers" collection with "test-user" document');
+                    log('');
+                    log('👉 Click "Test Read Data" to verify');
+
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✅ Write test successful!';
+                })
+                .catch((error) => {
+                    log('❌ ERROR writing data: ' + error.message);
+                    log('');
+                    log('Possible reasons:');
+                    log('1. Firestore Database not created yet');
+                    log('2. Security rules blocking writes');
+                    log('3. No internet connection');
+
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = '❌ Write failed: ' + error.message;
+                });
+        }
+
+        function testRead() {
+            statusEl.className = 'status pending';
+            statusEl.innerHTML = '⏳ Reading test data from Firestore...';
+            outputEl.innerHTML = '';
+
+            log('📖 Reading test data from Firestore...');
+            log('');
+
+            usersRef.doc('test-user').get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        log('✅ SUCCESS! Data read from Firestore!');
+                        log('');
+                        log('Document data:');
+                        log(JSON.stringify(doc.data(), null, 2));
+
+                        statusEl.className = 'status success';
+                        statusEl.innerHTML = '✅ Read test successful! Firebase is working perfectly!';
+                    } else {
+                        log('⚠️ Document does not exist');
+                        log('👉 Click "Test Write Data" first');
+
+                        statusEl.className = 'status pending';
+                        statusEl.innerHTML = '⚠️ No test data found. Write data first.';
+                    }
+                })
+                .catch((error) => {
+                    log('❌ ERROR reading data: ' + error.message);
+
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = '❌ Read failed: ' + error.message;
+                });
+        }
+
+        function clearTest() {
+            statusEl.className = 'status pending';
+            statusEl.innerHTML = '⏳ Clearing test data...';
+            outputEl.innerHTML = '';
+
+            log('🗑️ Deleting test data...');
+
+            usersRef.doc('test-user').delete()
+                .then(() => {
+                    log('✅ Test data cleared!');
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✅ Test data cleared!';
+                })
+                .catch((error) => {
+                    log('❌ ERROR: ' + error.message);
+                    statusEl.className = 'status error';
+                    statusEl.innerHTML = '❌ Clear failed: ' + error.message;
+                });
+        }
+
+        // Auto-test connection on load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 500);
+        });
+    </script>
+</body>
+</html>
