@@ -404,11 +404,20 @@ input:focus {
     font-size: 12px;
 }
 
+.logout-container p.version {
+    margin: 10px 0;
+    color: #666;
+    font-size: 10px;
+    font-weight: normal;
+}
+
 .bottom-buttons {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     justify-content: center;
     align-items: center;
+    width: 100%;
 }
 
 .btn-cancel-bottom {
