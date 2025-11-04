@@ -247,6 +247,48 @@ async function handleSignup(e) {
 }
 
 // ============================================
+// CANCEL REGISTRATION
+// ============================================
+
+async function cancelRegistration() {
+    // Get current player from localStorage
+    const userName = localStorage.getItem('userName');
+    if (!userName) {
+        alert('No registration found / ไม่พบการลงทะเบียน');
+        return;
+    }
+
+    // Confirm cancellation
+    if (!confirm(`Cancel your registration? / ยกเลิกการลงทะเบียน?\n\nThis will remove you from the player list.`)) {
+        return;
+    }
+
+    // Find the player
+    const currentPlayer = state.players.find(p => p.name === userName);
+    if (!currentPlayer) {
+        alert('You are not registered / คุณไม่ได้ลงทะเบียน');
+        return;
+    }
+
+    try {
+        // Delete player from Firestore
+        await playersRef().doc(currentPlayer.id).delete();
+
+        // Clear localStorage
+        localStorage.removeItem('userName');
+
+        // Hide success message and show registration form again
+        document.getElementById('successMessage').style.display = 'none';
+        document.getElementById('registrationForm').style.display = 'block';
+
+        console.log('✅ Registration cancelled for:', userName);
+    } catch (error) {
+        console.error('Error cancelling registration:', error);
+        alert('Error cancelling. Please try again.');
+    }
+}
+
+// ============================================
 // PAYMENT MARKING
 // ============================================
 
