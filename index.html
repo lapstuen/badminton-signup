@@ -61,13 +61,6 @@
                 <ul id="waitingList"></ul>
             </div>
 
-            <!-- Cancel Registration Button (bottom, when registered) -->
-            <div class="cancel-container" id="cancelContainer" style="display: none;">
-                <button onclick="cancelRegistration()" class="btn-cancel" style="background: #ef4444; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-                    Cancel Registration<br>ยกเลิก
-                </button>
-            </div>
-
             <!-- Logout Button (bottom) -->
             <div class="logout-container" id="logoutContainer" style="display: none;">
                 <p>.</p>
@@ -77,6 +70,12 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
+
+                <!-- Cancel Registration Button (only when registered) -->
+                <button onclick="cancelRegistration()" id="cancelBtn" class="btn-cancel-bottom" style="display: none; margin-bottom: 10px;">
+                    Cancel Registration<br>ยกเลิก
+                </button>
+
                 <button onclick="logoutUser()" class="btn-logout-bottom">Logout<br>ออกจากระบบ</button>
             </div>
         </main>
