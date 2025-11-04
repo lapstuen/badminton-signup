@@ -194,6 +194,13 @@ async function handleSignup(e) {
         return;
     }
 
+    // Check if user is authorized FIRST
+    const authorizedUser = state.authorizedUsers.find(u => u.name === name);
+    if (!authorizedUser) {
+        alert('You are not authorized. Contact admin. / คุณไม่มีสิทธิ์ ติดต่อผู้ดูแล');
+        return;
+    }
+
     // Check if already registered (by name)
     if (state.players.find(p => p.name === name)) {
         alert('This name is already registered / ชื่อนี้ลงทะเบียนแล้ว');
@@ -214,14 +221,11 @@ async function handleSignup(e) {
         // Save name for future visits
         localStorage.setItem('userName', name);
 
-        // Auto-login if user is authorized
-        const authorizedUser = state.authorizedUsers.find(u => u.name === name);
-        if (authorizedUser) {
-            state.loggedInUser = {
-                name: authorizedUser.name
-            };
-            localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
-        }
+        // Auto-login (user is already verified as authorized)
+        state.loggedInUser = {
+            name: authorizedUser.name
+        };
+        localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
         // Show success message
         const player = { name, position: state.players.length + 1 };
