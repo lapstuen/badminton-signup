@@ -399,10 +399,10 @@ input:focus {
     align-items: center;
 }
 
-.logout-container::before {
-    content: "";
-    display: block;
-    height: 120px;
+.logout-container p {
+    margin: 5px 0;
+    color: #999;
+    font-size: 12px;
 }
 
 .btn-logout-bottom {
