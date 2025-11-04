@@ -518,7 +518,6 @@ function updateUI() {
     }
 
     // Update session info
-    document.getElementById('sessionDate').textContent = state.sessionDate;
     document.getElementById('sessionDay').textContent = state.sessionDay;
     document.getElementById('sessionTime').textContent = state.sessionTime;
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
