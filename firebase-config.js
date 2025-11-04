@@ -14,6 +14,12 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firestore
 const db = firebase.firestore();
 
+// Initialize Functions
+const functions = firebase.functions();
+
+// For local testing, uncomment this:
+// functions.useEmulator('localhost', 5001);
+
 // Collection references
 const sessionsRef = db.collection('sessions');
 const usersRef = db.collection('authorizedUsers');

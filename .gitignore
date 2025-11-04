@@ -2,3 +2,6 @@
 node_modules/
 *.log
 .env
+.firebase/
+functions/.env
+.claude/settings.local.json

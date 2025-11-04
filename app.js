@@ -247,6 +247,38 @@ async function handleSignup(e) {
 }
 
 // ============================================
+// LINE NOTIFICATION
+// ============================================
+
+async function sendLineCancellationNotification(playerName) {
+    try {
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendCancellationNotification');
+
+        // Prepare notification data
+        const notificationData = {
+            playerName: playerName,
+            currentPlayers: state.players.length,
+            maxPlayers: state.maxPlayers,
+            sessionDate: state.sessionDate,
+            sessionDay: state.sessionDay,
+            sessionTime: state.sessionTime,
+            appUrl: window.location.href
+        };
+
+        console.log('📤 Sending Line notification...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Line notification sent:', result.data);
+    } catch (error) {
+        console.error('❌ Error sending Line notification:', error);
+        // Don't block cancellation if notification fails
+    }
+}
+
+// ============================================
 // CANCEL REGISTRATION
 // ============================================
 
@@ -274,6 +306,9 @@ async function cancelRegistration() {
     try {
         // Delete player from Firestore
         await playersRef().doc(currentPlayer.id).delete();
+
+        // Send Line notification (async, don't wait)
+        sendLineCancellationNotification(userName);
 
         // Clear localStorage
         localStorage.removeItem('userName');
