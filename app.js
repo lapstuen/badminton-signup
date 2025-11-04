@@ -246,8 +246,8 @@ async function handleSignup(e) {
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
-        // Show success message
-        const player = { name, position: state.players.length + 1 };
+        // Show success message - use the same position we saved to Firestore
+        const player = { name, position: playerData.position };
         showSuccessMessage(player);
 
         // Reset form
