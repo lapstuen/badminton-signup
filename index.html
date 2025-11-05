@@ -17,7 +17,6 @@
                 <p class="session-time" id="sessionTime">18:00 - 20:00</p>
             </div>
             <div class="session-info">
-                <p class="date" id="sessionDate"></p>
                 <p class="spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
             </div>
         </header>
@@ -37,6 +36,7 @@
             <!-- Logged In User Info -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
                 <p>Logged in as: <strong id="loggedInName"></strong></p>
+                <p class="balance-display">Wallet Balance / ยอดเงิน: <strong id="userBalance">0</strong> THB</p>
             </div>
 
             <div class="registration-form" id="registrationForm">
@@ -70,7 +70,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">Version: 2025-01-04 15:45</p>
+                <p class="version">Version: 2025-11-05 14:30 (Wallet System)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -98,7 +98,11 @@
                     <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
                     <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
                     <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
+                    <button onclick="manageRegularPlayers()">Manage Regular Players / จัดการผู้เล่นประจำ</button>
                     <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
+                    <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
+                    <button onclick="initializeAllBalances()" style="background: #f59e0b;">🔧 Initialize Balances / เติมยอดเริ่มต้น</button>
+                    <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
                     <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
                 </div>
             </div>
@@ -106,6 +110,11 @@
                 <h3>Authorized Users / ผู้ใช้ที่ได้รับอนุญาต</h3>
                 <button onclick="addAuthorizedUser()" class="btn-add-user">+ Add User / เพิ่มผู้ใช้</button>
                 <div id="authorizedUsersList"></div>
+            </div>
+            <div class="transactions-section" id="transactionsSection" style="display: none;">
+                <h3>Transaction History / ประวัติการทำรายการ</h3>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
+                <div id="transactionsList"></div>
             </div>
             <div class="payment-tracking">
                 <h3>Payment Status / สถานะการชำระเงิน</h3>
@@ -117,6 +126,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 
     <!-- Firebase Configuration -->
     <script src="firebase-config.js"></script>

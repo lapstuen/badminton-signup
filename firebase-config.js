@@ -14,8 +14,12 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firestore
 const db = firebase.firestore();
 
+// Initialize Functions
+const functions = firebase.functions();
+
 // Collection references
 const sessionsRef = db.collection('sessions');
 const usersRef = db.collection('authorizedUsers');
+const transactionsRef = db.collection('transactions');
 
 console.log('🔥 Firebase initialized successfully!');

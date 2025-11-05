@@ -15,7 +15,8 @@ let state = {
     paymentAmount: 150,
     isAdmin: false,
     authorizedUsers: [],
-    loggedInUser: null
+    loggedInUser: null, // Now includes: { name, balance, userId }
+    transactions: []
 };
 
 // Firestore references
@@ -43,7 +44,7 @@ async function initializeApp() {
         setupRealtimeListeners();
 
         // Check if user is logged in
-        checkLoggedInUser();
+        await checkLoggedInUser();
 
         // Setup event listeners
         setupEventListeners();
@@ -125,6 +126,64 @@ async function loadAuthorizedUsers() {
         console.log(`📥 Loaded ${state.authorizedUsers.length} authorized users`);
     } catch (error) {
         console.error('Error loading users:', error);
+    }
+}
+
+// Create transaction record
+async function createTransaction(userId, userName, amount, description) {
+    try {
+        await transactionsRef.add({
+            userId: userId,
+            userName: userName,
+            amount: amount, // Positive for deposits, negative for withdrawals
+            description: description,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            sessionId: currentSessionId,
+            sessionDate: state.sessionDate
+        });
+        console.log(`💰 Transaction created: ${userName} ${amount > 0 ? '+' : ''}${amount} THB (${description})`);
+    } catch (error) {
+        console.error('Error creating transaction:', error);
+    }
+}
+
+// Update user balance
+async function updateUserBalance(userId, userName, amountChange, description) {
+    try {
+        const userDoc = await usersRef.doc(userId).get();
+        if (!userDoc.exists) {
+            console.error('User not found');
+            return false;
+        }
+
+        const currentBalance = userDoc.data().balance || 0;
+        const newBalance = currentBalance + amountChange;
+
+        // Don't allow negative balance
+        if (newBalance < 0) {
+            alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${Math.abs(amountChange)} THB`);
+            return false;
+        }
+
+        // Update balance in Firestore
+        await usersRef.doc(userId).update({
+            balance: newBalance
+        });
+
+        // Create transaction record
+        await createTransaction(userId, userName, amountChange, description);
+
+        // Update local state if this is the logged in user
+        if (state.loggedInUser && state.loggedInUser.userId === userId) {
+            state.loggedInUser.balance = newBalance;
+            updateUI();
+        }
+
+        console.log(`✅ Balance updated: ${userName} = ${newBalance} THB`);
+        return true;
+    } catch (error) {
+        console.error('Error updating balance:', error);
+        return false;
     }
 }
 
@@ -212,6 +271,19 @@ async function handleSignup(e) {
         return;
     }
 
+    // Check and deduct balance
+    const success = await updateUserBalance(
+        authorizedUser.id,
+        authorizedUser.name,
+        -state.paymentAmount,
+        `Registration for ${state.sessionDay} ${state.sessionDate}`
+    );
+
+    if (!success) {
+        // Balance insufficient - don't register
+        return;
+    }
+
     try {
         // Add player to Firestore
         const playerData = {
@@ -228,8 +300,17 @@ async function handleSignup(e) {
 
         // Auto-login (user is already verified as authorized)
         state.loggedInUser = {
-            name: authorizedUser.name
+            name: authorizedUser.name,
+            balance: authorizedUser.balance || 0,
+            userId: authorizedUser.id
         };
+
+        // Refresh balance from server after deduction
+        const userDoc = await usersRef.doc(authorizedUser.id).get();
+        if (userDoc.exists) {
+            state.loggedInUser.balance = userDoc.data().balance || 0;
+        }
+
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
         // Show success message
@@ -247,6 +328,38 @@ async function handleSignup(e) {
 }
 
 // ============================================
+// LINE NOTIFICATION
+// ============================================
+
+async function sendLineCancellationNotification(playerName) {
+    try {
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendCancellationNotification');
+
+        // Prepare notification data
+        const notificationData = {
+            playerName: playerName,
+            currentPlayers: state.players.length,
+            maxPlayers: state.maxPlayers,
+            sessionDate: state.sessionDate,
+            sessionDay: state.sessionDay,
+            sessionTime: state.sessionTime,
+            appUrl: window.location.href
+        };
+
+        console.log('📤 Sending Line notification...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Line notification sent:', result.data);
+    } catch (error) {
+        console.error('❌ Error sending Line notification:', error);
+        // Don't block cancellation if notification fails
+    }
+}
+
+// ============================================
 // CANCEL REGISTRATION
 // ============================================
 
@@ -258,9 +371,10 @@ async function cancelRegistration() {
     }
 
     const userName = state.loggedInUser.name;
+    const userId = state.loggedInUser.userId;
 
     // Confirm cancellation
-    if (!confirm(`Cancel your registration? / ยกเลิกการลงทะเบียน?\n\nThis will remove you from the player list.`)) {
+    if (!confirm(`Cancel your registration? / ยกเลิกการลงทะเบียน?\n\nThis will remove you from the player list and refund ${state.paymentAmount} THB.`)) {
         return;
     }
 
@@ -272,8 +386,19 @@ async function cancelRegistration() {
     }
 
     try {
+        // Refund the payment amount
+        await updateUserBalance(
+            userId,
+            userName,
+            state.paymentAmount,
+            `Refund for cancelled registration ${state.sessionDate}`
+        );
+
         // Delete player from Firestore
         await playersRef().doc(currentPlayer.id).delete();
+
+        // Send Line notification (async, don't wait)
+        sendLineCancellationNotification(userName);
 
         // Clear localStorage
         localStorage.removeItem('userName');
@@ -329,10 +454,23 @@ async function markAsPaid() {
 // LOGGED IN USER CHECK
 // ============================================
 
-function checkLoggedInUser() {
+async function checkLoggedInUser() {
     const loggedInData = localStorage.getItem('loggedInUser');
     if (loggedInData) {
         state.loggedInUser = JSON.parse(loggedInData);
+
+        // Refresh balance from server
+        if (state.loggedInUser.userId) {
+            try {
+                const userDoc = await usersRef.doc(state.loggedInUser.userId).get();
+                if (userDoc.exists) {
+                    state.loggedInUser.balance = userDoc.data().balance || 0;
+                    localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+                }
+            } catch (error) {
+                console.error('Error refreshing balance:', error);
+            }
+        }
     }
 }
 
@@ -362,7 +500,9 @@ async function handleLogin(e) {
 
     if (authorizedUser) {
         state.loggedInUser = {
-            name: authorizedUser.name
+            name: authorizedUser.name,
+            balance: authorizedUser.balance || 0,
+            userId: authorizedUser.id
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
@@ -446,6 +586,22 @@ function updateUI() {
         logoutContainerEl.style.display = 'block';
         document.getElementById('loggedInName').textContent = state.loggedInUser.name;
 
+        // Update balance display
+        const balanceEl = document.getElementById('userBalance');
+        if (balanceEl) {
+            const balance = state.loggedInUser.balance || 0;
+            balanceEl.textContent = balance;
+
+            // Add color indicator
+            if (balance < state.paymentAmount) {
+                balanceEl.style.color = '#ef4444'; // Red
+            } else if (balance < state.paymentAmount * 3) {
+                balanceEl.style.color = '#f59e0b'; // Orange
+            } else {
+                balanceEl.style.color = '#10b981'; // Green
+            }
+        }
+
         // Check if already registered this session
         const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
         if (alreadyRegistered) {
@@ -483,7 +639,6 @@ function updateUI() {
     }
 
     // Update session info
-    document.getElementById('sessionDate').textContent = state.sessionDate;
     document.getElementById('sessionDay').textContent = state.sessionDay;
     document.getElementById('sessionTime').textContent = state.sessionTime;
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
@@ -579,8 +734,12 @@ async function clearSession() {
             state.sessionDate = new Date().toLocaleDateString('en-GB');
             await saveSessionData();
 
+            // Remove old userName (deprecated)
             localStorage.removeItem('userName');
-            location.reload();
+
+            // Players will be automatically updated via real-time listener
+            // No need to reload - admin stays logged in
+            console.log('✅ Session cleared successfully');
         } catch (error) {
             console.error('Error clearing session:', error);
             alert('Error clearing session. Please try again.');
@@ -613,45 +772,69 @@ async function changeSessionDetails() {
             await saveSessionData();
             updateUI();
 
-            // Ask if they want to add regular players
-            const addPlayers = confirm('Do you want to add regular players? / ต้องการเพิ่มผู้เล่นประจำหรือไม่?');
+            // Get regular players for this day from Firestore
+            const regularPlayers = await getRegularPlayersForDay(dayChoice);
 
-            if (addPlayers) {
-                const regularPlayersList = `Regular players / ผู้เล่นประจำ:
+            if (regularPlayers && regularPlayers.length > 0) {
+                // Show which players will be added
+                const confirm = window.confirm(
+                    `Add regular players for ${state.sessionDay}?\n` +
+                    `จะเพิ่มผู้เล่นประจำหรือไม่?\n\n` +
+                    `${regularPlayers.join(', ')}\n\n` +
+                    `(${regularPlayers.length} players)`
+                );
 
-Monday: John, Sarah, Mike (3 players)
-Tuesday: Tom, Lisa, David, Anna (4 players)
-Wednesday: Peter, Emma (2 players)
-Thursday: Mark, Julia, Chris (3 players)
-Friday: Alex, Sophie (2 players)
-Saturday: Free play
-Sunday: Tournament
-
-Enter names separated by commas for ${state.sessionDay}:`;
-
-                const names = prompt(regularPlayersList);
-
-                if (names) {
-                    const playerNames = names.split(',').map(n => n.trim()).filter(n => n);
-
+                if (confirm) {
                     // Add regular players
-                    for (const name of playerNames) {
+                    for (const name of regularPlayers) {
+                        // Check if player already registered
                         if (!state.players.find(p => p.name === name)) {
-                            await playersRef().add({
-                                name: name,
-                                paid: false,
-                                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                                position: state.players.length + 1,
-                                isRegular: true
-                            });
+                            // Find the user and deduct balance
+                            const user = state.authorizedUsers.find(u => u.name === name);
+                            if (user) {
+                                const success = await updateUserBalance(
+                                    user.id,
+                                    user.name,
+                                    -state.paymentAmount,
+                                    `Auto-registration as regular player ${state.sessionDay}`
+                                );
+
+                                if (success) {
+                                    await playersRef().add({
+                                        name: name,
+                                        paid: false,
+                                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                                        position: state.players.length + 1,
+                                        isRegular: true
+                                    });
+                                } else {
+                                    console.log(`⚠️ Skipped ${name} - insufficient balance`);
+                                }
+                            }
                         }
                     }
-
-                    // Players added - will show up automatically via realtime listener
+                    console.log(`✅ Added regular players with balance deduction`);
                 }
+            } else {
+                console.log('ℹ️ No regular players configured for this day');
             }
-            // Session updated - no alert needed
         }
+    }
+}
+
+// Get regular players for a specific day
+async function getRegularPlayersForDay(dayNumber) {
+    try {
+        const configDoc = await db.collection('config').doc('regularPlayers').get();
+        if (configDoc.exists) {
+            const data = configDoc.data();
+            const dayKey = `day${dayNumber}`;
+            return data[dayKey] || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('Error getting regular players:', error);
+        return [];
     }
 }
 
@@ -671,6 +854,81 @@ async function changeMaxPlayers() {
         state.maxPlayers = parseInt(newMax);
         await saveSessionData();
         updateUI();
+    }
+}
+
+// ============================================
+// REGULAR PLAYERS MANAGEMENT
+// ============================================
+
+async function manageRegularPlayers() {
+    const days = [
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
+    ];
+
+    // Load current configuration
+    let config = {};
+    try {
+        const configDoc = await db.collection('config').doc('regularPlayers').get();
+        if (configDoc.exists) {
+            config = configDoc.data();
+        }
+    } catch (error) {
+        console.error('Error loading config:', error);
+    }
+
+    // Show current configuration
+    let configText = 'Current regular players configuration:\n';
+    configText += '═'.repeat(50) + '\n\n';
+
+    for (let i = 1; i <= 7; i++) {
+        const dayKey = `day${i}`;
+        const players = config[dayKey] || [];
+        configText += `${i}. ${days[i-1]}\n`;
+        configText += `   Players: ${players.length > 0 ? players.join(', ') : 'None'}\n\n`;
+    }
+
+    configText += '\nEnter day number (1-7) to edit, or Cancel:';
+
+    const dayChoice = prompt(configText);
+
+    if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
+        const dayKey = `day${dayChoice}`;
+        const currentPlayers = config[dayKey] || [];
+
+        const newPlayers = prompt(
+            `Edit regular players for ${days[dayChoice - 1]}:\n\n` +
+            `Current: ${currentPlayers.join(', ') || 'None'}\n\n` +
+            `Enter names separated by commas:\n` +
+            `(Leave empty to clear all)`,
+            currentPlayers.join(', ')
+        );
+
+        if (newPlayers !== null) {
+            // Update configuration
+            config[dayKey] = newPlayers
+                .split(',')
+                .map(n => n.trim())
+                .filter(n => n.length > 0);
+
+            try {
+                await db.collection('config').doc('regularPlayers').set(config);
+                alert(
+                    `✅ Updated regular players for ${days[dayChoice - 1]}!\n` +
+                    `อัปเดตผู้เล่นประจำแล้ว!\n\n` +
+                    `Players: ${config[dayKey].length > 0 ? config[dayKey].join(', ') : 'None'}`
+                );
+            } catch (error) {
+                console.error('Error saving config:', error);
+                alert('Error saving configuration. Please try again.');
+            }
+        }
     }
 }
 
@@ -698,9 +956,13 @@ function updateAuthorizedUsersList() {
     state.authorizedUsers.forEach((user, index) => {
         const item = document.createElement('div');
         item.className = 'authorized-user-item';
+        const balance = user.balance || 0;
+        const balanceColor = balance < state.paymentAmount ? '#ef4444' : balance < state.paymentAmount * 3 ? '#f59e0b' : '#10b981';
+
         item.innerHTML = `
             <div class="user-info">
                 <strong>${user.name}</strong>
+                <div style="font-size: 0.9em; color: ${balanceColor}; margin-top: 3px;">Balance: ${balance} THB</div>
             </div>
             <div class="user-actions">
                 <button onclick="editUserPassword('${user.id}')" style="background: #3b82f6; color: white; padding: 5px 10px; border: none; border-radius: 5px; margin-right: 5px; cursor: pointer;">Change Password</button>
@@ -727,10 +989,11 @@ async function addAuthorizedUser() {
         await usersRef.add({
             name: name,
             password: password || '123',
+            balance: 1000, // Default starting balance
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert('User added successfully! Default password: 123 / เพิ่มผู้ใช้สำเร็จ! รหัสผ่านเริ่มต้น: 123');
+        alert('User added successfully! Default password: 123, Starting balance: 1000 THB / เพิ่มผู้ใช้สำเร็จ! รหัสผ่านเริ่มต้น: 123, ยอดเงินเริ่มต้น: 1000 บาท');
     } catch (error) {
         console.error('Error adding user:', error);
         alert('Error adding user. Please try again.');
@@ -768,6 +1031,192 @@ async function removeAuthorizedUser(userId) {
             console.error('Error removing user:', error);
             alert('Error removing user. Please try again.');
         }
+    }
+}
+
+// ============================================
+// WALLET MANAGEMENT
+// ============================================
+
+async function manageWallets() {
+    // Load current users with balances
+    let userList = 'User Wallets / ยอดเงินผู้ใช้:\n';
+    userList += '═'.repeat(50) + '\n\n';
+
+    state.authorizedUsers
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach((user, index) => {
+            const balance = user.balance || 0;
+            userList += `${index + 1}. ${user.name}: ${balance} THB\n`;
+        });
+
+    userList += '\n' + '─'.repeat(50) + '\n';
+    userList += 'Enter user number to adjust balance, or Cancel:';
+
+    const choice = prompt(userList);
+
+    if (!choice || isNaN(choice)) return;
+
+    const userIndex = parseInt(choice) - 1;
+    const user = state.authorizedUsers.sort((a, b) => a.name.localeCompare(b.name))[userIndex];
+
+    if (!user) {
+        alert('Invalid selection / เลือกไม่ถูกต้อง');
+        return;
+    }
+
+    const currentBalance = user.balance || 0;
+    const amountStr = prompt(
+        `Adjust balance for ${user.name}\n` +
+        `Current balance: ${currentBalance} THB\n\n` +
+        `Enter amount to ADD (positive) or DEDUCT (negative):\n` +
+        `Example: +1000 or -150\n\n` +
+        `ปรับยอดเงินสำหรับ ${user.name}\n` +
+        `ยอดปัจจุบัน: ${currentBalance} บาท\n\n` +
+        `ใส่จำนวนที่จะ เพิ่ม (+) หรือ ลด (-):`
+    );
+
+    if (!amountStr) return;
+
+    const amount = parseInt(amountStr);
+    if (isNaN(amount) || amount === 0) {
+        alert('Invalid amount / จำนวนไม่ถูกต้อง');
+        return;
+    }
+
+    const description = prompt(
+        `Reason for adjustment / เหตุผล:\n` +
+        `(e.g., "Cash deposit", "Correction", etc.)`
+    ) || 'Manual adjustment by admin';
+
+    const success = await updateUserBalance(user.id, user.name, amount, description);
+
+    if (success) {
+        alert(
+            `✅ Balance updated! / อัปเดตยอดเงินแล้ว!\n\n` +
+            `${user.name}\n` +
+            `Previous: ${currentBalance} THB\n` +
+            `Change: ${amount > 0 ? '+' : ''}${amount} THB\n` +
+            `New: ${currentBalance + amount} THB`
+        );
+
+        // Reload users to get updated balances
+        await loadAuthorizedUsers();
+
+        // If this is the logged in user, update their balance
+        if (state.loggedInUser && state.loggedInUser.userId === user.id) {
+            state.loggedInUser.balance = currentBalance + amount;
+            localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+            updateUI();
+        }
+    }
+}
+
+async function viewTransactions() {
+    const section = document.getElementById('transactionsSection');
+    if (section.style.display === 'none' || !section.style.display) {
+        section.style.display = 'block';
+        await loadTransactions();
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+// Initialize balance for all users (admin utility)
+async function initializeAllBalances() {
+    if (!confirm('Initialize balance (1000 THB) for all users who have 0 or undefined balance?\n\nเริ่มต้นยอดเงิน (1000 บาท) สำหรับผู้ใช้ทุกคนที่มียอดเงิน 0 หรือไม่มี?')) {
+        return;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+
+    try {
+        for (const user of state.authorizedUsers) {
+            const currentBalance = user.balance || 0;
+            if (currentBalance === 0) {
+                await usersRef.doc(user.id).update({ balance: 1000 });
+                await createTransaction(user.id, user.name, 1000, 'Initial balance deposit / ยอดเริ่มต้น');
+                updated++;
+            } else {
+                skipped++;
+            }
+        }
+
+        alert(
+            `✅ Balance initialization complete!\n\n` +
+            `Updated: ${updated} users\n` +
+            `Skipped: ${skipped} users (already have balance)\n\n` +
+            `เติมยอดเงินเริ่มต้นเสร็จสิ้น!\n` +
+            `อัปเดต: ${updated} คน\n` +
+            `ข้าม: ${skipped} คน (มียอดเงินอยู่แล้ว)`
+        );
+
+        // Reload users to get updated balances
+        await loadAuthorizedUsers();
+    } catch (error) {
+        console.error('Error initializing balances:', error);
+        alert('Error initializing balances. Please try again.');
+    }
+}
+
+async function loadTransactions() {
+    try {
+        const snapshot = await transactionsRef
+            .orderBy('timestamp', 'desc')
+            .limit(50)
+            .get();
+
+        const list = document.getElementById('transactionsList');
+        list.innerHTML = '';
+
+        if (snapshot.empty) {
+            list.innerHTML = '<p style="color: #666;">No transactions yet / ยังไม่มีรายการ</p>';
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const tx = doc.data();
+            const item = document.createElement('div');
+            item.className = 'transaction-item';
+
+            // Format timestamp
+            let dateStr = '';
+            if (tx.timestamp) {
+                const date = tx.timestamp.toDate();
+                dateStr = date.toLocaleString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            const amountColor = tx.amount >= 0 ? '#10b981' : '#ef4444';
+            const amountSign = tx.amount >= 0 ? '+' : '';
+
+            item.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 5px;">
+                    <div>
+                        <strong>${tx.userName}</strong>
+                        <div style="font-size: 0.9em; color: #666;">${dateStr}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong style="color: ${amountColor}; font-size: 1.1em;">${amountSign}${tx.amount} THB</strong>
+                    </div>
+                </div>
+                <div style="font-size: 0.85em; color: #666; font-style: italic;">
+                    ${tx.description}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        console.log(`📜 Loaded ${snapshot.size} transactions`);
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        alert('Error loading transactions. Please try again.');
     }
 }
 

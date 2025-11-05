@@ -385,8 +385,20 @@ input:focus {
 }
 
 .logged-in-info p {
-    margin: 0;
+    margin: 5px 0;
     color: #333;
+}
+
+.balance-display {
+    background: #f0f9ff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-top: 8px !important;
+}
+
+.balance-display strong {
+    font-size: 20px;
 }
 
 /* Logout Button (bottom) */
@@ -459,6 +471,33 @@ input:focus {
 .authorized-users-management h3 {
     margin-bottom: 15px;
     color: #333;
+}
+
+/* Transactions Section */
+.transactions-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f9ff;
+    border-radius: 8px;
+}
+
+.transactions-section h3 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+#transactionsList {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.transaction-item {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .btn-add-user {
