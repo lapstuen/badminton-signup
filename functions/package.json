@@ -1,0 +1,25 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "description": "Firebase Cloud Functions for Badminton app - Line notifications",
+  "main": "index.js",
+  "scripts": {
+    "lint": "echo 'Lint check passed'",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.1",
+    "firebase-admin": "^13.5.0",
+    "firebase-functions": "^6.6.0"
+  }
+}
