@@ -41,6 +41,25 @@ document.addEventListener('visibilitychange', async () => {
     }
 });
 
+// Manual refresh balance function
+async function refreshBalance() {
+    if (!state.loggedInUser) return;
+
+    console.log('🔄 Manually refreshing balance...');
+    const btn = document.querySelector('.refresh-balance-btn');
+
+    // Add spinning animation
+    if (btn) btn.style.transform = 'rotate(360deg)';
+
+    await checkLoggedInUser();
+    updateUI();
+
+    // Reset button after animation
+    setTimeout(() => {
+        if (btn) btn.style.transform = '';
+    }, 300);
+}
+
 async function initializeApp() {
     try {
         // Load session data
