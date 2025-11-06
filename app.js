@@ -419,6 +419,8 @@ async function cancelRegistration() {
 // PAYMENT MARKING
 // ============================================
 
+// DISABLED: Mark as paid - now using wallet system instead
+/*
 async function markAsPaid() {
     // Check if user is logged in
     if (!state.loggedInUser) {
@@ -450,6 +452,7 @@ async function markAsPaid() {
         alert('Error marking payment. Please try again.');
     }
 }
+*/
 
 // ============================================
 // LOGGED IN USER CHECK
@@ -540,11 +543,12 @@ function showSuccessMessage(player) {
     document.getElementById('registrationForm').style.display = 'none';
     document.getElementById('successMessage').style.display = 'block';
 
-    // Generate QR code for payment
-    generatePaymentQR();
+    // DISABLED: Payment is now handled via wallet system, no need for "I have paid" button
+    // generatePaymentQR();
 }
 
-// Generate payment QR code
+// DISABLED: Payment QR code - now using wallet system instead
+/*
 function generatePaymentQR() {
     const qrContainer = document.getElementById('qrCode');
 
@@ -575,6 +579,7 @@ function generatePaymentQR() {
         `;
     }
 }
+*/
 
 // Get current player from localStorage
 function getCurrentPlayer() {
