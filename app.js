@@ -460,8 +460,25 @@ async function checkLoggedInUser() {
     if (loggedInData) {
         state.loggedInUser = JSON.parse(loggedInData);
 
+        // If userId is missing (old localStorage format), find it
+        if (!state.loggedInUser.userId && state.loggedInUser.name) {
+            console.log('⚠️ userId missing, finding user by name:', state.loggedInUser.name);
+            const user = state.authorizedUsers.find(u => u.name === state.loggedInUser.name);
+            if (user) {
+                state.loggedInUser.userId = user.id;
+                state.loggedInUser.balance = user.balance || 0;
+                localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+                console.log('✅ userId restored:', state.loggedInUser.userId);
+            } else {
+                console.error('❌ User not found, clearing localStorage');
+                localStorage.removeItem('loggedInUser');
+                state.loggedInUser = null;
+                return;
+            }
+        }
+
         // Refresh balance from server
-        if (state.loggedInUser.userId) {
+        if (state.loggedInUser && state.loggedInUser.userId) {
             try {
                 const userDoc = await usersRef.doc(state.loggedInUser.userId).get();
                 if (userDoc.exists) {
@@ -1221,6 +1238,13 @@ async function showMyTransactions() {
     try {
         const userId = state.loggedInUser.userId;
         console.log('🔍 Fetching transactions for userId:', userId);
+
+        // Check if userId is valid
+        if (!userId) {
+            console.error('❌ userId is undefined!');
+            list.innerHTML = '<p style="color: #ef4444; text-align: center;">Error: User ID not found. Please log out and log in again.<br>กรุณาออกจากระบบและเข้าสู่ระบบใหม่</p>';
+            return;
+        }
 
         // Fetch all transactions for this user (without orderBy to avoid index requirement)
         const snapshot = await transactionsRef
