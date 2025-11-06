@@ -830,6 +830,77 @@ async function clearSession() {
     }
 }
 
+async function refundWaitingList() {
+    // Find all players on waiting list (position > maxPlayers)
+    const waitingPlayers = state.players.filter(p => p.position > state.maxPlayers);
+
+    if (waitingPlayers.length === 0) {
+        alert('No players on waiting list / ไม่มีผู้เล่นในรายชื่อสำรอง');
+        return;
+    }
+
+    const confirmMsg = `Refund ${waitingPlayers.length} player(s) on waiting list?\n\nคืนเงินให้ ${waitingPlayers.length} คนในรายชื่อสำรอง?\n\n` +
+        waitingPlayers.map(p => `- ${p.name}`).join('\n');
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        let refunded = 0;
+        let errors = [];
+
+        for (const player of waitingPlayers) {
+            try {
+                // Find user in authorized users
+                const user = state.authorizedUsers.find(u => u.name === player.name);
+
+                if (user) {
+                    // Refund the payment amount
+                    const success = await updateUserBalance(
+                        user.id,
+                        user.name,
+                        state.paymentAmount,
+                        `Refund - Waiting list ${state.sessionDay} / คืนเงิน - รายชื่อสำรอง`,
+                        true // silent mode
+                    );
+
+                    if (success) {
+                        // Delete player from session
+                        const playerDoc = await playersRef().where('name', '==', player.name).get();
+                        if (!playerDoc.empty) {
+                            await playersRef().doc(playerDoc.docs[0].id).delete();
+                        }
+                        refunded++;
+                    } else {
+                        errors.push(player.name);
+                    }
+                } else {
+                    errors.push(`${player.name} (not found)`);
+                }
+            } catch (error) {
+                console.error(`Error refunding ${player.name}:`, error);
+                errors.push(player.name);
+            }
+        }
+
+        // Show summary
+        let message = `✅ Refunded ${refunded} player(s) / คืนเงิน ${refunded} คน\n`;
+        if (errors.length > 0) {
+            message += `\n⚠️ Errors: ${errors.join(', ')}`;
+        }
+        alert(message);
+
+        // Reload users to update balances
+        await loadAuthorizedUsers();
+        updateUI();
+
+    } catch (error) {
+        console.error('Error refunding waiting list:', error);
+        alert('Error refunding waiting list. Please try again.');
+    }
+}
+
 async function changeSessionDetails() {
     const days = [
         'Monday / วันจันทร์',
