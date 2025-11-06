@@ -12,9 +12,19 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
+            <p class="version-header">v2025-11-05 15:30 (Wallet)</p>
+
+            <!-- Logged In User Info (moved here) -->
+            <div class="logged-in-info" id="loggedInInfo" style="display: none;">
+                <p>Logged in as: <strong id="loggedInName"></strong></p>
+                <p class="balance-display">
+                    Wallet Balance / ยอดเงิน: <strong id="userBalance">0</strong> THB
+                </p>
+            </div>
+
             <div class="session-details">
                 <p class="session-day" id="sessionDay">Monday / วันจันทร์</p>
-                <p class="session-time" id="sessionTime">18:00 - 20:00</p>
+                <p class="session-time" id="sessionTime">10:00 - 12:00</p>
             </div>
             <div class="session-info">
                 <p class="spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
@@ -31,12 +41,6 @@
                     <button type="submit" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
                 </form>
                 <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
-            </div>
-
-            <!-- Logged In User Info -->
-            <div class="logged-in-info" id="loggedInInfo" style="display: none;">
-                <p>Logged in as: <strong id="loggedInName"></strong></p>
-                <p class="balance-display">Wallet Balance / ยอดเงิน: <strong id="userBalance">0</strong> THB</p>
             </div>
 
             <div class="registration-form" id="registrationForm">
@@ -70,9 +74,14 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">Version: 2025-11-05 14:30 (Wallet System)</p>
+                <p class="version">v2025-11-05 15:30 (Wallet System)</p>
 
                 <div class="bottom-buttons">
+                    <!-- Transaction History Button -->
+                    <button onclick="showMyTransactions()" class="btn-transaction-bottom">
+                        Transaction History<br>ประวัติการทำรายการ
+                    </button>
+
                     <!-- Cancel Registration Button (only when registered) -->
                     <button onclick="cancelRegistration()" id="cancelBtn" class="btn-cancel-bottom" style="display: none;">
                         Cancel Registration<br>ยกเลิก
@@ -119,6 +128,49 @@
             <div class="payment-tracking">
                 <h3>Payment Status / สถานะการชำระเงิน</h3>
                 <div id="paymentList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Transaction History Modal (outside container for full-screen overlay) -->
+    <div class="modal" id="userTransactionModal" style="display: none;" onclick="closeMyTransactions()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>My Transactions / รายการของฉัน</h2>
+                <button class="close-btn" onclick="closeMyTransactions()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="userTransactionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Adjustment Modal -->
+    <div class="modal" id="balanceAdjustModal" style="display: none;" onclick="closeBalanceAdjust()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="balanceAdjustTitle">Adjust Balance</h2>
+                <button class="close-btn" onclick="closeBalanceAdjust()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="balanceAdjustInfo" style="margin-bottom: 15px; color: #666;"></p>
+
+                <p style="font-weight: bold; margin-bottom: 10px;">Quick Select / เลือกด่วน:</p>
+                <div class="quick-amount-buttons">
+                    <button onclick="selectAmount(200)">200</button>
+                    <button onclick="selectAmount(300)">300</button>
+                    <button onclick="selectAmount(400)">400</button>
+                    <button onclick="selectAmount(500)">500</button>
+                    <button onclick="selectAmount(1000)">1000</button>
+                </div>
+
+                <p style="font-weight: bold; margin: 15px 0 10px 0;">Or enter custom amount / หรือใส่จำนวนเอง:</p>
+                <input type="number" id="balanceAdjustAmount" placeholder="Enter amount (200-1000)"
+                       style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 15px;">
+
+                <button onclick="confirmBalanceAdjust()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    Confirm / ยืนยัน
+                </button>
             </div>
         </div>
     </div>

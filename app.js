@@ -11,7 +11,7 @@ let state = {
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
     sessionDay: 'Monday / วันจันทร์',
-    sessionTime: '18:00 - 20:00',
+    sessionTime: '10:00 - 12:00',
     paymentAmount: 150,
     isAdmin: false,
     authorizedUsers: [],
@@ -398,7 +398,8 @@ async function cancelRegistration() {
         await playersRef().doc(currentPlayer.id).delete();
 
         // Send Line notification (async, don't wait)
-        sendLineCancellationNotification(userName);
+        // TESTING MODE: Temporarily disabled to prevent spam during testing
+        // sendLineCancellationNotification(userName);
 
         // Clear localStorage
         localStorage.removeItem('userName');
@@ -653,6 +654,19 @@ function updateUI() {
     // Update players list
     const playersList = document.getElementById('playersList');
     const waitingList = document.getElementById('waitingList');
+    const playersListContainer = document.querySelector('.players-list');
+
+    // Hide player list if user is not logged in
+    if (!state.loggedInUser) {
+        if (playersListContainer) {
+            playersListContainer.style.display = 'none';
+        }
+        return; // Exit early, don't render player list
+    } else {
+        if (playersListContainer) {
+            playersListContainer.style.display = 'block';
+        }
+    }
 
     playersList.innerHTML = '';
     waitingList.innerHTML = '';
@@ -708,7 +722,7 @@ function toggleAdmin() {
 
 function loginAdmin() {
     const password = document.getElementById('adminPassword').value;
-    if (password === 'admin123') { // Change this password!
+    if (password === '1') { // TESTING MODE - Change to secure password for production!
         state.isAdmin = true;
         document.getElementById('adminPassword').style.display = 'none';
         event.target.style.display = 'none';
@@ -764,7 +778,7 @@ async function changeSessionDetails() {
     if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
         state.sessionDay = days[dayChoice - 1];
 
-        const timePrompt = 'Enter time / ใส่เวลา (e.g., 18:00 - 20:00):';
+        const timePrompt = 'Enter time / ใส่เวลา (e.g., 10:00 - 12:00):';
         const time = prompt(timePrompt, state.sessionTime);
 
         if (time) {
@@ -1065,51 +1079,8 @@ async function manageWallets() {
         return;
     }
 
-    const currentBalance = user.balance || 0;
-    const amountStr = prompt(
-        `Adjust balance for ${user.name}\n` +
-        `Current balance: ${currentBalance} THB\n\n` +
-        `Enter amount to ADD (positive) or DEDUCT (negative):\n` +
-        `Example: +1000 or -150\n\n` +
-        `ปรับยอดเงินสำหรับ ${user.name}\n` +
-        `ยอดปัจจุบัน: ${currentBalance} บาท\n\n` +
-        `ใส่จำนวนที่จะ เพิ่ม (+) หรือ ลด (-):`
-    );
-
-    if (!amountStr) return;
-
-    const amount = parseInt(amountStr);
-    if (isNaN(amount) || amount === 0) {
-        alert('Invalid amount / จำนวนไม่ถูกต้อง');
-        return;
-    }
-
-    const description = prompt(
-        `Reason for adjustment / เหตุผล:\n` +
-        `(e.g., "Cash deposit", "Correction", etc.)`
-    ) || 'Manual adjustment by admin';
-
-    const success = await updateUserBalance(user.id, user.name, amount, description);
-
-    if (success) {
-        alert(
-            `✅ Balance updated! / อัปเดตยอดเงินแล้ว!\n\n` +
-            `${user.name}\n` +
-            `Previous: ${currentBalance} THB\n` +
-            `Change: ${amount > 0 ? '+' : ''}${amount} THB\n` +
-            `New: ${currentBalance + amount} THB`
-        );
-
-        // Reload users to get updated balances
-        await loadAuthorizedUsers();
-
-        // If this is the logged in user, update their balance
-        if (state.loggedInUser && state.loggedInUser.userId === user.id) {
-            state.loggedInUser.balance = currentBalance + amount;
-            localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
-            updateUI();
-        }
-    }
+    // Show custom modal for balance adjustment
+    showBalanceAdjustModal(user);
 }
 
 async function viewTransactions() {
@@ -1124,32 +1095,34 @@ async function viewTransactions() {
 
 // Initialize balance for all users (admin utility)
 async function initializeAllBalances() {
-    if (!confirm('Initialize balance (1000 THB) for all users who have 0 or undefined balance?\n\nเริ่มต้นยอดเงิน (1000 บาท) สำหรับผู้ใช้ทุกคนที่มียอดเงิน 0 หรือไม่มี?')) {
+    // TESTING MODE: Set balance for ALL users (not just zero balance)
+    const amount = prompt('Enter balance amount for ALL users / ใส่จำนวนเงินสำหรับผู้ใช้ทั้งหมด:', '1000');
+
+    if (!amount || isNaN(amount)) {
+        alert('Invalid amount / จำนวนเงินไม่ถูกต้อง');
+        return;
+    }
+
+    const balanceAmount = parseInt(amount);
+
+    if (!confirm(`Set balance to ${balanceAmount} THB for ALL users?\n\nThis will OVERWRITE existing balances!\n\nตั้งยอดเงินเป็น ${balanceAmount} บาท สำหรับผู้ใช้ทั้งหมด?\n\nจะเขียนทับยอดเงินเดิม!`)) {
         return;
     }
 
     let updated = 0;
-    let skipped = 0;
 
     try {
         for (const user of state.authorizedUsers) {
-            const currentBalance = user.balance || 0;
-            if (currentBalance === 0) {
-                await usersRef.doc(user.id).update({ balance: 1000 });
-                await createTransaction(user.id, user.name, 1000, 'Initial balance deposit / ยอดเริ่มต้น');
-                updated++;
-            } else {
-                skipped++;
-            }
+            await usersRef.doc(user.id).update({ balance: balanceAmount });
+            await createTransaction(user.id, user.name, balanceAmount, `[TESTING] Balance set to ${balanceAmount} THB / ตั้งยอดเงินเป็น ${balanceAmount} บาท`);
+            updated++;
         }
 
         alert(
-            `✅ Balance initialization complete!\n\n` +
-            `Updated: ${updated} users\n` +
-            `Skipped: ${skipped} users (already have balance)\n\n` +
-            `เติมยอดเงินเริ่มต้นเสร็จสิ้น!\n` +
-            `อัปเดต: ${updated} คน\n` +
-            `ข้าม: ${skipped} คน (มียอดเงินอยู่แล้ว)`
+            `✅ Balance set for all users!\n\n` +
+            `Updated: ${updated} users to ${balanceAmount} THB\n\n` +
+            `ตั้งยอดเงินสำหรับผู้ใช้ทั้งหมด!\n` +
+            `อัปเดต: ${updated} คน เป็น ${balanceAmount} บาท`
         );
 
         // Reload users to get updated balances
@@ -1217,6 +1190,205 @@ async function loadTransactions() {
     } catch (error) {
         console.error('Error loading transactions:', error);
         alert('Error loading transactions. Please try again.');
+    }
+}
+
+// Show logged-in user's transaction history
+async function showMyTransactions() {
+    console.log('📜 showMyTransactions called');
+    console.log('Logged in user:', state.loggedInUser);
+
+    if (!state.loggedInUser) {
+        alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
+        return;
+    }
+
+    const modal = document.getElementById('userTransactionModal');
+    const list = document.getElementById('userTransactionsList');
+
+    console.log('Modal element:', modal);
+    console.log('List element:', list);
+
+    if (!modal || !list) {
+        console.error('❌ Modal or list element not found!');
+        alert('Error: Modal not found. Please refresh the page.');
+        return;
+    }
+
+    modal.style.display = 'flex';
+    list.innerHTML = '<p style="text-align: center; color: #666;">Loading... / กำลังโหลด...</p>';
+
+    try {
+        const userId = state.loggedInUser.userId;
+        console.log('🔍 Fetching transactions for userId:', userId);
+
+        // Fetch all transactions for this user (without orderBy to avoid index requirement)
+        const snapshot = await transactionsRef
+            .where('userId', '==', userId)
+            .get();
+
+        console.log('📊 Raw snapshot size:', snapshot.size);
+
+        list.innerHTML = '';
+
+        if (snapshot.empty) {
+            list.innerHTML = '<p style="color: #666; text-align: center;">No transactions yet / ยังไม่มีรายการ</p>';
+            return;
+        }
+
+        // Convert to array and sort by timestamp (client-side sorting)
+        const transactions = [];
+        snapshot.forEach(doc => {
+            transactions.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort by timestamp descending (newest first)
+        transactions.sort((a, b) => {
+            if (!a.timestamp || !b.timestamp) return 0;
+            return b.timestamp.toMillis() - a.timestamp.toMillis();
+        });
+
+        // Limit to 20 most recent
+        const recentTransactions = transactions.slice(0, 20);
+
+        console.log('📋 Showing', recentTransactions.length, 'transactions');
+
+        recentTransactions.forEach(tx => {
+            const item = document.createElement('div');
+            item.className = 'transaction-item';
+
+            // Format timestamp
+            let dateStr = '';
+            if (tx.timestamp) {
+                const date = tx.timestamp.toDate();
+                dateStr = date.toLocaleString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            const amountColor = tx.amount >= 0 ? '#10b981' : '#ef4444';
+            const amountSign = tx.amount >= 0 ? '+' : '';
+
+            item.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 5px;">
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">${dateStr}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong style="color: ${amountColor}; font-size: 1.1em;">${amountSign}${tx.amount} THB</strong>
+                    </div>
+                </div>
+                <div style="font-size: 0.85em; color: #666; font-style: italic;">
+                    ${tx.description}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        console.log(`📜 Loaded ${snapshot.size} transactions for user ${state.loggedInUser.name}`);
+    } catch (error) {
+        console.error('❌ Error loading user transactions:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+
+        if (error.code === 'failed-precondition' || error.message.includes('index')) {
+            list.innerHTML = `
+                <p style="color: #ef4444; text-align: center; margin-bottom: 10px;">
+                    <strong>Firestore Index Required</strong><br>
+                    คุณต้องสร้าง index ใน Firestore
+                </p>
+                <p style="font-size: 0.85em; color: #666; text-align: center;">
+                    Click the link in the console to create the index automatically.<br>
+                    คลิกลิงก์ใน console เพื่อสร้าง index อัตโนมัติ
+                </p>
+            `;
+        } else {
+            list.innerHTML = `<p style="color: #ef4444; text-align: center;">Error: ${error.message}</p>`;
+        }
+    }
+}
+
+function closeMyTransactions() {
+    document.getElementById('userTransactionModal').style.display = 'none';
+}
+
+// ============================================
+// BALANCE ADJUSTMENT MODAL
+// ============================================
+
+let selectedUser = null;
+
+function showBalanceAdjustModal(user) {
+    selectedUser = user;
+    const currentBalance = user.balance || 0;
+
+    document.getElementById('balanceAdjustTitle').textContent = `Adjust balance for ${user.name}`;
+    document.getElementById('balanceAdjustInfo').textContent =
+        `Current balance: ${currentBalance} THB / ยอดปัจจุบัน: ${currentBalance} บาท`;
+    document.getElementById('balanceAdjustAmount').value = '';
+    document.getElementById('balanceAdjustModal').style.display = 'flex';
+}
+
+function closeBalanceAdjust() {
+    document.getElementById('balanceAdjustModal').style.display = 'none';
+    selectedUser = null;
+}
+
+function selectAmount(amount) {
+    document.getElementById('balanceAdjustAmount').value = amount;
+}
+
+async function confirmBalanceAdjust() {
+    if (!selectedUser) return;
+
+    const amountStr = document.getElementById('balanceAdjustAmount').value;
+    if (!amountStr) {
+        alert('Please enter or select an amount / กรุณาใส่หรือเลือกจำนวนเงิน');
+        return;
+    }
+
+    const amount = parseInt(amountStr);
+
+    // Validate amount: must be between 200-1000 and divisible by 100
+    if (isNaN(amount) || amount < 200 || amount > 1000) {
+        alert('Amount must be between 200-1000 THB / จำนวนต้องอยู่ระหว่าง 200-1000 บาท');
+        return;
+    }
+
+    if (amount % 100 !== 0) {
+        alert('Amount must be in multiples of 100 THB / จำนวนต้องเป็นหลักร้อย');
+        return;
+    }
+
+    const currentBalance = selectedUser.balance || 0;
+    const description = 'Cash deposit / เติมเงินสด';
+
+    const success = await updateUserBalance(selectedUser.id, selectedUser.name, amount, description);
+
+    if (success) {
+        alert(
+            `✅ Balance updated! / อัปเดตยอดเงินแล้ว!\n\n` +
+            `${selectedUser.name}\n` +
+            `Previous: ${currentBalance} THB\n` +
+            `Added: +${amount} THB\n` +
+            `New: ${currentBalance + amount} THB`
+        );
+
+        // Reload users to get updated balances
+        await loadAuthorizedUsers();
+
+        // If this is the logged in user, update their balance
+        if (state.loggedInUser && state.loggedInUser.userId === selectedUser.id) {
+            state.loggedInUser.balance = currentBalance + amount;
+            localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+            updateUI();
+        }
+
+        closeBalanceAdjust();
     }
 }
 

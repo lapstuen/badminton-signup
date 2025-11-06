@@ -26,7 +26,15 @@ header {
 header h1 {
     font-size: 24px;
     color: #333;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
+}
+
+.version-header {
+    font-size: 11px;
+    color: #999;
+    margin: 0 0 10px 0;
+    text-align: center;
+    font-weight: normal;
 }
 
 .session-details {
@@ -460,6 +468,20 @@ input:focus {
     background: #6b7280;
 }
 
+.btn-transaction-bottom {
+    background: #9ca3af;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-transaction-bottom:hover {
+    background: #6b7280;
+}
+
 /* Authorized Users Management */
 .authorized-users-management {
     margin-top: 20px;
@@ -563,4 +585,120 @@ input:focus {
         flex-direction: column;
         gap: 10px;
     }
+}
+
+/* Transaction History Badge */
+.transaction-history-badge {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: transform 0.2s;
+    vertical-align: middle;
+    z-index: 100;
+    position: relative;
+    padding: 4px;
+    user-select: none;
+}
+
+.transaction-history-badge:hover {
+    transform: scale(1.2);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+}
+
+.transaction-item {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid #6366f1;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Quick Amount Selection Buttons */
+.quick-amount-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.quick-amount-buttons button {
+    flex: 1;
+    min-width: 70px;
+    padding: 12px 8px;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.quick-amount-buttons button:hover {
+    background: #4f46e5;
+}
+
+.quick-amount-buttons button:active {
+    background: #3730a3;
+    transform: scale(0.98);
 }
