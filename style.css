@@ -55,13 +55,19 @@ header h1 {
 .session-time {
     font-size: 16px;
     color: #3730a3;
+    margin-bottom: 5px;
 }
 
+.session-spots {
+    font-size: 16px;
+    font-weight: bold;
+    color: #10b981;
+    margin: 0;
+}
+
+/* Old session-info - no longer used */
 .session-info {
-    display: flex;
-    justify-content: space-between;
-    color: #666;
-    font-size: 14px;
+    display: none;
 }
 
 .spots {
