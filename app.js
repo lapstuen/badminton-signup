@@ -1184,10 +1184,9 @@ async function viewTransactions() {
     }
 }
 
-// Initialize balance for all users (admin utility)
+// Reset all balances and clear transaction history (admin utility)
 async function initializeAllBalances() {
-    // TESTING MODE: Set balance for ALL users (not just zero balance)
-    const amount = prompt('Enter balance amount for ALL users / ใส่จำนวนเงินสำหรับผู้ใช้ทั้งหมด:', '1000');
+    const amount = prompt('Reset ALL balances and DELETE ALL transaction history?\n\nEnter starting balance for all users:\n\nรีเซ็ตยอดเงินทั้งหมดและลบประวัติทั้งหมด?\nใส่ยอดเงินเริ่มต้น:', '300');
 
     if (!amount || isNaN(amount)) {
         alert('Invalid amount / จำนวนเงินไม่ถูกต้อง');
@@ -1196,31 +1195,70 @@ async function initializeAllBalances() {
 
     const balanceAmount = parseInt(amount);
 
-    if (!confirm(`Set balance to ${balanceAmount} THB for ALL users?\n\nThis will OVERWRITE existing balances!\n\nตั้งยอดเงินเป็น ${balanceAmount} บาท สำหรับผู้ใช้ทั้งหมด?\n\nจะเขียนทับยอดเงินเดิม!`)) {
+    if (!confirm(
+        `⚠️ WARNING / คำเตือน ⚠️\n\n` +
+        `This will:\n` +
+        `1. DELETE ALL transaction history for ALL users\n` +
+        `2. Set balance to ${balanceAmount} THB for ALL users\n` +
+        `3. Create ONE clean "Initial balance" transaction\n\n` +
+        `นี่จะ:\n` +
+        `1. ลบประวัติการทำรายการทั้งหมด\n` +
+        `2. ตั้งยอดเงินเป็น ${balanceAmount} บาท\n` +
+        `3. สร้างรายการ "ยอดเริ่มต้น" 1 รายการ\n\n` +
+        `Continue? / ดำเนินการต่อ?`
+    )) {
         return;
     }
 
     let updated = 0;
+    let transactionsDeleted = 0;
 
     try {
+        console.log('🔄 Starting complete reset...');
+
+        // Step 1: Delete ALL transactions for ALL users
+        const allTransactions = await transactionsRef.get();
+        console.log(`📜 Found ${allTransactions.size} transactions to delete`);
+
+        for (const doc of allTransactions.docs) {
+            await transactionsRef.doc(doc.id).delete();
+            transactionsDeleted++;
+        }
+
+        console.log(`✅ Deleted ${transactionsDeleted} transactions`);
+
+        // Step 2: Set balance and create ONE clean initial transaction for each user
         for (const user of state.authorizedUsers) {
+            // Set balance
             await usersRef.doc(user.id).update({ balance: balanceAmount });
-            await createTransaction(user.id, user.name, balanceAmount, `[TESTING] Balance set to ${balanceAmount} THB / ตั้งยอดเงินเป็น ${balanceAmount} บาท`);
+
+            // Create clean initial transaction
+            await createTransaction(
+                user.id,
+                user.name,
+                balanceAmount,
+                'Initial balance deposit / ยอดเริ่มต้น'
+            );
+
             updated++;
         }
 
         alert(
-            `✅ Balance set for all users!\n\n` +
-            `Updated: ${updated} users to ${balanceAmount} THB\n\n` +
-            `ตั้งยอดเงินสำหรับผู้ใช้ทั้งหมด!\n` +
-            `อัปเดต: ${updated} คน เป็น ${balanceAmount} บาท`
+            `✅ Complete reset successful!\n\n` +
+            `Deleted: ${transactionsDeleted} old transactions\n` +
+            `Reset: ${updated} users to ${balanceAmount} THB\n` +
+            `Created: ${updated} clean initial transactions\n\n` +
+            `รีเซ็ตเสร็จสมบูรณ์!\n` +
+            `ลบ: ${transactionsDeleted} รายการเก่า\n` +
+            `รีเซ็ต: ${updated} คน เป็น ${balanceAmount} บาท\n` +
+            `สร้าง: ${updated} รายการใหม่`
         );
 
         // Reload users to get updated balances
         await loadAuthorizedUsers();
     } catch (error) {
-        console.error('Error initializing balances:', error);
-        alert('Error initializing balances. Please try again.');
+        console.error('Error resetting balances:', error);
+        alert('Error resetting balances. Please try again.');
     }
 }
 
