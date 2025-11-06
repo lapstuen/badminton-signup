@@ -32,6 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
 });
 
+// Refresh balance when user returns to the app (e.g., after paying via admin)
+document.addEventListener('visibilitychange', async () => {
+    if (!document.hidden && state.loggedInUser) {
+        console.log('👁️ User returned to app, refreshing balance...');
+        await checkLoggedInUser();
+        updateUI();
+    }
+});
+
 async function initializeApp() {
     try {
         // Load session data
@@ -637,12 +646,28 @@ function updateUI() {
             registrationFormEl.style.display = 'block';
             cancelBtnEl.style.display = 'none';
             document.getElementById('successMessage').style.display = 'none';
+
             // Hide name input field and update button text
             const nameInput = document.getElementById('playerName');
             const signupButton = document.querySelector('#signupForm button[type="submit"]');
             nameInput.style.display = 'none';
             nameInput.removeAttribute('required'); // Remove required when hidden!
-            signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
+
+            // Check if user has enough balance
+            const userBalance = state.loggedInUser.balance || 0;
+            if (userBalance < state.paymentAmount) {
+                // Insufficient balance - gray button with warning
+                signupButton.disabled = true;
+                signupButton.style.background = '#9ca3af';
+                signupButton.style.cursor = 'not-allowed';
+                signupButton.innerHTML = `Insufficient Balance<br>ยอดเงินไม่เพียงพอ<br><small style="font-size: 12px;">Balance: ${userBalance} THB (Need: ${state.paymentAmount} THB)</small>`;
+            } else {
+                // Sufficient balance - green button
+                signupButton.disabled = false;
+                signupButton.style.background = '#10b981';
+                signupButton.style.cursor = 'pointer';
+                signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
+            }
         }
     } else {
         // Not logged in - show login form, hide logged-in info and registration form
