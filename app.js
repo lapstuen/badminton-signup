@@ -511,8 +511,36 @@ async function checkLoggedInUser() {
             }
         }
 
-        // Refresh balance from server
-        if (state.loggedInUser && state.loggedInUser.userId) {
+        // Validate authToken (UUID password) against database
+        if (state.loggedInUser && state.loggedInUser.userId && state.loggedInUser.authToken) {
+            try {
+                const userDoc = await usersRef.doc(state.loggedInUser.userId).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+
+                    // Check if stored authToken matches current password in database
+                    if (userData.password === state.loggedInUser.authToken) {
+                        // Valid session - update balance
+                        state.loggedInUser.balance = userData.balance || 0;
+                        localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+                        console.log('✅ Auto-login successful for', state.loggedInUser.name);
+                    } else {
+                        // Password changed (admin reset) - force re-login
+                        console.log('⚠️ Password changed, logging out', state.loggedInUser.name);
+                        localStorage.removeItem('loggedInUser');
+                        state.loggedInUser = null;
+                    }
+                } else {
+                    // User deleted
+                    console.log('⚠️ User deleted, logging out');
+                    localStorage.removeItem('loggedInUser');
+                    state.loggedInUser = null;
+                }
+            } catch (error) {
+                console.error('Error validating session:', error);
+            }
+        } else if (state.loggedInUser && state.loggedInUser.userId) {
+            // Old format without authToken - refresh balance only
             try {
                 const userDoc = await usersRef.doc(state.loggedInUser.userId).get();
                 if (userDoc.exists) {
@@ -551,10 +579,39 @@ async function handleLogin(e) {
     const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
 
     if (authorizedUser) {
+        let permanentPassword = authorizedUser.password;
+
+        // If password is short (< 5 chars), it's a temporary code - generate UUID
+        if (password.length < 5) {
+            console.log('🔐 Short password detected - generating UUID for', name);
+
+            // Generate UUID (using crypto.randomUUID or fallback)
+            permanentPassword = self.crypto?.randomUUID?.() ||
+                'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+
+            // Update user's password in database to UUID
+            try {
+                await usersRef.doc(authorizedUser.id).update({
+                    password: permanentPassword
+                });
+                console.log('✅ UUID password saved for', name);
+            } catch (error) {
+                console.error('Error saving UUID password:', error);
+                alert('Error setting up secure password. Please try again.');
+                return;
+            }
+        }
+
+        // Save login info with permanent password (UUID or existing long password)
         state.loggedInUser = {
             name: authorizedUser.name,
             balance: authorizedUser.balance || 0,
-            userId: authorizedUser.id
+            userId: authorizedUser.id,
+            authToken: permanentPassword // Store UUID for auto-login
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
