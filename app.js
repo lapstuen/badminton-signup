@@ -1094,11 +1094,11 @@ async function addAuthorizedUser() {
         await usersRef.add({
             name: name,
             password: password || '123',
-            balance: 1000, // Default starting balance
+            balance: 0, // New users start with 0 balance
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert('User added successfully! Default password: 123, Starting balance: 1000 THB / เพิ่มผู้ใช้สำเร็จ! รหัสผ่านเริ่มต้น: 123, ยอดเงินเริ่มต้น: 1000 บาท');
+        alert('User added successfully! Default password: 123, Starting balance: 0 THB / เพิ่มผู้ใช้สำเร็จ! รหัสผ่านเริ่มต้น: 123, ยอดเงินเริ่มต้น: 0 บาท');
     } catch (error) {
         console.error('Error adding user:', error);
         alert('Error adding user. Please try again.');
@@ -1489,28 +1489,26 @@ async function confirmBalanceAdjust() {
 
     const amount = parseInt(amountStr);
 
-    // Validate amount: must be between 200-1000 and divisible by 100
-    if (isNaN(amount) || amount < 200 || amount > 1000) {
-        alert('Amount must be between 200-1000 THB / จำนวนต้องอยู่ระหว่าง 200-1000 บาท');
-        return;
-    }
-
-    if (amount % 100 !== 0) {
-        alert('Amount must be in multiples of 100 THB / จำนวนต้องเป็นหลักร้อย');
+    // Admin can enter any amount (positive or negative for corrections)
+    if (isNaN(amount) || amount === 0) {
+        alert('Please enter a valid amount / กรุณาใส่จำนวนเงินที่ถูกต้อง');
         return;
     }
 
     const currentBalance = selectedUser.balance || 0;
-    const description = 'Cash deposit / เติมเงินสด';
+    const description = amount > 0
+        ? 'Cash deposit / เติมเงินสด'
+        : 'Balance correction / แก้ไขยอดเงิน';
 
     const success = await updateUserBalance(selectedUser.id, selectedUser.name, amount, description);
 
     if (success) {
+        const changeText = amount > 0 ? `Added: +${amount} THB` : `Deducted: ${amount} THB`;
         alert(
             `✅ Balance updated! / อัปเดตยอดเงินแล้ว!\n\n` +
             `${selectedUser.name}\n` +
             `Previous: ${currentBalance} THB\n` +
-            `Added: +${amount} THB\n` +
+            `${changeText}\n` +
             `New: ${currentBalance + amount} THB`
         );
 
