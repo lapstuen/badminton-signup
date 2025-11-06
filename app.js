@@ -157,7 +157,7 @@ async function createTransaction(userId, userName, amount, description) {
 }
 
 // Update user balance
-async function updateUserBalance(userId, userName, amountChange, description) {
+async function updateUserBalance(userId, userName, amountChange, description, silent = false) {
     try {
         const userDoc = await usersRef.doc(userId).get();
         if (!userDoc.exists) {
@@ -170,7 +170,10 @@ async function updateUserBalance(userId, userName, amountChange, description) {
 
         // Don't allow negative balance
         if (newBalance < 0) {
-            alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${Math.abs(amountChange)} THB`);
+            if (!silent) {
+                alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${Math.abs(amountChange)} THB`);
+            }
+            console.log(`⚠️ Insufficient balance for ${userName}: ${currentBalance} THB (need ${Math.abs(amountChange)} THB)`);
             return false;
         }
 
@@ -846,6 +849,11 @@ async function changeSessionDetails() {
                 );
 
                 if (confirm) {
+                    // Track results
+                    let added = 0;
+                    let skippedBalance = [];
+                    let skippedAlready = 0;
+
                     // Add regular players
                     for (const name of regularPlayers) {
                         // Check if player already registered
@@ -853,11 +861,13 @@ async function changeSessionDetails() {
                             // Find the user and deduct balance
                             const user = state.authorizedUsers.find(u => u.name === name);
                             if (user) {
+                                // Use silent mode to avoid alert popup
                                 const success = await updateUserBalance(
                                     user.id,
                                     user.name,
                                     -state.paymentAmount,
-                                    `Auto-registration as regular player ${state.sessionDay}`
+                                    `Auto-registration as regular player ${state.sessionDay}`,
+                                    true // silent mode
                                 );
 
                                 if (success) {
@@ -868,13 +878,28 @@ async function changeSessionDetails() {
                                         position: state.players.length + 1,
                                         isRegular: true
                                     });
+                                    added++;
                                 } else {
-                                    console.log(`⚠️ Skipped ${name} - insufficient balance`);
+                                    skippedBalance.push(name);
                                 }
                             }
+                        } else {
+                            skippedAlready++;
                         }
                     }
-                    console.log(`✅ Added regular players with balance deduction`);
+
+                    // Show summary
+                    let message = `✅ Auto-registration complete!\n\n` +
+                                 `Added: ${added} players\n`;
+                    if (skippedAlready > 0) {
+                        message += `Already registered: ${skippedAlready}\n`;
+                    }
+                    if (skippedBalance.length > 0) {
+                        message += `\n⚠️ Skipped (insufficient balance):\n${skippedBalance.join(', ')}`;
+                    }
+                    alert(message);
+
+                    console.log(`✅ Added ${added} regular players, skipped ${skippedBalance.length} (no balance)`);
                 }
             } else {
                 console.log('ℹ️ No regular players configured for this day');
