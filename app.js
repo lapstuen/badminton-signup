@@ -2,8 +2,9 @@
 // BADMINTON APP - FIREBASE VERSION
 // ============================================
 
-// Current session ID (today's date)
-let currentSessionId = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+// Current session ID - FIXED to "current" (does not auto-change daily)
+// Admin must manually start "New Session" to create a new session
+let currentSessionId = 'current';
 
 // App state (synced with Firebase)
 let state = {
