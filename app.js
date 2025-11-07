@@ -849,7 +849,7 @@ function toggleAdmin() {
 
 function loginAdmin() {
     const password = document.getElementById('adminPassword').value;
-    if (password === '1') { // TESTING MODE - Change to secure password for production!
+    if (password === 'SikkertPassord1955') { // TESTING MODE - Change to secure password for production!
         state.isAdmin = true;
         document.getElementById('adminPassword').style.display = 'none';
         event.target.style.display = 'none';
