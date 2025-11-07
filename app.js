@@ -320,7 +320,7 @@ async function handleSignup(e) {
         // Add player to Firestore
         const playerData = {
             name,
-            paid: false,
+            paid: true, // Auto-set to paid since wallet deducted payment
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             position: state.players.length + 1
         };
@@ -1021,7 +1021,7 @@ async function changeSessionDetails() {
                                 if (success) {
                                     await playersRef().add({
                                         name: name,
-                                        paid: false,
+                                        paid: true, // Auto-set to paid since wallet deducted payment
                                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                                         position: state.players.length + 1,
                                         isRegular: true
