@@ -4,8 +4,12 @@
  */
 
 const {onCall, HttpsError} = require('firebase-functions/v2/https');
-const functions = require('firebase-functions');
+const {defineString} = require('firebase-functions/params');
 const axios = require('axios');
+
+// Environment parameters (for v2 Cloud Functions)
+const lineToken = defineString('LINE_TOKEN');
+const lineGroupId = defineString('LINE_GROUP_ID');
 
 // Line Messaging API endpoint
 const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
@@ -16,9 +20,9 @@ const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
  */
 exports.sendSessionAnnouncement = onCall(async (request) => {
     try {
-        // Get environment variables (legacy config format)
-        const accessToken = functions.config().line.token;
-        const groupId = functions.config().line.groupid;
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
 
         if (!accessToken) {
             throw new HttpsError('failed-precondition', 'Line Access Token not configured');
@@ -103,9 +107,9 @@ exports.sendSessionAnnouncement = onCall(async (request) => {
  */
 exports.sendCancellationNotification = onCall(async (request) => {
     try {
-        // Get environment variables (legacy config format)
-        const accessToken = functions.config().line.token;
-        const groupId = functions.config().line.groupid;
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
 
         if (!accessToken) {
             throw new HttpsError('failed-precondition', 'Line Access Token not configured');
