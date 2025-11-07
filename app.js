@@ -541,16 +541,11 @@ async function checkLoggedInUser() {
                 console.error('Error validating session:', error);
             }
         } else if (state.loggedInUser && state.loggedInUser.userId) {
-            // Old format without authToken - refresh balance only
-            try {
-                const userDoc = await usersRef.doc(state.loggedInUser.userId).get();
-                if (userDoc.exists) {
-                    state.loggedInUser.balance = userDoc.data().balance || 0;
-                    localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
-                }
-            } catch (error) {
-                console.error('Error refreshing balance:', error);
-            }
+            // Old format without authToken - FORCE RE-LOGIN to upgrade to UUID system
+            console.log('⚠️ Old session format detected - forcing re-login to upgrade to UUID system');
+            localStorage.removeItem('loggedInUser');
+            state.loggedInUser = null;
+            alert('Security upgrade: Please log in again to activate secure auto-login.\n\nอัปเกรดความปลอดภัย: กรุณาเข้าสู่ระบบอีกครั้งเพื่อเปิดใช้งานการเข้าสู่ระบบอัตโนมัติที่ปลอดภัย');
         }
     }
 }
