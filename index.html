@@ -12,7 +12,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-05 15:30 (Wallet)</p>
+            <p class="version-header">v2025-11-07 16:30 (Draft/Publish System)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -31,6 +31,15 @@
         </header>
 
         <main id="mainContent">
+            <!-- Draft Mode Banner (only visible to admin/moderator) -->
+            <div id="draftBanner" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">📝 DRAFT MODE / โหมดร่าง</h3>
+                <p style="margin: 0 0 10px 0; color: #78350f; font-size: 14px;">Session not visible to regular users / เซสชันยังไม่เปิดให้ผู้ใช้ทั่วไปเห็น</p>
+                <button onclick="publishSession()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                    ✅ Publish Session / เผยแพร่เซสชัน
+                </button>
+            </div>
+
             <!-- User Login Section -->
             <div class="user-login" id="userLogin" style="display: none;">
                 <h2>Login<br>เข้าสู่ระบบ</h2>
@@ -73,7 +82,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-05 15:30 (Wallet System)</p>
+                <p class="version">v2025-11-07 16:30 (Draft/Publish System)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -102,9 +111,11 @@
                 <div id="adminActions" style="display: none;">
                     <button onclick="clearSession()">New Session / เริ่มใหม่</button>
                     <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
+                    <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
+                    <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
+                    <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
                     <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
                     <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
-                    <button onclick="manageRegularPlayers()">Manage Regular Players / จัดการผู้เล่นประจำ</button>
                     <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
                     <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
                     <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
@@ -184,6 +195,61 @@
 
                 <button onclick="confirmBalanceAdjust()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
                     Confirm / ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Regular Players Modal -->
+    <div class="modal" id="manageRegularPlayersModal" style="display: none;" onclick="closeRegularPlayers()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="manageRegularPlayersTitle">Manage Regular Players / จัดการผู้เล่นประจำ</h2>
+                <button class="close-btn" onclick="closeRegularPlayers()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                    Select day / เลือกวัน:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px;">
+                    <button onclick="selectDayForRegularPlayers(1)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">1. Monday / จันทร์</button>
+                    <button onclick="selectDayForRegularPlayers(2)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">2. Tuesday / อังคาร</button>
+                    <button onclick="selectDayForRegularPlayers(3)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">3. Wednesday / พุธ</button>
+                    <button onclick="selectDayForRegularPlayers(4)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">4. Thursday / พฤหัส</button>
+                    <button onclick="selectDayForRegularPlayers(5)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">5. Friday / ศุกร์</button>
+                    <button onclick="selectDayForRegularPlayers(6)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">6. Saturday / เสาร์</button>
+                    <button onclick="selectDayForRegularPlayers(7)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; grid-column: span 2;">7. Sunday / อาทิตย์</button>
+                </div>
+                <div id="regularPlayersSelectionArea" style="display: none;">
+                    <h3 id="regularPlayersSelectedDay" style="margin-bottom: 10px; color: #333;"></h3>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 13px;">
+                        Click to add/remove regular players for this day<br>
+                        คลิกเพื่อเพิ่ม/ลบผู้เล่นประจำ
+                    </p>
+                    <div id="regularPlayersSelectionList" style="max-height: 300px; overflow-y: auto;"></div>
+                    <button onclick="closeRegularPlayers()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 15px;">
+                        Done / เสร็จสิ้น
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Today's Players Modal -->
+    <div class="modal" id="manageTodaysPlayersModal" style="display: none;" onclick="closeManagedPlayers()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="manageTodaysPlayersTitle">Manage Today's Players / จัดการผู้เล่นวันนี้</h2>
+                <button class="close-btn" onclick="closeManagedPlayers()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;" id="manageTodaysPlayersSubtitle">
+                    Click to add/remove players from today's session<br>
+                    คลิกเพื่อเพิ่ม/ลบผู้เล่นจากเซสชันวันนี้
+                </p>
+                <div id="managedPlayersSelectionList" style="max-height: 400px; overflow-y: auto;"></div>
+                <button onclick="closeManagedPlayers()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 15px;">
+                    Done / เสร็จสิ้น
                 </button>
             </div>
         </div>

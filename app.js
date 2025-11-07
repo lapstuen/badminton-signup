@@ -14,9 +14,10 @@ let state = {
     sessionDay: 'Monday / วันจันทร์',
     sessionTime: '10:00 - 12:00',
     paymentAmount: 150,
+    published: true, // Session visibility (false = draft mode)
     isAdmin: false,
     authorizedUsers: [],
-    loggedInUser: null, // Now includes: { name, balance, userId }
+    loggedInUser: null, // Now includes: { name, balance, userId, role }
     transactions: []
 };
 
@@ -107,6 +108,7 @@ async function loadSessionData() {
             state.sessionDay = data.day || state.sessionDay;
             state.sessionTime = data.time || state.sessionTime;
             state.paymentAmount = data.paymentAmount || 150;
+            state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             console.log('📥 Session data loaded from Firestore');
         } else {
             // Create new session
@@ -116,6 +118,7 @@ async function loadSessionData() {
                 time: state.sessionTime,
                 maxPlayers: state.maxPlayers,
                 paymentAmount: state.paymentAmount,
+                published: true,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('📝 New session created');
@@ -133,7 +136,8 @@ async function saveSessionData() {
             day: state.sessionDay,
             time: state.sessionTime,
             maxPlayers: state.maxPlayers,
-            paymentAmount: state.paymentAmount
+            paymentAmount: state.paymentAmount,
+            published: state.published
         });
         console.log('💾 Session data saved');
     } catch (error) {
@@ -495,15 +499,18 @@ async function checkLoggedInUser() {
     if (loggedInData) {
         state.loggedInUser = JSON.parse(loggedInData);
 
-        // If userId is missing (old localStorage format), find it
-        if (!state.loggedInUser.userId && state.loggedInUser.name) {
-            console.log('⚠️ userId missing, finding user by name:', state.loggedInUser.name);
+        // If userId or role is missing (old localStorage format), refresh from database
+        if (!state.loggedInUser.userId || !state.loggedInUser.role) {
+            console.log('⚠️ Outdated user data in localStorage, refreshing from database:', state.loggedInUser.name);
             const user = state.authorizedUsers.find(u => u.name === state.loggedInUser.name);
             if (user) {
+                // Update with fresh data from database
                 state.loggedInUser.userId = user.id;
                 state.loggedInUser.balance = user.balance || 0;
+                state.loggedInUser.role = user.role || 'user';
+                state.loggedInUser.authToken = user.password; // Keep authToken for validation
                 localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
-                console.log('✅ userId restored:', state.loggedInUser.userId);
+                console.log('✅ User data refreshed from database:', state.loggedInUser);
             } else {
                 console.error('❌ User not found, clearing localStorage');
                 localStorage.removeItem('loggedInUser');
@@ -711,39 +718,61 @@ function updateUI() {
             }
         }
 
-        // Check if already registered this session
-        const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
-        if (alreadyRegistered) {
-            // User is registered - show success message and cancel button
-            registrationFormEl.style.display = 'none';
-            cancelBtnEl.style.display = 'block';
-            showSuccessMessage(alreadyRegistered);
-        } else {
-            // User not registered yet - show join button, hide cancel button
-            registrationFormEl.style.display = 'block';
-            cancelBtnEl.style.display = 'none';
-            document.getElementById('successMessage').style.display = 'none';
+        // Check if session is published
+        if (!state.published) {
+            // Session unpublished - show draft message for non-admin users
+            const userRole = state.loggedInUser.role || 'user';
+            if (userRole === 'user') {
+                registrationFormEl.style.display = 'block';
+                cancelBtnEl.style.display = 'none';
+                document.getElementById('successMessage').style.display = 'none';
 
-            // Hide name input field and update button text
-            const nameInput = document.getElementById('playerName');
-            const signupButton = document.querySelector('#signupForm button[type="submit"]');
-            nameInput.style.display = 'none';
-            nameInput.removeAttribute('required'); // Remove required when hidden!
-
-            // Check if user has enough balance
-            const userBalance = state.loggedInUser.balance || 0;
-            if (userBalance < state.paymentAmount) {
-                // Insufficient balance - gray button with warning
+                const signupButton = document.querySelector('#signupForm button[type="submit"]');
                 signupButton.disabled = true;
                 signupButton.style.background = '#9ca3af';
                 signupButton.style.cursor = 'not-allowed';
-                signupButton.innerHTML = `Insufficient Balance<br>ยอดเงินไม่เพียงพอ<br><small style="font-size: 12px;">Balance: ${userBalance} THB (Need: ${state.paymentAmount} THB)</small>`;
+                signupButton.innerHTML = `⏳ Session Not Ready Yet<br>เซสชันยังไม่พร้อม`;
             } else {
-                // Sufficient balance - green button
-                signupButton.disabled = false;
-                signupButton.style.background = '#10b981';
-                signupButton.style.cursor = 'pointer';
-                signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
+                // Admin/moderator: show draft banner (handled elsewhere)
+                registrationFormEl.style.display = 'none';
+                cancelBtnEl.style.display = 'none';
+            }
+        } else {
+            // Session published - normal flow
+            // Check if already registered this session
+            const alreadyRegistered = state.players.find(p => p.name === state.loggedInUser.name);
+            if (alreadyRegistered) {
+                // User is registered - show success message and cancel button
+                registrationFormEl.style.display = 'none';
+                cancelBtnEl.style.display = 'block';
+                showSuccessMessage(alreadyRegistered);
+            } else {
+                // User not registered yet - show join button, hide cancel button
+                registrationFormEl.style.display = 'block';
+                cancelBtnEl.style.display = 'none';
+                document.getElementById('successMessage').style.display = 'none';
+
+                // Hide name input field and update button text
+                const nameInput = document.getElementById('playerName');
+                const signupButton = document.querySelector('#signupForm button[type="submit"]');
+                nameInput.style.display = 'none';
+                nameInput.removeAttribute('required'); // Remove required when hidden!
+
+                // Check if user has enough balance
+                const userBalance = state.loggedInUser.balance || 0;
+                if (userBalance < state.paymentAmount) {
+                    // Insufficient balance - gray button with warning
+                    signupButton.disabled = true;
+                    signupButton.style.background = '#9ca3af';
+                    signupButton.style.cursor = 'not-allowed';
+                    signupButton.innerHTML = `Insufficient Balance<br>ยอดเงินไม่เพียงพอ<br><small style="font-size: 12px;">Balance: ${userBalance} THB (Need: ${state.paymentAmount} THB)</small>`;
+                } else {
+                    // Sufficient balance - green button
+                    signupButton.disabled = false;
+                    signupButton.style.background = '#10b981';
+                    signupButton.style.cursor = 'pointer';
+                    signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
+                }
             }
         }
     } else {
@@ -761,6 +790,16 @@ function updateUI() {
             nameInput.setAttribute('required', ''); // Add required back when visible!
         }
         if (signupButton) signupButton.innerHTML = 'Join<br>เข้าร่วม';
+    }
+
+    // Show/hide draft banner for admin/moderator
+    const draftBanner = document.getElementById('draftBanner');
+    if (draftBanner && state.loggedInUser) {
+        const userRole = state.loggedInUser.role || 'user';
+        const isAdminOrModerator = (userRole === 'admin' || userRole === 'moderator');
+        draftBanner.style.display = (!state.published && isAdminOrModerator) ? 'block' : 'none';
+    } else if (draftBanner) {
+        draftBanner.style.display = 'none';
     }
 
     // Update session info
@@ -911,7 +950,7 @@ function loginAdmin() {
 }
 
 async function clearSession() {
-    if (confirm('Start new session? This will delete all registrations.\nเริ่มใหม่? จะลบการลงทะเบียนทั้งหมด')) {
+    if (confirm('Start new session? This will delete all registrations and unpublish the session.\n\nเริ่มใหม่? จะลบการลงทะเบียนทั้งหมดและซ่อนเซสชัน')) {
         try {
             // Delete all players from current session
             const snapshot = await playersRef().get();
@@ -921,19 +960,111 @@ async function clearSession() {
             });
             await batch.commit();
 
-            // Update session date
+            // Update session date and UNPUBLISH
             state.sessionDate = new Date().toLocaleDateString('en-GB');
+            state.published = false; // Set to draft mode
             await saveSessionData();
 
             // Remove old userName (deprecated)
             localStorage.removeItem('userName');
 
+            // Update UI to show draft mode
+            updateUI();
+
             // Players will be automatically updated via real-time listener
             // No need to reload - admin stays logged in
-            console.log('✅ Session cleared successfully');
+
+            // Reset auto-load flag so regular players will be loaded on next "Manage Today's Players"
+            hasAutoLoadedRegularPlayers = false;
+
+            console.log('✅ Session cleared and set to DRAFT mode');
+            alert('✅ Session cleared!\n\nSession is now in DRAFT mode (not visible to users).\n\nUse "Edit Session" to set day/time, then "Manage Today\'s Players" to add players, then "Publish Session" when ready.');
         } catch (error) {
             console.error('Error clearing session:', error);
             alert('Error clearing session. Please try again.');
+        }
+    }
+}
+
+async function publishSession() {
+    const unpaidPlayers = state.players.filter(p => !p.paid);
+
+    let confirmMessage = 'Publish this session?\n\nเผยแพร่เซสชัน?\n\n';
+
+    if (unpaidPlayers.length > 0) {
+        confirmMessage += `This will deduct ${state.paymentAmount} THB from ${unpaidPlayers.length} player(s) who haven't paid yet:\n`;
+        confirmMessage += unpaidPlayers.map(p => p.name).join(', ') + '\n\n';
+        confirmMessage += `จะหักเงิน ${state.paymentAmount} บาทจากผู้เล่น ${unpaidPlayers.length} คนที่ยังไม่ได้จ่าย`;
+    }
+
+    if (confirm(confirmMessage)) {
+        try {
+            // Process wallet deductions for unpaid players
+            let successful = 0;
+            let failed = [];
+
+            for (const player of unpaidPlayers) {
+                if (player.userId) {
+                    // Get user's current balance
+                    const userDoc = await usersRef.doc(player.userId).get();
+                    if (userDoc.exists) {
+                        const currentBalance = userDoc.data().balance || 0;
+
+                        if (currentBalance >= state.paymentAmount) {
+                            // Deduct money
+                            const newBalance = currentBalance - state.paymentAmount;
+                            await usersRef.doc(player.userId).update({
+                                balance: newBalance
+                            });
+
+                            // Mark player as paid
+                            await playersRef().doc(player.id).update({
+                                paid: true
+                            });
+
+                            // Add transaction record
+                            await transactionsRef.add({
+                                userId: player.userId,
+                                userName: player.name,
+                                type: 'payment',
+                                amount: state.paymentAmount,
+                                balance: newBalance,
+                                reason: 'Session published - payment deducted',
+                                sessionDate: state.sessionDate,
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+
+                            successful++;
+                            console.log(`✅ Deducted ${state.paymentAmount} THB from ${player.name}`);
+                        } else {
+                            failed.push({name: player.name, balance: currentBalance});
+                        }
+                    }
+                }
+            }
+
+            // Publish session
+            state.published = true;
+            await saveSessionData();
+            updateUI();
+
+            // Show result
+            let resultMessage = '✅ Session published!\n\n';
+            resultMessage += `Payments processed: ${successful}\n`;
+            if (failed.length > 0) {
+                resultMessage += `\n⚠️ Failed (insufficient balance):\n`;
+                failed.forEach(f => {
+                    resultMessage += `- ${f.name} (has ${f.balance} THB, needs ${state.paymentAmount} THB)\n`;
+                });
+                resultMessage += '\nThese players are still on the list but marked as unpaid.';
+            }
+            resultMessage += '\n\nUsers can now see and register for the session.\n\nเผยแพร่แล้ว!';
+
+            alert(resultMessage);
+            console.log('✅ Session published with payments processed');
+        } catch (error) {
+            console.error('Error publishing session:', error);
+            alert('Error publishing session. Please try again.');
         }
     }
 }
@@ -1034,74 +1165,11 @@ async function changeSessionDetails() {
             await saveSessionData();
             updateUI();
 
-            // Get regular players for this day from Firestore
-            const regularPlayers = await getRegularPlayersForDay(dayChoice);
+            // Reset auto-load flag so regular players for NEW day will be loaded
+            hasAutoLoadedRegularPlayers = false;
 
-            if (regularPlayers && regularPlayers.length > 0) {
-                // Show which players will be added
-                const confirm = window.confirm(
-                    `Add regular players for ${state.sessionDay}?\n` +
-                    `จะเพิ่มผู้เล่นประจำหรือไม่?\n\n` +
-                    `${regularPlayers.join(', ')}\n\n` +
-                    `(${regularPlayers.length} players)`
-                );
-
-                if (confirm) {
-                    // Track results
-                    let added = 0;
-                    let skippedBalance = [];
-                    let skippedAlready = 0;
-
-                    // Add regular players
-                    for (const name of regularPlayers) {
-                        // Check if player already registered
-                        if (!state.players.find(p => p.name === name)) {
-                            // Find the user and deduct balance
-                            const user = state.authorizedUsers.find(u => u.name === name);
-                            if (user) {
-                                // Use silent mode to avoid alert popup
-                                const success = await updateUserBalance(
-                                    user.id,
-                                    user.name,
-                                    -state.paymentAmount,
-                                    `Auto-registration as regular player ${state.sessionDay}`,
-                                    true // silent mode
-                                );
-
-                                if (success) {
-                                    await playersRef().add({
-                                        name: name,
-                                        paid: true, // Auto-set to paid since wallet deducted payment
-                                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                                        position: state.players.length + 1,
-                                        isRegular: true
-                                    });
-                                    added++;
-                                } else {
-                                    skippedBalance.push(name);
-                                }
-                            }
-                        } else {
-                            skippedAlready++;
-                        }
-                    }
-
-                    // Show summary
-                    let message = `✅ Auto-registration complete!\n\n` +
-                                 `Added: ${added} players\n`;
-                    if (skippedAlready > 0) {
-                        message += `Already registered: ${skippedAlready}\n`;
-                    }
-                    if (skippedBalance.length > 0) {
-                        message += `\n⚠️ Skipped (insufficient balance):\n${skippedBalance.join(', ')}`;
-                    }
-                    alert(message);
-
-                    console.log(`✅ Added ${added} regular players, skipped ${skippedBalance.length} (no balance)`);
-                }
-            } else {
-                console.log('ℹ️ No regular players configured for this day');
-            }
+            alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
+            console.log(`✅ Session updated: ${state.sessionDay} ${time}`);
         }
     }
 }
@@ -1145,7 +1213,22 @@ async function changeMaxPlayers() {
 // REGULAR PLAYERS MANAGEMENT
 // ============================================
 
-async function manageRegularPlayers() {
+// ============================================
+// MANAGE REGULAR PLAYERS (NEW UI)
+// ============================================
+
+function manageRegularPlayers() {
+    const modal = document.getElementById('manageRegularPlayersModal');
+    const selectionArea = document.getElementById('regularPlayersSelectionArea');
+
+    // Hide selection area initially, show day selector
+    selectionArea.style.display = 'none';
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+async function selectDayForRegularPlayers(dayNumber) {
     const days = [
         'Monday / วันจันทร์',
         'Tuesday / วันอังคาร',
@@ -1156,64 +1239,128 @@ async function manageRegularPlayers() {
         'Sunday / วันอาทิตย์'
     ];
 
-    // Load current configuration
-    let config = {};
-    try {
-        const configDoc = await db.collection('config').doc('regularPlayers').get();
-        if (configDoc.exists) {
-            config = configDoc.data();
+    const selectionArea = document.getElementById('regularPlayersSelectionArea');
+    const selectedDayEl = document.getElementById('regularPlayersSelectedDay');
+    const list = document.getElementById('regularPlayersSelectionList');
+
+    // Update title
+    selectedDayEl.textContent = `Regular Players for ${days[dayNumber - 1]}`;
+
+    // Get current regular players for this day
+    const regularPlayersForDay = await getRegularPlayersForDay(dayNumber);
+
+    // Sort users alphabetically
+    const sortedUsers = state.authorizedUsers
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Separate regular and non-regular users
+    const regularUsers = [];
+    const nonRegularUsers = [];
+
+    sortedUsers.forEach(user => {
+        const isRegular = regularPlayersForDay.includes(user.name);
+        if (isRegular) {
+            regularUsers.push(user);
+        } else {
+            nonRegularUsers.push(user);
         }
-    } catch (error) {
-        console.error('Error loading config:', error);
+    });
+
+    // Build user list
+    list.innerHTML = '';
+
+    // Add regular users first
+    if (regularUsers.length > 0) {
+        const headerRegular = document.createElement('div');
+        headerRegular.style.cssText = 'padding: 10px; background: #dcfce7; border-radius: 8px; margin-bottom: 10px; font-weight: bold; color: #166534;';
+        headerRegular.textContent = `✅ Regular Players (${regularUsers.length}) / ผู้เล่นประจำ`;
+        list.appendChild(headerRegular);
+
+        regularUsers.forEach(user => {
+            const item = createRegularPlayerItem(user, dayNumber, true);
+            list.appendChild(item);
+        });
     }
 
-    // Show current configuration
-    let configText = 'Current regular players configuration:\n';
-    configText += '═'.repeat(50) + '\n\n';
+    // Add non-regular users
+    if (nonRegularUsers.length > 0) {
+        const headerNonRegular = document.createElement('div');
+        headerNonRegular.style.cssText = 'padding: 10px; background: #f3f4f6; border-radius: 8px; margin-bottom: 10px; margin-top: 15px; font-weight: bold; color: #374151;';
+        headerNonRegular.textContent = `⬜ Other Users (${nonRegularUsers.length}) / ผู้ใช้อื่น`;
+        list.appendChild(headerNonRegular);
 
-    for (let i = 1; i <= 7; i++) {
-        const dayKey = `day${i}`;
-        const players = config[dayKey] || [];
-        configText += `${i}. ${days[i-1]}\n`;
-        configText += `   Players: ${players.length > 0 ? players.join(', ') : 'None'}\n\n`;
+        nonRegularUsers.forEach(user => {
+            const item = createRegularPlayerItem(user, dayNumber, false);
+            list.appendChild(item);
+        });
     }
 
-    configText += '\nEnter day number (1-7) to edit, or Cancel:';
+    // Show selection area
+    selectionArea.style.display = 'block';
+}
 
-    const dayChoice = prompt(configText);
+function createRegularPlayerItem(user, dayNumber, isRegular) {
+    const item = document.createElement('div');
+    item.className = 'user-selection-item';
 
-    if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
-        const dayKey = `day${dayChoice}`;
-        const currentPlayers = config[dayKey] || [];
+    if (isRegular) {
+        item.style.background = '#f0fdf4';
+        item.style.borderLeft = '4px solid #10b981';
+    }
 
-        const newPlayers = prompt(
-            `Edit regular players for ${days[dayChoice - 1]}:\n\n` +
-            `Current: ${currentPlayers.join(', ') || 'None'}\n\n` +
-            `Enter names separated by commas:\n` +
-            `(Leave empty to clear all)`,
-            currentPlayers.join(', ')
-        );
+    item.onclick = () => toggleRegularPlayer(user.name, dayNumber, isRegular);
 
-        if (newPlayers !== null) {
-            // Update configuration
-            config[dayKey] = newPlayers
-                .split(',')
-                .map(n => n.trim())
-                .filter(n => n.length > 0);
+    item.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+            <div style="font-size: 28px;">${isRegular ? '✅' : '⬜'}</div>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 16px;">${user.name}</div>
+            </div>
+            <div style="color: ${isRegular ? '#059669' : '#6b7280'}; font-size: 12px;">
+                ${isRegular ? 'Click to remove / คลิกเพื่อลบ' : 'Click to add / คลิกเพื่อเพิ่ม'}
+            </div>
+        </div>
+    `;
 
-            try {
-                await db.collection('config').doc('regularPlayers').set(config);
-                alert(
-                    `✅ Updated regular players for ${days[dayChoice - 1]}!\n` +
-                    `อัปเดตผู้เล่นประจำแล้ว!\n\n` +
-                    `Players: ${config[dayKey].length > 0 ? config[dayKey].join(', ') : 'None'}`
-                );
-            } catch (error) {
-                console.error('Error saving config:', error);
-                alert('Error saving configuration. Please try again.');
+    return item;
+}
+
+async function toggleRegularPlayer(userName, dayNumber, isCurrentlyRegular) {
+    try {
+        // Get current config
+        const configDoc = await db.collection('config').doc('regularPlayers').get();
+        let config = configDoc.exists ? configDoc.data() : {};
+
+        const dayKey = `day${dayNumber}`;
+        let playersForDay = config[dayKey] || [];
+
+        if (isCurrentlyRegular) {
+            // Remove from regular players
+            playersForDay = playersForDay.filter(name => name !== userName);
+            console.log(`✅ Removed ${userName} from regular players for day ${dayNumber}`);
+        } else {
+            // Add to regular players
+            if (!playersForDay.includes(userName)) {
+                playersForDay.push(userName);
+                console.log(`✅ Added ${userName} to regular players for day ${dayNumber}`);
             }
         }
+
+        // Update config
+        config[dayKey] = playersForDay;
+        await db.collection('config').doc('regularPlayers').set(config);
+
+        // Refresh the list
+        await selectDayForRegularPlayers(dayNumber);
+    } catch (error) {
+        console.error('Error toggling regular player:', error);
+        alert('Error updating regular players. Please try again.');
     }
+}
+
+function closeRegularPlayers() {
+    document.getElementById('manageRegularPlayersModal').style.display = 'none';
 }
 
 // ============================================
@@ -1249,6 +1396,7 @@ function updateAuthorizedUsersList() {
                 <div style="font-size: 0.9em; color: ${balanceColor}; margin-top: 3px;">Balance: ${balance} THB</div>
             </div>
             <div class="user-actions">
+                <button onclick="showUserPassword('${user.id}')" style="background: #8b5cf6; color: white; padding: 5px 10px; border: none; border-radius: 5px; margin-right: 5px; cursor: pointer;">Show Password</button>
                 <button onclick="editUserPassword('${user.id}')" style="background: #3b82f6; color: white; padding: 5px 10px; border: none; border-radius: 5px; margin-right: 5px; cursor: pointer;">Change Password</button>
                 <button onclick="removeAuthorizedUser('${user.id}')" style="background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">Remove</button>
             </div>
@@ -1282,6 +1430,13 @@ async function addAuthorizedUser() {
         console.error('Error adding user:', error);
         alert('Error adding user. Please try again.');
     }
+}
+
+function showUserPassword(userId) {
+    const user = state.authorizedUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    alert(`Password for ${user.name}:\n\n${user.password}\n\nรหัสผ่านสำหรับ ${user.name}:\n${user.password}`);
 }
 
 async function editUserPassword(userId) {
@@ -1361,6 +1516,306 @@ function manageWallets() {
 
 function closeUserSelection() {
     document.getElementById('userSelectionModal').style.display = 'none';
+}
+
+// ============================================
+// MANAGE TODAY'S PLAYERS
+// ============================================
+
+// Track if we've already auto-loaded regular players for this session
+let hasAutoLoadedRegularPlayers = false;
+
+async function manageTodaysPlayers(skipAutoLoad = false) {
+    const modal = document.getElementById('manageTodaysPlayersModal');
+    const list = document.getElementById('managedPlayersSelectionList');
+    const titleEl = document.getElementById('manageTodaysPlayersTitle');
+    const subtitleEl = document.getElementById('manageTodaysPlayersSubtitle');
+
+    // Find which day number we're on
+    const days = [
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
+    ];
+    const currentDayIndex = days.findIndex(d => d === state.sessionDay);
+    const dayNumber = currentDayIndex + 1; // 1-7
+    const dayNameShort = state.sessionDay.split(' / ')[0]; // "Monday"
+
+    // Update title to show current day
+    titleEl.textContent = `Manage Players: ${state.sessionDay}`;
+    subtitleEl.innerHTML = `Click to add/remove players<br>คลิกเพื่อเพิ่ม/ลบผู้เล่น<br><strong>Note: Wallet changes happen when you publish session / หมายเหตุ: เงินจะถูกหักเมื่อเผยแพร่เซสชัน</strong>`;
+
+    // Get regular players for this day from Firestore
+    const regularPlayersForToday = await getRegularPlayersForDay(dayNumber);
+
+    // Get fresh player data from Firestore (not from state which might be stale)
+    const playersSnapshot = await playersRef().get();
+    const currentPlayers = [];
+    playersSnapshot.forEach(doc => {
+        currentPlayers.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Auto-add regular players ONLY on first open (not when refreshing after add/remove)
+    let addedCount = 0;
+    if (!skipAutoLoad && !hasAutoLoadedRegularPlayers) {
+        for (const playerName of regularPlayersForToday) {
+            const alreadyInSession = currentPlayers.some(p => p.name === playerName);
+
+            if (!alreadyInSession) {
+                // Find user
+                const user = state.authorizedUsers.find(u => u.name === playerName);
+
+                if (user) {
+                    // Use 'id' field (not 'userId') from authorized users
+                    const userId = user.id || user.userId;
+
+                    if (userId) {
+                        // Add to session (without wallet deduction yet)
+                        await playersRef().add({
+                            name: playerName,
+                            paid: false,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            position: currentPlayers.length + addedCount + 1,
+                            userId: userId,
+                            isRegularPlayer: true
+                        });
+                        addedCount++;
+                    }
+                }
+            }
+        }
+        hasAutoLoadedRegularPlayers = true; // Mark as loaded
+
+        // Wait a moment for Firestore to update before showing UI
+        if (addedCount > 0) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+        }
+    }
+
+    // Sort users alphabetically
+    const sortedUsers = state.authorizedUsers
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Separate users based on who's on today's session
+    const registeredUsers = [];
+    const unregisteredUsers = [];
+
+    sortedUsers.forEach(user => {
+        // Check if user is already registered for today's session
+        const isRegisteredToday = state.players.some(p => p.name === user.name);
+        // Check if user is configured as regular player for this day
+        const isRegularPlayer = regularPlayersForToday.includes(user.name);
+
+        // Show as "selected" if they are registered for today
+        if (isRegisteredToday) {
+            registeredUsers.push({...user, isRegisteredToday, isRegularPlayer, dayNumber});
+        } else {
+            unregisteredUsers.push({...user, isRegisteredToday, isRegularPlayer, dayNumber});
+        }
+    });
+
+    // Build user list with registered users at the top
+    list.innerHTML = '';
+
+    // Add registered users first (at the top)
+    if (registeredUsers.length > 0) {
+        const headerRegistered = document.createElement('div');
+        headerRegistered.style.cssText = 'padding: 10px; background: #dcfce7; border-radius: 8px; margin-bottom: 10px; font-weight: bold; color: #166534;';
+        headerRegistered.textContent = `✅ On ${dayNameShort}'s List (${registeredUsers.length}) / อยู่ในรายชื่อ${dayNameShort}`;
+        list.appendChild(headerRegistered);
+
+        registeredUsers.forEach(user => {
+            const balance = user.balance || 0;
+            const balanceColor = balance < state.paymentAmount ? '#ef4444' : balance < state.paymentAmount * 3 ? '#f59e0b' : '#10b981';
+
+            // Show status badge
+            let statusBadge = '';
+            if (user.isRegularPlayer) {
+                statusBadge = '<span style="background: #8b5cf6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 8px;">Regular / ประจำ</span>';
+            } else {
+                statusBadge = '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 8px;">This session only / ครั้งนี้เท่านั้น</span>';
+            }
+
+            const item = document.createElement('div');
+            item.className = 'user-selection-item';
+            item.style.background = '#f0fdf4'; // Light green background
+            item.style.borderLeft = '4px solid #10b981';
+            item.onclick = () => togglePlayerForToday(user, true);
+
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                    <div style="font-size: 28px;">✅</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 3px;">${user.name}${statusBadge}</div>
+                        <div style="color: ${balanceColor}; font-size: 14px;">Balance: ${balance} THB</div>
+                    </div>
+                    <div style="color: #059669; font-size: 12px;">Click to remove / คลิกเพื่อลบ</div>
+                </div>
+            `;
+
+            list.appendChild(item);
+        });
+    }
+
+    // Add unregistered users
+    if (unregisteredUsers.length > 0) {
+        const headerUnregistered = document.createElement('div');
+        headerUnregistered.style.cssText = 'padding: 10px; background: #f3f4f6; border-radius: 8px; margin-bottom: 10px; margin-top: 15px; font-weight: bold; color: #374151;';
+        headerUnregistered.textContent = `⬜ Not Registered (${unregisteredUsers.length}) / ยังไม่ได้ลงทะเบียน`;
+        list.appendChild(headerUnregistered);
+
+        unregisteredUsers.forEach(user => {
+            const balance = user.balance || 0;
+            const balanceColor = balance < state.paymentAmount ? '#ef4444' : balance < state.paymentAmount * 3 ? '#f59e0b' : '#10b981';
+
+            const item = document.createElement('div');
+            item.className = 'user-selection-item';
+            item.onclick = () => togglePlayerForToday(user, false);
+
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                    <div style="font-size: 28px;">⬜</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 3px;">${user.name}</div>
+                        <div style="color: ${balanceColor}; font-size: 14px;">Balance: ${balance} THB</div>
+                    </div>
+                    <div style="color: #6b7280; font-size: 12px;">Click to add / คลิกเพื่อเพิ่ม</div>
+                </div>
+            `;
+
+            list.appendChild(item);
+        });
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+async function togglePlayerForToday(user, isCurrentlyRegistered) {
+    const days = [
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
+    ];
+    const dayName = state.sessionDay.split(' / ')[0]; // "Monday"
+
+    try {
+        if (isCurrentlyRegistered) {
+            // User is registered - ask HOW to remove using confirm dialogs
+            const removeThisOnly = confirm(
+                `Remove ${user.name} from THIS ${dayName} only?\n` +
+                `ลบ ${user.name} จากเฉพาะ${dayName}นี้?\n\n` +
+                `Click OK = Remove from THIS ${dayName} only\n` +
+                `Click Cancel = Remove from ALL ${dayName}s (as regular player)\n\n` +
+                `กด OK = ลบเฉพาะ${dayName}นี้\n` +
+                `กด Cancel = ลบจากทุก${dayName}`
+            );
+            const choice = removeThisOnly ? '1' : '2';
+
+            if (choice === '1') {
+                // Remove from THIS session only
+                const playerToRemove = state.players.find(p => p.name === user.name);
+                if (playerToRemove && playerToRemove.id) {
+                    await playersRef().doc(playerToRemove.id).delete();
+                    console.log(`✅ Removed ${user.name} from this ${dayName} session`);
+                    await manageTodaysPlayers(true); // Skip auto-load when refreshing
+                }
+            } else if (choice === '2') {
+                // Remove from regular players config AND this session
+                const currentDayIndex = days.findIndex(d => d === state.sessionDay);
+                const dayNumber = currentDayIndex + 1;
+
+                // Remove from regular players config
+                const configDoc = await db.collection('config').doc('regularPlayers').get();
+                let config = configDoc.exists ? configDoc.data() : {};
+                const dayKey = `day${dayNumber}`;
+                let playersForDay = config[dayKey] || [];
+                playersForDay = playersForDay.filter(name => name !== user.name);
+                config[dayKey] = playersForDay;
+                await db.collection('config').doc('regularPlayers').set(config);
+
+                // Remove from this session
+                const playerToRemove = state.players.find(p => p.name === user.name);
+                if (playerToRemove && playerToRemove.id) {
+                    await playersRef().doc(playerToRemove.id).delete();
+                }
+
+                console.log(`✅ Removed ${user.name} from ALL ${dayName}s`);
+                await manageTodaysPlayers(true); // Skip auto-load when refreshing
+            }
+        } else {
+            // User not registered - ask HOW to add using confirm dialog
+            const addThisOnly = confirm(
+                `Add ${user.name} to THIS ${dayName} only?\n` +
+                `เพิ่ม ${user.name} ไปยังเฉพาะ${dayName}นี้?\n\n` +
+                `Click OK = Add to THIS ${dayName} only\n` +
+                `Click Cancel = Add to ALL ${dayName}s (make regular player)\n\n` +
+                `กด OK = เพิ่มเฉพาะ${dayName}นี้\n` +
+                `กด Cancel = เพิ่มไปยังทุก${dayName}`
+            );
+            const choice = addThisOnly ? '1' : '2';
+
+            if (choice === '1') {
+                // Add to THIS session only
+                const userId = user.id || user.userId;
+                await playersRef().add({
+                    name: user.name,
+                    paid: false,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    position: state.players.length + 1,
+                    userId: userId,
+                    isRegularPlayer: false
+                });
+                console.log(`✅ Added ${user.name} to this ${dayName} session only`);
+                await manageTodaysPlayers(true); // Skip auto-load when refreshing
+            } else if (choice === '2') {
+                // Add to regular players config AND this session
+                const currentDayIndex = days.findIndex(d => d === state.sessionDay);
+                const dayNumber = currentDayIndex + 1;
+
+                // Add to regular players config
+                const configDoc = await db.collection('config').doc('regularPlayers').get();
+                let config = configDoc.exists ? configDoc.data() : {};
+                const dayKey = `day${dayNumber}`;
+                let playersForDay = config[dayKey] || [];
+                if (!playersForDay.includes(user.name)) {
+                    playersForDay.push(user.name);
+                }
+                config[dayKey] = playersForDay;
+                await db.collection('config').doc('regularPlayers').set(config);
+
+                // Add to this session
+                const userId = user.id || user.userId;
+                await playersRef().add({
+                    name: user.name,
+                    paid: false,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    position: state.players.length + 1,
+                    userId: userId,
+                    isRegularPlayer: true
+                });
+
+                console.log(`✅ Added ${user.name} to ALL ${dayName}s`);
+                await manageTodaysPlayers(true); // Skip auto-load when refreshing
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling player:', error);
+        alert('Error updating player. Please try again.');
+    }
+}
+
+function closeManagedPlayers() {
+    document.getElementById('manageTodaysPlayersModal').style.display = 'none';
 }
 
 async function viewTransactions() {
