@@ -204,8 +204,6 @@ function buildSessionAnnouncementMessage(
 
 📅 ${sessionDay}
 🕐 ${sessionTime}
-📆 ${sessionDate}
-💰 ${paymentAmount} THB
 
 👥 Players: ${currentPlayers}/${maxPlayers}`;
 
@@ -251,8 +249,7 @@ ${playerName} ยกเลิกการลงทะเบียน
 ตอนนี้ ${currentPlayers}/${maxPlayers} คน
 
 📅 ${sessionDay}
-🕐 ${sessionTime}
-📆 ${sessionDate}`;
+🕐 ${sessionTime}`;
 
     // Only mention available spot if there's NO waiting list
     if (!hasWaitingList) {
