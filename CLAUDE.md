@@ -9,19 +9,24 @@ This is a web-based badminton session registration system with real-time Firebas
 ## Technology Stack
 
 - **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
-- **Backend**: Firebase Firestore (NoSQL database)
+- **Backend**: Firebase Firestore (NoSQL database) + Firebase Cloud Functions
 - **Authentication**: Simple password-based auth with Firebase Firestore
-- **Deployment**: Static hosting (works with any web server or Firebase Hosting)
+- **Deployment**: GitHub Pages (https://lapstuen.github.io/badminton-signup/)
+- **Notifications**: Line Messaging API via Firebase Cloud Functions
 - **Languages**: Trilingual UI (Norwegian, English, Thai)
 
 ## Core Files
 
-- **index.html** - Main application entry point with bilingual UI
-- **app.js** - Main application logic (~850 lines)
+- **index.html** - Main application entry point with trilingual UI
+- **app.js** - Main application logic with wallet system, draft/publish, Line notifications
 - **firebase-config.js** - Firebase initialization and collection references
 - **style.css** - Application styling
 - **manifest.json** - PWA manifest for mobile app installation
+- **functions/index.js** - Firebase Cloud Functions for Line notifications
 - **FIREBASE_SETUP.md** - Complete Firebase setup instructions
+- **LINE_NOTIFICATIONS_SETUP.md** - Line Bot and Cloud Functions setup guide
+- **CHANGELOG.md** - Version history and feature documentation
+- **DEPLOY_CHECKLIST.md** - Deployment checklist
 
 ## Running the Application
 
@@ -47,13 +52,27 @@ Then open `http://localhost:8000` in your browser.
 
 ### Production Deployment
 
-```bash
-# Deploy to Firebase Hosting (if configured)
-firebase deploy --only hosting
+**IMPORTANT: Always commit and push to GitHub after making changes. Always update version number.**
 
-# Or deploy to any static hosting service (Netlify, Vercel, GitHub Pages, etc.)
-# Just upload all files to the hosting service
+```bash
+# 1. Commit changes to git
+git add .
+git commit -m "Description of changes
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# 2. Push to GitHub (auto-deploys to GitHub Pages)
+git push origin main
+
+# 3. Deploy Cloud Functions (if functions changed)
+firebase deploy --only functions
 ```
+
+**Deployment targets:**
+- **Frontend**: GitHub Pages at https://lapstuen.github.io/badminton-signup/
+- **Backend**: Firebase Cloud Functions (requires deploy command)
 
 ## Firebase Configuration
 
@@ -105,9 +124,11 @@ let state = {
     sessionDay: string,      // Day of week with translations
     sessionTime: string,     // Session time range
     paymentAmount: 150,      // Payment amount in THB
+    published: true,         // Session visibility (false = draft mode)
     isAdmin: false,          // Admin panel access
     authorizedUsers: [],     // List of authorized users
-    loggedInUser: null       // Current logged-in user
+    loggedInUser: null,      // Current logged-in user
+    transactions: []         // Transaction history
 };
 ```
 
@@ -144,12 +165,18 @@ usersRef.onSnapshot((snapshot) => {
 - `markAsPaid()` - Self-service payment marking
 
 **Admin Actions** (requires password: `admin123`):
-- `clearSession()` - Starts new session (deletes all players)
-- `changeSessionDetails()` - Updates day/time/regular players
+- `clearSession()` - Starts new session (unpublished draft mode)
+- `changeSessionDetails()` - Updates day/time details
+- `manageRegularPlayers()` - Manage regular players by day (clickable UI)
+- `manageTodaysPlayers()` - Add/remove players for current session
+- `publishSession()` - Publish session and deduct wallet for unpaid players
+- `shareSessionToLine()` - Share session announcement to Line group
 - `changePaymentAmount()` - Updates payment amount
 - `changeMaxPlayers()` - Changes max player limit
 - `manageAuthorizedUsers()` - Add/remove/edit authorized users
-- `togglePayment()` - Mark players as paid/unpaid
+- `manageWallets()` - Top-up/adjust user wallet balances
+- `viewTransactions()` - View transaction history
+- `refundWaitingList()` - Refund all waiting list players
 - `exportList()` - Download player list as text file
 
 ### User Flow
@@ -349,11 +376,84 @@ For complete Firebase setup instructions, see `FIREBASE_SETUP.md`. Key steps:
 4. Register web app and copy config to `firebase-config.js`
 5. Test with browser console
 
+## Line Notifications (Firebase Cloud Functions)
+
+The app includes Line notification features via Firebase Cloud Functions:
+
+### Functions
+
+1. **sendSessionAnnouncement** - Shares published session to Line group
+   - Called when admin clicks "📤 Share to Line"
+   - Sends session details, available spots, waiting list count
+   - Location: `functions/index.js:17-102`
+
+2. **sendCancellationNotification** - Automatic notification when user cancels
+   - **Smart logic**: Only mentions "SLOT AVAILABLE" if no waiting list
+   - If waiting list exists, sends simple cancellation notice
+   - Location: `functions/index.js:104-187`
+
+### Configuration
+
+Line credentials are stored using **legacy Firebase config**:
+```bash
+firebase functions:config:set line.token="YOUR_LINE_CHANNEL_ACCESS_TOKEN"
+firebase functions:config:set line.groupid="YOUR_LINE_GROUP_ID"
+```
+
+Access in code:
+```javascript
+const accessToken = functions.config().line.token;
+const groupId = functions.config().line.groupid;
+```
+
+### Deployment
+
+```bash
+# Deploy Cloud Functions
+firebase deploy --only functions
+
+# View logs
+firebase functions:log
+```
+
+**Important**: Firebase Cloud Functions require Blaze plan (pay-as-you-go), but estimated usage (~120 notifications/month) is within free tier.
+
+For complete setup guide, see `LINE_NOTIFICATIONS_SETUP.md`.
+
+## Key Features
+
+### 1. Wallet System
+- Each user has a balance (in THB)
+- Auto-deduct on registration, auto-refund on cancellation
+- Admin can top-up balances via "Manage Wallets"
+- Transaction history tracking
+- Location: `app.js:1820-2050`
+
+### 2. Draft/Publish System
+- New sessions start in draft mode (unpublished)
+- Admin can setup session without users registering
+- "Publish Session" makes session visible and deducts wallet for unpaid players
+- Visual draft banner for admin/moderator
+- Location: `app.js:982-1063`
+
+### 3. Regular Players Management
+- Assign regular players per day of week (1-7)
+- Clickable UI for easy selection
+- Auto-loads regular players when admin opens "Manage Today's Players"
+- Location: `app.js:1142-1286`
+
+### 4. Today's Players Management
+- Add/remove players for current session
+- Two options: THIS session only, or ALL sessions (make regular player)
+- Auto-loads regular players on first open
+- Location: `app.js:1515-1816`
+
 ## Related Files
 
-- **app-backup.js** - Previous version backup
+- **app-backup-*.js** - Timestamped backups before major changes
+- **index-backup-*.html** - HTML backups
 - **app-firebase.js** - Migration version during Firebase implementation
 - **debug.html** - Debug/testing page
-- **export-data.html** - Data export utility
-- **qr-generator.html** - QR code generator utility
-- **firebase-test.html** - Firebase connection testing page
+- **diagnose.html** - Diagnostic utilities
+- **test-firebase.html** - Firebase connection testing
+- **migrate-friday-data.js** - Data migration script
