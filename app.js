@@ -1322,35 +1322,45 @@ async function removeAuthorizedUser(userId) {
 // WALLET MANAGEMENT
 // ============================================
 
-async function manageWallets() {
-    // Load current users with balances
-    let userList = 'User Wallets / ยอดเงินผู้ใช้:\n';
-    userList += '═'.repeat(50) + '\n\n';
+function manageWallets() {
+    const modal = document.getElementById('userSelectionModal');
+    const list = document.getElementById('userSelectionList');
 
-    state.authorizedUsers
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach((user, index) => {
-            const balance = user.balance || 0;
-            userList += `${index + 1}. ${user.name}: ${balance} THB\n`;
-        });
+    // Sort users alphabetically
+    const sortedUsers = state.authorizedUsers
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-    userList += '\n' + '─'.repeat(50) + '\n';
-    userList += 'Enter user number to adjust balance, or Cancel:';
+    // Build user list with clickable items
+    list.innerHTML = '';
 
-    const choice = prompt(userList);
+    sortedUsers.forEach(user => {
+        const balance = user.balance || 0;
+        const balanceColor = balance < state.paymentAmount ? '#ef4444' : balance < state.paymentAmount * 3 ? '#f59e0b' : '#10b981';
 
-    if (!choice || isNaN(choice)) return;
+        const item = document.createElement('div');
+        item.className = 'user-selection-item';
+        item.onclick = () => {
+            closeUserSelection();
+            showBalanceAdjustModal(user);
+        };
 
-    const userIndex = parseInt(choice) - 1;
-    const user = state.authorizedUsers.sort((a, b) => a.name.localeCompare(b.name))[userIndex];
+        item.innerHTML = `
+            <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 3px;">${user.name}</div>
+                <div style="color: ${balanceColor}; font-size: 14px;">Balance: ${balance} THB</div>
+            </div>
+            <div style="font-size: 20px; color: #9ca3af;">›</div>
+        `;
 
-    if (!user) {
-        alert('Invalid selection / เลือกไม่ถูกต้อง');
-        return;
-    }
+        list.appendChild(item);
+    });
 
-    // Show custom modal for balance adjustment
-    showBalanceAdjustModal(user);
+    modal.style.display = 'flex';
+}
+
+function closeUserSelection() {
+    document.getElementById('userSelectionModal').style.display = 'none';
 }
 
 async function viewTransactions() {

@@ -731,3 +731,27 @@ input:focus {
     background: #3730a3;
     transform: scale(0.98);
 }
+
+/* User Selection Modal */
+.user-selection-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    margin-bottom: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-selection-item:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+    transform: translateX(5px);
+}
+
+.user-selection-item:active {
+    transform: translateX(5px) scale(0.98);
+}

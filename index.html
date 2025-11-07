@@ -145,6 +145,20 @@
         </div>
     </div>
 
+    <!-- User Selection Modal for Wallet Management -->
+    <div class="modal" id="userSelectionModal" style="display: none;" onclick="closeUserSelection()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Select User / เลือกผู้ใช้</h2>
+                <button class="close-btn" onclick="closeUserSelection()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">Select a user to adjust wallet balance / เลือกผู้ใช้เพื่อปรับยอดเงิน</p>
+                <div id="userSelectionList" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Balance Adjustment Modal -->
     <div class="modal" id="balanceAdjustModal" style="display: none;" onclick="closeBalanceAdjust()">
         <div class="modal-content" onclick="event.stopPropagation()">
