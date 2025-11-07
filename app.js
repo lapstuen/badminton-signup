@@ -367,8 +367,64 @@ async function handleSignup(e) {
 // LINE NOTIFICATION
 // ============================================
 
+// ============================================
+// LINE NOTIFICATIONS
+// ============================================
+
+/**
+ * Share published session to Line group
+ */
+async function shareSessionToLine() {
+    try {
+        // Check if session is published
+        if (!state.published) {
+            alert('⚠️ Session is not published yet!\n\nPlease publish the session first.\n\nกรุณาเผยแพร่เซสชันก่อน');
+            return;
+        }
+
+        // Count active players and waiting list
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+        const availableSpots = state.maxPlayers - activePlayers.length;
+
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
+
+        // Prepare notification data
+        const notificationData = {
+            sessionDay: state.sessionDay,
+            sessionDate: state.sessionDate,
+            sessionTime: state.sessionTime,
+            currentPlayers: activePlayers.length,
+            maxPlayers: state.maxPlayers,
+            availableSpots: availableSpots,
+            waitingListCount: waitingList.length,
+            paymentAmount: state.paymentAmount,
+            appUrl: window.location.href
+        };
+
+        console.log('📤 Sharing session to Line...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Session shared to Line:', result.data);
+        alert('✅ Session shared to Line!\n\nเผยแพร่ไปยัง Line แล้ว!');
+    } catch (error) {
+        console.error('❌ Error sharing to Line:', error);
+        alert(`❌ Failed to share to Line:\n\n${error.message}\n\nกรุณาลองใหม่อีกครั้ง`);
+    }
+}
+
+/**
+ * Send cancellation notification to Line
+ * Smart logic: only mention available spot if no waiting list
+ */
 async function sendLineCancellationNotification(playerName) {
     try {
+        // Check if there's a waiting list
+        const hasWaitingList = state.players.length > state.maxPlayers;
+
         // Get Cloud Function reference
         const sendNotification = functions.httpsCallable('sendCancellationNotification');
 
@@ -377,13 +433,14 @@ async function sendLineCancellationNotification(playerName) {
             playerName: playerName,
             currentPlayers: state.players.length,
             maxPlayers: state.maxPlayers,
+            hasWaitingList: hasWaitingList,
             sessionDate: state.sessionDate,
             sessionDay: state.sessionDay,
             sessionTime: state.sessionTime,
             appUrl: window.location.href
         };
 
-        console.log('📤 Sending Line notification...', notificationData);
+        console.log('📤 Sending Line cancellation notification...', notificationData);
 
         // Call Cloud Function
         const result = await sendNotification(notificationData);
@@ -434,8 +491,7 @@ async function cancelRegistration() {
         await playersRef().doc(currentPlayer.id).delete();
 
         // Send Line notification (async, don't wait)
-        // TESTING MODE: Temporarily disabled to prevent spam during testing
-        // sendLineCancellationNotification(userName);
+        sendLineCancellationNotification(userName);
 
         // Clear localStorage
         localStorage.removeItem('userName');
