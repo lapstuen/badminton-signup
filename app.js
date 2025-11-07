@@ -521,8 +521,9 @@ async function checkLoggedInUser() {
 
                     // Check if stored authToken matches current password in database
                     if (userData.password === state.loggedInUser.authToken) {
-                        // Valid session - update balance
+                        // Valid session - update balance and role
                         state.loggedInUser.balance = userData.balance || 0;
+                        state.loggedInUser.role = userData.role || 'user';
                         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
                         console.log('✅ Auto-login successful for', state.loggedInUser.name);
                     } else {
@@ -607,7 +608,8 @@ async function handleLogin(e) {
             name: authorizedUser.name,
             balance: authorizedUser.balance || 0,
             userId: authorizedUser.id,
-            authToken: permanentPassword // Store UUID for auto-login
+            authToken: permanentPassword, // Store UUID for auto-login
+            role: authorizedUser.role || 'user' // user, moderator, or admin
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
@@ -827,6 +829,15 @@ function updateUI() {
         }
     });
 
+    // Show/hide admin button based on user role
+    const adminBtn = document.querySelector('.admin-btn');
+    if (adminBtn && state.loggedInUser) {
+        const userRole = state.loggedInUser.role || 'user';
+        adminBtn.style.display = (userRole === 'moderator' || userRole === 'admin') ? 'block' : 'none';
+    } else if (adminBtn) {
+        adminBtn.style.display = 'none';
+    }
+
     // Update admin payment list
     if (state.isAdmin) {
         updatePaymentList();
@@ -839,16 +850,60 @@ function updateUI() {
 
 function toggleAdmin() {
     const panel = document.getElementById('adminPanel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const newDisplay = panel.style.display === 'none' ? 'block' : 'none';
+    panel.style.display = newDisplay;
+
+    // If opening panel and user is moderator, show moderator actions directly
+    if (newDisplay === 'block' && state.loggedInUser && state.loggedInUser.role === 'moderator') {
+        document.getElementById('adminPassword').style.display = 'none';
+        document.querySelector('.admin-controls button[onclick="loginAdmin()"]').style.display = 'none';
+        showModeratorActions();
+    }
+}
+
+function showModeratorActions() {
+    const actionsDiv = document.getElementById('adminActions');
+    actionsDiv.style.display = 'block';
+
+    // Hide admin-only buttons for moderators
+    const adminOnlyButtons = [
+        'clearSession()',
+        'changeSessionDetails()',
+        'changePaymentAmount()',
+        'changeMaxPlayers()',
+        'manageRegularPlayers()',
+        'manageAuthorizedUsers()',
+        'initializeAllBalances()'
+    ];
+
+    const allButtons = actionsDiv.querySelectorAll('button');
+    allButtons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
+        if (onclick) {
+            const isAdminOnly = adminOnlyButtons.some(func => onclick.includes(func));
+            button.style.display = isAdminOnly ? 'none' : 'block';
+        }
+    });
+
+    updatePaymentList();
 }
 
 function loginAdmin() {
     const password = document.getElementById('adminPassword').value;
-    if (password === 'SikkertPassord1955') { // TESTING MODE - Change to secure password for production!
+    if (password === 'SikkertPassord1955') {
         state.isAdmin = true;
         document.getElementById('adminPassword').style.display = 'none';
         event.target.style.display = 'none';
-        document.getElementById('adminActions').style.display = 'block';
+
+        const actionsDiv = document.getElementById('adminActions');
+        actionsDiv.style.display = 'block';
+
+        // Show ALL buttons for admin (reset any moderator hiding)
+        const allButtons = actionsDiv.querySelectorAll('button');
+        allButtons.forEach(button => {
+            button.style.display = 'block';
+        });
+
         updatePaymentList();
     } else {
         alert('Wrong password / รหัสผ่านไม่ถูกต้อง');
