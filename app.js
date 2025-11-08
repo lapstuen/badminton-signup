@@ -1154,6 +1154,7 @@ async function clearSession() {
             state.sessionDate = new Date().toLocaleDateString('en-GB');
             state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
             state.sessionTime = '00:00 - 00:00'; // Blank time
+            state.maxPlayers = 0; // Show 0 / 0
             state.published = false; // Set to draft mode
             await saveSessionData();
 
@@ -1388,7 +1389,7 @@ async function getRegularPlayersForDay(dayNumber) {
 
 async function changePaymentAmount() {
     const newAmount = prompt('New payment amount in THB / ราคาใหม่ (บาท):', state.paymentAmount);
-    if (newAmount && !isNaN(newAmount) && newAmount > 0) {
+    if (newAmount !== null && !isNaN(newAmount) && newAmount >= 0) {
         state.paymentAmount = parseInt(newAmount);
         await saveSessionData();
         updateUI();
@@ -1406,7 +1407,7 @@ async function changeMaxPlayers() {
         currentMax
     );
 
-    if (!newMax || isNaN(newMax) || newMax <= 0) {
+    if (newMax === null || newMax === '' || isNaN(newMax) || newMax < 0) {
         return; // User cancelled or invalid input
     }
 
