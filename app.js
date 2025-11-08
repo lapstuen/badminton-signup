@@ -228,6 +228,31 @@ async function updateUserBalance(userId, userName, amountChange, description, si
 // ============================================
 
 function setupRealtimeListeners() {
+    // Listen to SESSION changes (day, time, maxPlayers, etc.)
+    currentSessionRef().onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            const oldDay = state.sessionDay;
+
+            state.maxPlayers = data.maxPlayers || 12;
+            state.sessionDate = data.date || state.sessionDate;
+            state.sessionDay = data.day || state.sessionDay;
+            state.sessionTime = data.time || state.sessionTime;
+            state.paymentAmount = data.paymentAmount || 150;
+            state.published = data.published !== undefined ? data.published : true;
+
+            // Log if session day changed (to detect unauthorized changes)
+            if (oldDay && oldDay !== state.sessionDay) {
+                console.warn(`⚠️ SESSION DAY CHANGED: ${oldDay} → ${state.sessionDay}`);
+            }
+
+            console.log(`📅 Session updated: ${state.sessionDay} at ${state.sessionTime}`);
+            updateUI();
+        }
+    }, (error) => {
+        console.error('Error listening to session:', error);
+    });
+
     // Listen to players changes
     playersRef().onSnapshot((snapshot) => {
         state.players = [];
