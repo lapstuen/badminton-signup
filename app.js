@@ -1019,11 +1019,13 @@ function updateAdminButtonVisibility() {
         const onclick = button.getAttribute('onclick');
 
         if (state.published) {
-            // Session is published - hide dangerous buttons
-            if (onclick === 'changePaymentAmount()') {
+            // Session is published - hide ONLY Edit Session (dangerous)
+            if (onclick === 'changeSessionDetails()') {
                 button.style.display = 'none';
-            } else if (onclick === 'changeSessionDetails()') {
-                button.style.display = 'none';
+            } else if (onclick === 'changePaymentAmount()') {
+                // Keep payment amount button visible (useful for corrections)
+                button.style.display = 'block';
+                button.style.background = '#f59e0b'; // Orange warning color
             } else if (onclick === 'clearSession()') {
                 // Make New Session button RED and more prominent
                 button.style.background = '#ef4444'; // Red
