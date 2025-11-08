@@ -12,8 +12,8 @@ let state = {
     players: [],
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
-    sessionDay: 'Monday / วันจันทร์',
-    sessionTime: '10:00 - 12:00',
+    sessionDay: 'Not Set / ไม่ได้กำหนด', // Default to day 8 (blank)
+    sessionTime: '00:00 - 00:00', // Default blank time
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
     isAdmin: false,
@@ -189,6 +189,12 @@ async function loadAuthorizedUsers() {
 
 // Create transaction record
 async function createTransaction(userId, userName, amount, description) {
+    // Skip transaction logging if amount is 0
+    if (amount === 0) {
+        console.log(`⏭️ Skipped transaction (0 THB): ${userName} - ${description}`);
+        return;
+    }
+
     try {
         await transactionsRef.add({
             userId: userId,
@@ -1144,8 +1150,10 @@ async function clearSession() {
             });
             await batch.commit();
 
-            // Update session date and UNPUBLISH
+            // Update session date and UNPUBLISH - Set to day 8 (Not Set)
             state.sessionDate = new Date().toLocaleDateString('en-GB');
+            state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
+            state.sessionTime = '00:00 - 00:00'; // Blank time
             state.published = false; // Set to draft mode
             await saveSessionData();
 
@@ -1332,17 +1340,21 @@ async function changeSessionDetails() {
         'Thursday / วันพฤหัสบดี',
         'Friday / วันศุกร์',
         'Saturday / วันเสาร์',
-        'Sunday / วันอาทิตย์'
+        'Sunday / วันอาทิตย์',
+        'Not Set / ไม่ได้กำหนด' // Day 8 - blank day
     ];
 
-    const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-7):`;
+    const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-8):`;
     const dayChoice = prompt(dayPrompt);
 
-    if (dayChoice && dayChoice >= 1 && dayChoice <= 7) {
+    if (dayChoice && dayChoice >= 1 && dayChoice <= 8) {
         state.sessionDay = days[dayChoice - 1];
 
+        // If day 8 (Not Set), automatically set time to 00:00 - 00:00
+        const defaultTime = (dayChoice == 8) ? '00:00 - 00:00' : state.sessionTime;
+
         const timePrompt = 'Enter time / ใส่เวลา (e.g., 10:00 - 12:00):';
-        const time = prompt(timePrompt, state.sessionTime);
+        const time = prompt(timePrompt, defaultTime);
 
         if (time) {
             state.sessionTime = time;
