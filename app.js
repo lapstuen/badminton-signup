@@ -8,6 +8,7 @@ let currentSessionId = 'current';
 
 // App state (synced with Firebase)
 let state = {
+    isSessionLoaded: false, // CRITICAL: Prevents saving before Firebase data is loaded
     players: [],
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
@@ -109,7 +110,11 @@ async function loadSessionData() {
             state.sessionTime = data.time || state.sessionTime;
             state.paymentAmount = data.paymentAmount || 150;
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
-            console.log('📥 Session data loaded from Firestore');
+            console.log('📥 Session data loaded from Firestore:', {
+                day: state.sessionDay,
+                time: state.sessionTime,
+                published: state.published
+            });
         } else {
             // Create new session
             await currentSessionRef().set({
@@ -123,6 +128,10 @@ async function loadSessionData() {
             });
             console.log('📝 New session created');
         }
+
+        // CRITICAL: Mark session as loaded to allow saving
+        state.isSessionLoaded = true;
+        console.log('✅ Session data loaded - saving is now allowed');
     } catch (error) {
         console.error('Error loading session:', error);
     }
@@ -130,6 +139,18 @@ async function loadSessionData() {
 
 // Save session data to Firestore
 async function saveSessionData() {
+    // CRITICAL SAFETY CHECK: Prevent saving before Firebase data is loaded
+    if (!state.isSessionLoaded) {
+        console.error('🚨 BLOCKED: Attempted to save session before Firebase data loaded!');
+        console.error('   This prevents hardcoded defaults from overwriting real data.');
+        console.error('   Current state:', {
+            day: state.sessionDay,
+            time: state.sessionTime,
+            published: state.published
+        });
+        return; // STOP - do not save
+    }
+
     try {
         await currentSessionRef().update({
             date: state.sessionDate,
@@ -139,7 +160,11 @@ async function saveSessionData() {
             paymentAmount: state.paymentAmount,
             published: state.published
         });
-        console.log('💾 Session data saved');
+        console.log('💾 Session data saved:', {
+            day: state.sessionDay,
+            time: state.sessionTime,
+            published: state.published
+        });
     } catch (error) {
         console.error('Error saving session:', error);
     }
