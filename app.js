@@ -104,11 +104,11 @@ async function loadSessionData() {
 
         if (doc.exists) {
             const data = doc.data();
-            state.maxPlayers = data.maxPlayers || 12;
+            state.maxPlayers = data.maxPlayers !== undefined ? data.maxPlayers : 12;
             state.sessionDate = data.date || state.sessionDate;
             state.sessionDay = data.day || state.sessionDay;
             state.sessionTime = data.time || state.sessionTime;
-            state.paymentAmount = data.paymentAmount || 150;
+            state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             console.log('📥 Session data loaded from Firestore:', {
                 day: state.sessionDay,
@@ -265,11 +265,11 @@ function setupRealtimeListeners() {
             const data = doc.data();
             const oldDay = state.sessionDay;
 
-            state.maxPlayers = data.maxPlayers || 12;
+            state.maxPlayers = data.maxPlayers !== undefined ? data.maxPlayers : 12;
             state.sessionDate = data.date || state.sessionDate;
             state.sessionDay = data.day || state.sessionDay;
             state.sessionTime = data.time || state.sessionTime;
-            state.paymentAmount = data.paymentAmount || 150;
+            state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
             state.published = data.published !== undefined ? data.published : true;
 
             // Log if session day changed (to detect unauthorized changes)
