@@ -991,11 +991,17 @@ function toggleAdmin() {
     const newDisplay = panel.style.display === 'none' ? 'block' : 'none';
     panel.style.display = newDisplay;
 
-    // If opening panel and user is moderator, show moderator actions directly
-    if (newDisplay === 'block' && state.loggedInUser && state.loggedInUser.role === 'moderator') {
-        document.getElementById('adminPassword').style.display = 'none';
-        document.querySelector('.admin-controls button[onclick="loginAdmin()"]').style.display = 'none';
-        showModeratorActions();
+    // If opening panel, update button visibility
+    if (newDisplay === 'block') {
+        // Update admin button visibility based on published status
+        updateAdminButtonVisibility();
+
+        // If user is moderator, show moderator actions directly
+        if (state.loggedInUser && state.loggedInUser.role === 'moderator') {
+            document.getElementById('adminPassword').style.display = 'none';
+            document.querySelector('.admin-controls button[onclick="loginAdmin()"]').style.display = 'none';
+            showModeratorActions();
+        }
     }
 }
 
@@ -1023,6 +1029,9 @@ function showModeratorActions() {
         }
     });
 
+    // Update button visibility based on published status
+    updateAdminButtonVisibility();
+
     updatePaymentList();
 }
 
@@ -1041,6 +1050,9 @@ function loginAdmin() {
         allButtons.forEach(button => {
             button.style.display = 'block';
         });
+
+        // Update button visibility based on published status
+        updateAdminButtonVisibility();
 
         updatePaymentList();
     } else {
