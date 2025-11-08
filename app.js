@@ -937,11 +937,53 @@ function updateUI() {
     if (state.isAdmin) {
         updatePaymentList();
     }
+
+    // Hide/show admin buttons based on published status
+    updateAdminButtonVisibility();
 }
 
 // ============================================
 // ADMIN FUNCTIONS
 // ============================================
+
+/**
+ * Update visibility/styling of admin buttons based on published status
+ * Prevents dangerous actions when session is published
+ */
+function updateAdminButtonVisibility() {
+    const adminActions = document.getElementById('adminActions');
+    if (!adminActions || adminActions.style.display === 'none') {
+        return; // Admin panel not open
+    }
+
+    // Find all admin buttons
+    const buttons = adminActions.querySelectorAll('button');
+
+    buttons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
+
+        if (state.published) {
+            // Session is published - hide dangerous buttons
+            if (onclick === 'changePaymentAmount()') {
+                button.style.display = 'none';
+            } else if (onclick === 'changeSessionDetails()') {
+                button.style.display = 'none';
+            } else if (onclick === 'clearSession()') {
+                // Make New Session button RED and more prominent
+                button.style.background = '#ef4444'; // Red
+                button.style.fontWeight = 'bold';
+            }
+        } else {
+            // Session is draft - show all buttons normally
+            if (onclick === 'changePaymentAmount()' || onclick === 'changeSessionDetails()') {
+                button.style.display = 'block';
+            } else if (onclick === 'clearSession()') {
+                button.style.background = '#f3f4f6'; // Normal gray
+                button.style.fontWeight = 'normal';
+            }
+        }
+    });
+}
 
 function toggleAdmin() {
     const panel = document.getElementById('adminPanel');
@@ -1006,7 +1048,30 @@ function loginAdmin() {
 }
 
 async function clearSession() {
-    if (confirm('Start new session? This will delete all registrations and unpublish the session.\n\nเริ่มใหม่? จะลบการลงทะเบียนทั้งหมดและซ่อนเซสชัน')) {
+    // FIRST confirmation
+    const firstConfirm = confirm(
+        '⚠️ Are you sure you want to start a NEW session?\n\n' +
+        'This will DELETE all current players!\n\n' +
+        '⚠️ แน่ใจหรือว่าต้องการเริ่มเซสชันใหม่?\n' +
+        'จะลบผู้เล่นทั้งหมด!'
+    );
+
+    if (!firstConfirm) {
+        return; // User cancelled
+    }
+
+    // SECOND confirmation (extra safety)
+    const secondConfirm = confirm(
+        '🚨 FINAL WARNING!\n\n' +
+        'This action CANNOT be undone!\n' +
+        'All ' + state.players.length + ' players will be DELETED.\n\n' +
+        'Delete all players and start fresh?\n\n' +
+        '🚨 คำเตือนสุดท้าย!\n' +
+        'ไม่สามารถย้อนกลับได้!\n' +
+        'ลบผู้เล่นทั้งหมด ' + state.players.length + ' คนและเริ่มใหม่?'
+    );
+
+    if (secondConfirm) {
         try {
             // Delete all players from current session
             const snapshot = await playersRef().get();
@@ -1257,11 +1322,53 @@ async function changePaymentAmount() {
 }
 
 async function changeMaxPlayers() {
-    const newMax = prompt('New maximum players / จำนวนผู้เล่นสูงสุด:', state.maxPlayers);
-    if (newMax && !isNaN(newMax) && newMax > 0) {
-        state.maxPlayers = parseInt(newMax);
-        await saveSessionData();
-        updateUI();
+    const currentMax = state.maxPlayers;
+    const currentPlayers = state.players.length;
+
+    const newMax = prompt(
+        `Current max: ${currentMax} (${currentPlayers} players registered)\n\n` +
+        'New maximum players / จำนวนผู้เล่นสูงสุด:',
+        currentMax
+    );
+
+    if (!newMax || isNaN(newMax) || newMax <= 0) {
+        return; // User cancelled or invalid input
+    }
+
+    const newMaxInt = parseInt(newMax);
+
+    // Check if reducing max players
+    if (newMaxInt < currentMax && currentPlayers > newMaxInt) {
+        // Some players will be moved to waiting list
+        const affectedPlayers = currentPlayers - newMaxInt;
+
+        const confirmReduce = confirm(
+            `⚠️ WARNING!\n\n` +
+            `Reducing from ${currentMax} to ${newMaxInt} will move ${affectedPlayers} player(s) to waiting list.\n\n` +
+            `Players #${newMaxInt + 1} to #${currentPlayers} will be affected.\n` +
+            `They will NOT be refunded.\n\n` +
+            `Continue?\n\n` +
+            `⚠️ คำเตือน!\n` +
+            `ลดจาก ${currentMax} เป็น ${newMaxInt} จะย้าย ${affectedPlayers} คนไปรายชื่อสำรอง\n` +
+            `ผู้เล่น #${newMaxInt + 1} ถึง #${currentPlayers} จะได้รับผลกระทบ\n` +
+            `จะไม่มีการคืนเงิน\n\n` +
+            `ดำเนินการต่อ?`
+        );
+
+        if (!confirmReduce) {
+            return; // User cancelled
+        }
+    }
+
+    // Update max players
+    state.maxPlayers = newMaxInt;
+    await saveSessionData();
+    updateUI();
+
+    if (newMaxInt > currentMax) {
+        alert(`✅ Max players increased to ${newMaxInt}\n${newMaxInt - currentMax} more spots available!`);
+    } else {
+        alert(`✅ Max players reduced to ${newMaxInt}`);
     }
 }
 

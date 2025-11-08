@@ -186,14 +186,51 @@ usersRef.onSnapshot((snapshot) => {
 3. **Registered User**: Can mark payment and cancel registration
 4. **Admin**: Access admin panel to manage sessions and users
 
-### localStorage Usage
+### localStorage and Multi-Device Usage
 
-The app persists two pieces of data locally:
+**Important: localStorage is per browser/device**
+
+The app uses localStorage for auto-login, which is stored **locally on each device**:
 
 ```javascript
-localStorage.setItem('userName', name);              // Deprecated, kept for compatibility
-localStorage.setItem('loggedInUser', JSON.stringify({name}));  // Current login
+localStorage.setItem('loggedInUser', JSON.stringify({
+    name: userName,
+    userId: userId,
+    role: role,
+    authToken: password,  // Stored for auto-login validation
+    balance: balance
+}));
 ```
+
+**Multi-Device Behavior:**
+- Each device (Mac Safari, iPhone Safari, iPad Safari, etc.) has separate localStorage
+- Users must login **once per device** with username + password
+- After first login, auto-login works on that device indefinitely
+- Auto-login persists until:
+  - User's password is reset by admin
+  - Browser data/localStorage is cleared
+  - User explicitly logs out
+
+**Password Management:**
+- **Auto-generated passwords (UUID)**: Long random strings, generated when:
+  - Admin creates new user (without specifying password)
+  - Admin resets password (leaves password field empty)
+- **Custom passwords**: Admin can set fixed passwords (e.g., "geir2025", "12345678")
+  - Recommended for users with multiple devices
+  - Same password works across all devices
+  - Users only need to remember one password for all logins
+
+**Multi-Device Setup (Recommended):**
+1. Admin sets a memorable password for user (e.g., 8-digit number or phrase)
+2. User logs in on first device (Mac) → auto-login enabled
+3. User logs in on second device (iPhone) → auto-login enabled
+4. User logs in on third device (iPad) → auto-login enabled
+5. User stays logged in on all devices unless password is reset
+
+**Troubleshooting:**
+- If user reports "always logged out": Ask if they use multiple devices
+- If yes: They need to login once per device (expected behavior)
+- If no (same device): Check if browser is clearing localStorage or user is in private browsing mode
 
 ## Security Notes
 
