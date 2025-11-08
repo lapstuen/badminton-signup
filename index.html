@@ -12,7 +12,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-08 13:00 (Admin Safety + Red New Session)</p>
+            <p class="version-header">v2025-11-08 13:15 (Orange Warning Buttons)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -81,7 +81,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-08 13:00 (Admin Safety + Red New Session)</p>
+                <p class="version">v2025-11-08 13:15 (Orange Warning Buttons)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -109,12 +109,12 @@
                 <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
                 <div id="adminActions" style="display: none;">
                     <button onclick="clearSession()">New Session / เริ่มใหม่</button>
-                    <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
+                    <button onclick="changeSessionDetails()" style="background: #f59e0b;">Edit Session / แก้ไขรายละเอียด</button>
                     <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
                     <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
                     <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
                     <button onclick="shareSessionToLine()" style="background: #00C300; color: white; font-weight: bold;">📤 Share to Line / แชร์ไปยัง Line</button>
-                    <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
+                    <button onclick="changePaymentAmount()" style="background: #f59e0b;">Change Payment Amount / เปลี่ยนราคา</button>
                     <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
                     <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
                     <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>

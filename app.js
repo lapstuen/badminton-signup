@@ -974,9 +974,10 @@ function updateAdminButtonVisibility() {
                 button.style.fontWeight = 'bold';
             }
         } else {
-            // Session is draft - show all buttons normally
+            // Session is draft - show all buttons normally with orange warning color
             if (onclick === 'changePaymentAmount()' || onclick === 'changeSessionDetails()') {
                 button.style.display = 'block';
+                button.style.background = '#f59e0b'; // Orange warning color
             } else if (onclick === 'clearSession()') {
                 button.style.background = '#f3f4f6'; // Normal gray
                 button.style.fontWeight = 'normal';
