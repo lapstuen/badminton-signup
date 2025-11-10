@@ -1,5 +1,44 @@
 # Changelog
 
+## v2025-11-11 14:00 - Maintenance Mode
+
+### New Features
+
+#### 1. Maintenance Mode for Safe Testing 🔧
+
+Admin can now enable maintenance mode to safely test changes without interfering with real user registrations.
+
+**Features:**
+- Toggle maintenance mode on/off from admin panel
+- Blocks all user registration and cancellation actions
+- Shows maintenance banner to all users
+- Admin and moderators can still use all functions
+- Realtime sync across all users
+
+**Location:** Admin Panel → Top button "🔧 Enable Maintenance Mode"
+
+**Button States:**
+- **Disabled (normal):** Red button "🔧 Enable Maintenance Mode"
+- **Enabled:** Green button "✅ Disable Maintenance Mode"
+
+**User Experience:**
+- Users see red maintenance banner at top
+- Registration and cancellation buttons blocked
+- Login still works (but with warning message)
+- Admin/moderator bypass all restrictions
+
+**Use Cases:**
+- Testing new features without affecting real users
+- Debugging registration/cancellation flow
+- Safe environment for data migration
+- Preventing registrations during manual player management
+
+**Technical Implementation:**
+- Stored in Firestore: `sessions/{sessionId}/maintenanceMode`
+- Default value: `false`
+- Blocks: `handleSignup()`, `handleGuestRegistration()`, `cancelRegistration()`
+- Realtime listener updates all connected clients
+
 ## v2025-11-07 17:00 - Line Notifications
 
 ### New Features
