@@ -16,6 +16,7 @@ let state = {
     sessionTime: '00:00 - 00:00', // Default blank time
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
+    maintenanceMode: false, // Maintenance mode (blocks all user actions)
     isAdmin: false,
     authorizedUsers: [],
     loggedInUser: null, // Now includes: { name, balance, userId, role }
@@ -110,10 +111,12 @@ async function loadSessionData() {
             state.sessionTime = data.time || state.sessionTime;
             state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
+            state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false; // Default false
             console.log('📥 Session data loaded from Firestore:', {
                 day: state.sessionDay,
                 time: state.sessionTime,
-                published: state.published
+                published: state.published,
+                maintenanceMode: state.maintenanceMode
             });
         } else {
             // Create new session
@@ -124,6 +127,7 @@ async function loadSessionData() {
                 maxPlayers: state.maxPlayers,
                 paymentAmount: state.paymentAmount,
                 published: true,
+                maintenanceMode: false,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('📝 New session created');
@@ -158,12 +162,14 @@ async function saveSessionData() {
             time: state.sessionTime,
             maxPlayers: state.maxPlayers,
             paymentAmount: state.paymentAmount,
-            published: state.published
+            published: state.published,
+            maintenanceMode: state.maintenanceMode
         });
         console.log('💾 Session data saved:', {
             day: state.sessionDay,
             time: state.sessionTime,
-            published: state.published
+            published: state.published,
+            maintenanceMode: state.maintenanceMode
         });
     } catch (error) {
         console.error('Error saving session:', error);
@@ -271,13 +277,14 @@ function setupRealtimeListeners() {
             state.sessionTime = data.time || state.sessionTime;
             state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
             state.published = data.published !== undefined ? data.published : true;
+            state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false;
 
             // Log if session day changed (to detect unauthorized changes)
             if (oldDay && oldDay !== state.sessionDay) {
                 console.warn(`⚠️ SESSION DAY CHANGED: ${oldDay} → ${state.sessionDay}`);
             }
 
-            console.log(`📅 Session updated: ${state.sessionDay} at ${state.sessionTime}`);
+            console.log(`📅 Session updated: ${state.sessionDay} at ${state.sessionTime} (maintenance: ${state.maintenanceMode})`);
             updateUI();
         }
     }, (error) => {
@@ -337,6 +344,12 @@ function setupEventListeners() {
 
 async function handleSignup(e) {
     e.preventDefault();
+
+    // Check maintenance mode
+    if (state.maintenanceMode && !state.isAdmin) {
+        alert('System is under maintenance. Please wait.\nระบบกำลังปรับปรุง กรุณารอสักครู่');
+        return;
+    }
 
     // Use logged-in user's name if available, otherwise get from form
     let name;
@@ -416,6 +429,102 @@ async function handleSignup(e) {
     } catch (error) {
         console.error('Error registering player:', error);
         alert('Error registering. Please try again.');
+    }
+}
+
+// ============================================
+// GUEST REGISTRATION
+// ============================================
+
+/**
+ * Register a guest player (friend/family member)
+ * - Guest takes one player slot
+ * - Payment deducted from host's wallet
+ * - Guest name format: "HostName + GuestName"
+ * - If host cancels, all their guests are also cancelled
+ */
+async function handleGuestRegistration() {
+    // Check maintenance mode
+    if (state.maintenanceMode && !state.isAdmin) {
+        alert('System is under maintenance. Please wait.\nระบบกำลังปรับปรุง กรุณารอสักครู่');
+        return;
+    }
+
+    // Check if user is logged in
+    if (!state.loggedInUser) {
+        alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
+        return;
+    }
+
+    const hostName = state.loggedInUser.name;
+    const hostUserId = state.loggedInUser.userId;
+
+    // Prompt for guest name
+    const guestName = prompt('Enter guest name / ใส่ชื่อแขก:');
+    if (!guestName || !guestName.trim()) {
+        return; // User cancelled or empty name
+    }
+
+    const trimmedGuestName = guestName.trim();
+    const fullGuestName = `${hostName} + ${trimmedGuestName}`;
+
+    // Check if guest name already exists
+    if (state.players.find(p => p.name === fullGuestName)) {
+        alert('This guest is already registered / แขกคนนี้ลงทะเบียนแล้ว');
+        return;
+    }
+
+    // Check if there's space available
+    if (state.players.length >= state.maxPlayers) {
+        // Ask if user wants to join waiting list
+        if (!confirm(`Session is full (${state.maxPlayers}/${state.maxPlayers})\n\nJoin waiting list? / เซสชันเต็มแล้ว เข้าสู่รายการรอ?`)) {
+            return;
+        }
+    }
+
+    // Check and deduct balance from host
+    const success = await updateUserBalance(
+        hostUserId,
+        hostName,
+        -state.paymentAmount,
+        `Guest registration: ${trimmedGuestName} for ${state.sessionDay} ${state.sessionDate}`
+    );
+
+    if (!success) {
+        // Insufficient balance
+        return;
+    }
+
+    try {
+        // Add guest to Firestore
+        const guestData = {
+            name: fullGuestName,
+            paid: true, // Auto-set to paid since wallet deducted payment
+            isGuest: true, // Flag to identify guests
+            guestOf: hostUserId, // Link to host user
+            guestOfName: hostName, // Host's name for easy reference
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            position: state.players.length + 1
+        };
+
+        await playersRef().add(guestData);
+
+        alert(`✅ Guest registered: ${trimmedGuestName}\n\nแขกลงทะเบียนแล้ว: ${trimmedGuestName}\n\nPosition: ${guestData.position}\n${guestData.position <= state.maxPlayers ? 'Active player' : 'Waiting list'}`);
+
+        console.log('✅ Guest registered:', fullGuestName);
+    } catch (error) {
+        console.error('Error registering guest:', error);
+
+        // Refund the payment if registration failed
+        await updateUserBalance(
+            hostUserId,
+            hostName,
+            state.paymentAmount,
+            `Refund: Failed guest registration for ${trimmedGuestName}`,
+            true // silent
+        );
+
+        alert('Error registering guest. Payment refunded. / เกิดข้อผิดพลาด เงินถูกคืนแล้ว');
     }
 }
 
@@ -513,6 +622,12 @@ async function sendLineCancellationNotification(playerName) {
 // ============================================
 
 async function cancelRegistration() {
+    // Check maintenance mode
+    if (state.maintenanceMode && !state.isAdmin) {
+        alert('System is under maintenance. Please wait.\nระบบกำลังปรับปรุง กรุณารอสักครู่');
+        return;
+    }
+
     // Check if user is logged in
     if (!state.loggedInUser) {
         alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
@@ -522,11 +637,6 @@ async function cancelRegistration() {
     const userName = state.loggedInUser.name;
     const userId = state.loggedInUser.userId;
 
-    // Confirm cancellation
-    if (!confirm(`Cancel your registration? / ยกเลิกการลงทะเบียน?\n\nThis will remove you from the player list and refund ${state.paymentAmount} THB.`)) {
-        return;
-    }
-
     // Find the player
     const currentPlayer = state.players.find(p => p.name === userName);
     if (!currentPlayer) {
@@ -534,8 +644,31 @@ async function cancelRegistration() {
         return;
     }
 
+    // Check if user has registered guests
+    const userGuests = state.players.filter(p => p.guestOf === userId);
+    const totalRefund = state.paymentAmount * (1 + userGuests.length);
+
+    // Confirm cancellation with guest info
+    let confirmMessage = `Cancel your registration? / ยกเลิกการลงทะเบียน?\n\n`;
+    confirmMessage += `This will remove you from the player list and refund ${state.paymentAmount} THB.\n\n`;
+
+    if (userGuests.length > 0) {
+        confirmMessage += `⚠️ You have ${userGuests.length} guest(s) registered:\n`;
+        userGuests.forEach(g => {
+            const guestNameOnly = g.name.split(' + ')[1];
+            confirmMessage += `  - ${guestNameOnly}\n`;
+        });
+        confirmMessage += `\nAll guests will also be cancelled.\n`;
+        confirmMessage += `Total refund: ${totalRefund} THB\n\n`;
+        confirmMessage += `รวมเงินคืน: ${totalRefund} บาท`;
+    }
+
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+
     try {
-        // Refund the payment amount
+        // Refund the payment amount for main player
         await updateUserBalance(
             userId,
             userName,
@@ -545,6 +678,26 @@ async function cancelRegistration() {
 
         // Delete player from Firestore
         await playersRef().doc(currentPlayer.id).delete();
+
+        // Cancel and refund all guests
+        if (userGuests.length > 0) {
+            for (const guest of userGuests) {
+                const guestNameOnly = guest.name.split(' + ')[1];
+
+                // Refund guest payment
+                await updateUserBalance(
+                    userId,
+                    userName,
+                    state.paymentAmount,
+                    `Refund for cancelled guest: ${guestNameOnly}`
+                );
+
+                // Delete guest from Firestore
+                await playersRef().doc(guest.id).delete();
+
+                console.log(`✅ Guest cancelled: ${guest.name}`);
+            }
+        }
 
         // Send Line notification (async, don't wait)
         sendLineCancellationNotification(userName);
@@ -557,6 +710,9 @@ async function cancelRegistration() {
         document.getElementById('registrationForm').style.display = 'block';
 
         console.log('✅ Registration cancelled for:', userName);
+        if (userGuests.length > 0) {
+            console.log(`✅ ${userGuests.length} guest(s) also cancelled`);
+        }
     } catch (error) {
         console.error('Error cancelling registration:', error);
         alert('Error cancelling. Please try again.');
@@ -695,6 +851,11 @@ async function handleLogin(e) {
     const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
 
     if (authorizedUser) {
+        // Show maintenance warning for non-admin users
+        if (state.maintenanceMode && authorizedUser.role !== 'admin' && authorizedUser.role !== 'moderator') {
+            alert('System is under maintenance. You can login but cannot register or cancel.\nระบบกำลังปรับปรุง คุณสามารถเข้าสู่ระบบได้ แต่ไม่สามารถลงทะเบียนหรือยกเลิกได้');
+        }
+
         let permanentPassword = authorizedUser.password;
 
         // If password is short (< 5 chars), it's a temporary code - generate UUID
@@ -844,10 +1005,22 @@ function updateUI() {
                 signupButton.style.background = '#9ca3af';
                 signupButton.style.cursor = 'not-allowed';
                 signupButton.innerHTML = `⏳ Session Not Ready Yet<br>เซสชันยังไม่พร้อม`;
+
+                // Hide guest registration when unpublished
+                const guestBtnEl = document.getElementById('guestRegistrationBtn');
+                if (guestBtnEl) {
+                    guestBtnEl.style.display = 'none';
+                }
             } else {
                 // Admin/moderator: show draft banner (handled elsewhere)
                 registrationFormEl.style.display = 'none';
                 cancelBtnEl.style.display = 'none';
+
+                // Hide guest registration for admin when unpublished
+                const guestBtnEl = document.getElementById('guestRegistrationBtn');
+                if (guestBtnEl) {
+                    guestBtnEl.style.display = 'none';
+                }
             }
         } else {
             // Session published - normal flow
@@ -858,6 +1031,12 @@ function updateUI() {
                 registrationFormEl.style.display = 'none';
                 cancelBtnEl.style.display = 'block';
                 showSuccessMessage(alreadyRegistered);
+
+                // STILL show "Register Guest" button - users can register guests even after registering themselves
+                const guestBtnEl = document.getElementById('guestRegistrationBtn');
+                if (guestBtnEl) {
+                    guestBtnEl.style.display = 'block';
+                }
             } else {
                 // User not registered yet - show join button, hide cancel button
                 registrationFormEl.style.display = 'block';
@@ -885,6 +1064,12 @@ function updateUI() {
                     signupButton.style.cursor = 'pointer';
                     signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
                 }
+
+                // Show "Register Guest" button only if user is logged in and not registered
+                const guestBtnEl = document.getElementById('guestRegistrationBtn');
+                if (guestBtnEl) {
+                    guestBtnEl.style.display = 'block';
+                }
             }
         }
     } else {
@@ -893,6 +1078,12 @@ function updateUI() {
         loggedInInfoEl.style.display = 'none';
         logoutContainerEl.style.display = 'none';
         registrationFormEl.style.display = 'none';
+
+        // Hide guest registration when not logged in
+        const guestBtnEl = document.getElementById('guestRegistrationBtn');
+        if (guestBtnEl) {
+            guestBtnEl.style.display = 'none';
+        }
 
         // Reset name input and button (in case it was changed)
         const nameInput = document.getElementById('playerName');
@@ -904,6 +1095,12 @@ function updateUI() {
         if (signupButton) signupButton.innerHTML = 'Join<br>เข้าร่วม';
     }
 
+    // Show/hide maintenance banner (visible to everyone when active)
+    const maintenanceBanner = document.getElementById('maintenanceBanner');
+    if (maintenanceBanner) {
+        maintenanceBanner.style.display = state.maintenanceMode ? 'block' : 'none';
+    }
+
     // Show/hide draft banner for admin/moderator
     const draftBanner = document.getElementById('draftBanner');
     if (draftBanner && state.loggedInUser) {
@@ -912,6 +1109,18 @@ function updateUI() {
         draftBanner.style.display = (!state.published && isAdminOrModerator) ? 'block' : 'none';
     } else if (draftBanner) {
         draftBanner.style.display = 'none';
+    }
+
+    // Update maintenance mode button text in admin panel
+    const maintenanceModeBtn = document.getElementById('maintenanceModeBtn');
+    if (maintenanceModeBtn) {
+        if (state.maintenanceMode) {
+            maintenanceModeBtn.style.background = '#10b981'; // Green when active
+            maintenanceModeBtn.innerHTML = '✅ Disable Maintenance Mode / ปิดโหมดซ่อมบำรุง';
+        } else {
+            maintenanceModeBtn.style.background = '#ef4444'; // Red when inactive
+            maintenanceModeBtn.innerHTML = '🔧 Enable Maintenance Mode / เปิดโหมดซ่อมบำรุง';
+        }
     }
 
     // Update session info
@@ -950,7 +1159,14 @@ function updateUI() {
         const li = document.createElement('li');
         const playerInfo = document.createElement('div');
         playerInfo.className = 'player-info';
-        playerInfo.textContent = `${index + 1}. ${player.name}`;
+
+        // Add guest icon if this is a guest player
+        if (player.isGuest) {
+            playerInfo.textContent = `${index + 1}. ${player.name} 👤`;
+            playerInfo.title = `Guest of ${player.guestOfName} / แขกของ ${player.guestOfName}`;
+        } else {
+            playerInfo.textContent = `${index + 1}. ${player.name}`;
+        }
 
         const statusDiv = document.createElement('div');
         statusDiv.className = 'player-status';
@@ -1115,6 +1331,30 @@ function loginAdmin() {
         updatePaymentList();
     } else {
         alert('Wrong password / รหัสผ่านไม่ถูกต้อง');
+    }
+}
+
+// ============================================
+// MAINTENANCE MODE
+// ============================================
+
+async function toggleMaintenanceMode() {
+    const newMode = !state.maintenanceMode;
+    const modeText = newMode ? 'ENABLE' : 'DISABLE';
+    const modeTextThai = newMode ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+
+    if (!confirm(`${modeText} Maintenance Mode?\n${modeTextThai}โหมดซ่อมบำรุง?\n\n${newMode ? 'Users will not be able to register or cancel.\nผู้ใช้จะไม่สามารถลงทะเบียนหรือยกเลิกได้' : 'Users will be able to register and cancel normally.\nผู้ใช้จะสามารถลงทะเบียนและยกเลิกได้ตามปกติ'}`)) {
+        return;
+    }
+
+    try {
+        state.maintenanceMode = newMode;
+        await saveSessionData();
+        console.log(`🔧 Maintenance mode ${newMode ? 'enabled' : 'disabled'}`);
+        updateUI();
+    } catch (error) {
+        console.error('Error toggling maintenance mode:', error);
+        alert('Error updating maintenance mode. Please try again.');
     }
 }
 
@@ -2453,19 +2693,40 @@ function updatePaymentList() {
     const paymentList = document.getElementById('paymentList');
     paymentList.innerHTML = '';
 
-    state.players.forEach(player => {
+    state.players.forEach((player, index) => {
         const item = document.createElement('div');
         item.className = 'payment-item';
 
         const info = document.createElement('span');
-        info.textContent = player.name;
+        // Show guest icon and position number
+        if (player.isGuest) {
+            info.textContent = `${index + 1}. ${player.name} 👤`;
+            info.title = `Guest of ${player.guestOfName}`;
+        } else {
+            info.textContent = `${index + 1}. ${player.name}`;
+        }
 
-        const button = document.createElement('button');
-        button.textContent = player.paid ? 'Mark Unpaid' : 'Mark Paid ✓';
-        button.onclick = () => togglePayment(player.id);
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '5px';
+
+        const paymentButton = document.createElement('button');
+        paymentButton.textContent = player.paid ? 'Mark Unpaid' : 'Mark Paid ✓';
+        paymentButton.onclick = () => togglePayment(player.id);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = '❌';
+        deleteButton.title = 'Delete player and refund / ลบผู้เล่นและคืนเงิน';
+        deleteButton.style.background = '#ef4444';
+        deleteButton.style.padding = '5px 10px';
+        deleteButton.style.minWidth = '40px';
+        deleteButton.onclick = () => adminDeletePlayer(player.id, player.name, player.isGuest, player.guestOf);
+
+        buttonContainer.appendChild(paymentButton);
+        buttonContainer.appendChild(deleteButton);
 
         item.appendChild(info);
-        item.appendChild(button);
+        item.appendChild(buttonContainer);
         paymentList.appendChild(item);
     });
 }
@@ -2482,6 +2743,87 @@ async function togglePayment(playerId) {
             console.error('Error toggling payment:', error);
             alert('Error updating payment. Please try again.');
         }
+    }
+}
+
+/**
+ * Admin function to delete a player and refund their payment
+ * @param {string} playerId - Firestore document ID
+ * @param {string} playerName - Player's name
+ * @param {boolean} isGuest - Whether this is a guest player
+ * @param {string} guestOf - User ID of host (if guest)
+ */
+async function adminDeletePlayer(playerId, playerName, isGuest = false, guestOf = null) {
+    // Confirm deletion
+    const confirmMsg = isGuest
+        ? `Delete guest player?\n\n${playerName}\n\nThis will refund the host's payment.\n\nลบแขกและคืนเงิน?`
+        : `Delete player?\n\n${playerName}\n\nThis will refund their payment (${state.paymentAmount} THB).\n\nลบผู้เล่นและคืนเงิน?`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        // Find the player to get full details
+        const player = state.players.find(p => p.id === playerId);
+        if (!player) {
+            alert('Player not found / ไม่พบผู้เล่น');
+            return;
+        }
+
+        // Determine who to refund
+        let refundUserId;
+        let refundUserName;
+        let refundDescription;
+
+        if (isGuest && guestOf) {
+            // Guest: refund the host
+            const hostUser = state.authorizedUsers.find(u => u.id === guestOf);
+            if (hostUser) {
+                refundUserId = hostUser.id;
+                refundUserName = hostUser.name;
+                const guestNameOnly = playerName.split(' + ')[1] || playerName;
+                refundDescription = `Admin deleted guest: ${guestNameOnly} (${state.sessionDate})`;
+            } else {
+                alert('⚠️ Host user not found. Cannot refund.\n\nไม่พบเจ้าของแขก');
+                return;
+            }
+        } else {
+            // Regular player: refund themselves
+            const regularUser = state.authorizedUsers.find(u => u.name === playerName);
+            if (regularUser) {
+                refundUserId = regularUser.id;
+                refundUserName = regularUser.name;
+                refundDescription = `Admin deleted player registration (${state.sessionDate})`;
+            } else {
+                // User might not exist anymore - allow deletion without refund
+                if (!confirm(`⚠️ User "${playerName}" not found in authorized users.\n\nDelete player WITHOUT refund?\n\nลบผู้เล่นโดยไม่คืนเงิน?`)) {
+                    return;
+                }
+            }
+        }
+
+        // Refund payment if user was found
+        if (refundUserId && refundUserName) {
+            await updateUserBalance(
+                refundUserId,
+                refundUserName,
+                state.paymentAmount,
+                refundDescription,
+                true // silent - no alert
+            );
+            console.log(`💰 Refunded ${state.paymentAmount} THB to ${refundUserName}`);
+        }
+
+        // Delete player from Firestore
+        await playersRef().doc(playerId).delete();
+
+        console.log(`✅ Admin deleted player: ${playerName}`);
+        alert(`✅ Player deleted and refunded\n\nลบผู้เล่นและคืนเงินแล้ว\n\n${playerName}\nRefund: ${state.paymentAmount} THB`);
+
+    } catch (error) {
+        console.error('Error deleting player:', error);
+        alert('Error deleting player. Please try again. / เกิดข้อผิดพลาด');
     }
 }
 
