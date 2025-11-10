@@ -1613,8 +1613,18 @@ function closeRegularPlayers() {
 
 // Helper function to close all admin sections
 function closeAllAdminSections() {
-    document.getElementById('authorizedUsersSection').style.display = 'none';
-    document.getElementById('transactionsSection').style.display = 'none';
+    console.log('🔒 Closing all admin sections...');
+    const authSection = document.getElementById('authorizedUsersSection');
+    const transSection = document.getElementById('transactionsSection');
+
+    if (authSection) {
+        authSection.style.display = 'none';
+        console.log('  ✅ Closed authorizedUsersSection');
+    }
+    if (transSection) {
+        transSection.style.display = 'none';
+        console.log('  ✅ Closed transactionsSection');
+    }
 }
 
 function manageAuthorizedUsers() {

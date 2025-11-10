@@ -517,6 +517,8 @@ input:focus {
     padding: 15px;
     background: #f9fafb;
     border-radius: 8px;
+    position: relative;
+    z-index: 1;
 }
 
 .authorized-users-management h3 {
@@ -530,6 +532,8 @@ input:focus {
     padding: 15px;
     background: #f0f9ff;
     border-radius: 8px;
+    position: relative;
+    z-index: 1;
 }
 
 .transactions-section h3 {
