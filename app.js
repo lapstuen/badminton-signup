@@ -1459,6 +1459,9 @@ async function changeMaxPlayers() {
 // ============================================
 
 function manageRegularPlayers() {
+    // Close other admin sections first
+    closeAllAdminSections();
+
     const modal = document.getElementById('manageRegularPlayersModal');
     const selectionArea = document.getElementById('regularPlayersSelectionArea');
 
@@ -1608,8 +1611,19 @@ function closeRegularPlayers() {
 // AUTHORIZED USERS MANAGEMENT
 // ============================================
 
+// Helper function to close all admin sections
+function closeAllAdminSections() {
+    document.getElementById('authorizedUsersSection').style.display = 'none';
+    document.getElementById('transactionsSection').style.display = 'none';
+}
+
 function manageAuthorizedUsers() {
     const section = document.getElementById('authorizedUsersSection');
+
+    // Close other sections first
+    document.getElementById('transactionsSection').style.display = 'none';
+
+    // Toggle this section
     section.style.display = section.style.display === 'none' ? 'block' : 'none';
     if (section.style.display === 'block') {
         updateAuthorizedUsersList();
@@ -1719,6 +1733,9 @@ async function removeAuthorizedUser(userId) {
 // ============================================
 
 function manageWallets() {
+    // Close other admin sections first
+    closeAllAdminSections();
+
     const modal = document.getElementById('userSelectionModal');
     const list = document.getElementById('userSelectionList');
 
@@ -1767,6 +1784,9 @@ function closeUserSelection() {
 let hasAutoLoadedRegularPlayers = false;
 
 async function manageTodaysPlayers(skipAutoLoad = false) {
+    // Close other admin sections first
+    closeAllAdminSections();
+
     const modal = document.getElementById('manageTodaysPlayersModal');
     const list = document.getElementById('managedPlayersSelectionList');
     const titleEl = document.getElementById('manageTodaysPlayersTitle');
@@ -2061,6 +2081,10 @@ function closeManagedPlayers() {
 
 async function viewTransactions() {
     const section = document.getElementById('transactionsSection');
+
+    // Close other sections first
+    document.getElementById('authorizedUsersSection').style.display = 'none';
+
     if (section.style.display === 'none' || !section.style.display) {
         section.style.display = 'block';
         await loadTransactions();
