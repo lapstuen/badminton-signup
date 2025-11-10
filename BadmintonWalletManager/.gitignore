@@ -1,0 +1,17 @@
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+*.xcuserstate
+*.xcuserdatad/
+
+# Firebase
+GoogleService-Info.plist
+
+# SPM
+.swiftpm/
+.build/
+
+# macOS
+.DS_Store
