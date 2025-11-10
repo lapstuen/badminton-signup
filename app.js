@@ -440,7 +440,7 @@ async function handleSignup(e) {
  * Register a guest player (friend/family member)
  * - Guest takes one player slot
  * - Payment deducted from host's wallet
- * - Guest name format: "HostName + GuestName"
+ * - Guest name format: "HostName venn: GuestName"
  * - If host cancels, all their guests are also cancelled
  */
 async function handleGuestRegistration() {
@@ -466,7 +466,7 @@ async function handleGuestRegistration() {
     }
 
     const trimmedGuestName = guestName.trim();
-    const fullGuestName = `${hostName} + ${trimmedGuestName}`;
+    const fullGuestName = `${hostName} venn: ${trimmedGuestName}`;
 
     // Check if guest name already exists
     if (state.players.find(p => p.name === fullGuestName)) {
@@ -655,7 +655,7 @@ async function cancelRegistration() {
     if (userGuests.length > 0) {
         confirmMessage += `⚠️ You have ${userGuests.length} guest(s) registered:\n`;
         userGuests.forEach(g => {
-            const guestNameOnly = g.name.split(' + ')[1];
+            const guestNameOnly = g.name.split(' venn: ')[1] || g.name.split(' + ')[1];
             confirmMessage += `  - ${guestNameOnly}\n`;
         });
         confirmMessage += `\nAll guests will also be cancelled.\n`;
@@ -682,7 +682,7 @@ async function cancelRegistration() {
         // Cancel and refund all guests
         if (userGuests.length > 0) {
             for (const guest of userGuests) {
-                const guestNameOnly = guest.name.split(' + ')[1];
+                const guestNameOnly = guest.name.split(' venn: ')[1] || guest.name.split(' + ')[1];
 
                 // Refund guest payment
                 await updateUserBalance(
@@ -2782,7 +2782,7 @@ async function adminDeletePlayer(playerId, playerName, isGuest = false, guestOf 
             if (hostUser) {
                 refundUserId = hostUser.id;
                 refundUserName = hostUser.name;
-                const guestNameOnly = playerName.split(' + ')[1] || playerName;
+                const guestNameOnly = playerName.split(' venn: ')[1] || playerName.split(' + ')[1] || playerName;
                 refundDescription = `Admin deleted guest: ${guestNameOnly} (${state.sessionDate})`;
             } else {
                 alert('⚠️ Host user not found. Cannot refund.\n\nไม่พบเจ้าของแขก');
