@@ -583,6 +583,68 @@ async function shareSessionToLine() {
 }
 
 /**
+ * Send nudge notification to Line group
+ * Remind players about available spots
+ */
+async function nudgePlayers() {
+    try {
+        // Check if session is published
+        if (!state.published) {
+            alert('⚠️ Session is not published yet!\n\nPlease publish the session first.\n\nกรุณาเผยแพร่เซสชันก่อน');
+            return;
+        }
+
+        // Count active players
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const availableSpots = state.maxPlayers - activePlayers.length;
+
+        // Check if there are available spots
+        if (availableSpots <= 0) {
+            alert('⚠️ No available spots!\n\nSession is full.\n\nไม่มีที่ว่าง เซสชันเต็มแล้ว');
+            return;
+        }
+
+        // Confirm before sending
+        const confirmed = confirm(
+            `📢 Send reminder to Line group?\n\n` +
+            `This will notify players about ${availableSpots} available spot${availableSpots > 1 ? 's' : ''}.\n\n` +
+            `ส่งข้อความเตือนไปยัง Line?\n` +
+            `จะแจ้งผู้เล่นเกี่ยวกับ ${availableSpots} ที่ว่าง`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendNudgeNotification');
+
+        // Prepare notification data
+        const notificationData = {
+            sessionDay: state.sessionDay,
+            sessionDate: state.sessionDate,
+            sessionTime: state.sessionTime,
+            currentPlayers: activePlayers.length,
+            maxPlayers: state.maxPlayers,
+            availableSpots: availableSpots,
+            paymentAmount: state.paymentAmount,
+            appUrl: window.location.href
+        };
+
+        console.log('📢 Sending nudge to Line...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Nudge sent to Line:', result.data);
+        alert('✅ Nudge sent to Line!\n\nเตือนความจำส่งไปยัง Line แล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending nudge:', error);
+        alert(`❌ Failed to send nudge:\n\n${error.message}\n\nกรุณาลองใหม่อีกครั้ง`);
+    }
+}
+
+/**
  * Send cancellation notification to Line
  * Smart logic: only mention available spot if no waiting list
  */

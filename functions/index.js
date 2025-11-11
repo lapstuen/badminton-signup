@@ -264,3 +264,122 @@ Reply quickly! / ตอบเร็ว!`;
 
     return message;
 }
+
+/**
+ * Send nudge notification to Line group
+ * Remind players to register when there are available spots
+ */
+exports.sendNudgeNotification = onCall(async (request) => {
+    try {
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        if (!accessToken) {
+            throw new HttpsError('failed-precondition', 'Line Access Token not configured');
+        }
+
+        if (!groupId) {
+            throw new HttpsError('failed-precondition', 'Line Group ID not configured');
+        }
+
+        // Extract data from request
+        const {
+            sessionDay,
+            sessionDate,
+            sessionTime,
+            currentPlayers,
+            maxPlayers,
+            availableSpots,
+            paymentAmount,
+            appUrl
+        } = request.data;
+
+        // Build nudge message
+        const message = buildNudgeMessage(
+            sessionDay,
+            sessionDate,
+            sessionTime,
+            currentPlayers,
+            maxPlayers,
+            availableSpots,
+            paymentAmount,
+            appUrl
+        );
+
+        console.log('📢 Sending nudge notification to Line');
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [
+                    {
+                        type: 'text',
+                        text: message
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Nudge notification sent successfully:', response.data);
+
+        return {
+            success: true,
+            message: 'Nudge notification sent to Line group'
+        };
+
+    } catch (error) {
+        console.error('❌ Error sending nudge notification:', error.message);
+
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+
+        throw new HttpsError(
+            'internal',
+            'Failed to send nudge notification: ' + error.message
+        );
+    }
+});
+
+/**
+ * Build formatted nudge message
+ */
+function buildNudgeMessage(
+    sessionDay,
+    sessionDate,
+    sessionTime,
+    currentPlayers,
+    maxPlayers,
+    availableSpots,
+    paymentAmount,
+    appUrl
+) {
+    let message = `📢 REMINDER / เตือนความจำ
+
+🏸 We have ${availableSpots} available spot${availableSpots > 1 ? 's' : ''} for ${sessionDay}!
+เรามี ${availableSpots} ที่ว่างสำหรับ${sessionDay}!
+
+📅 ${sessionDay}
+🕐 ${sessionTime}
+💰 ${paymentAmount} THB
+
+👥 Currently: ${currentPlayers}/${maxPlayers} players
+ปัจจุบัน: ${currentPlayers}/${maxPlayers} คน
+
+Please register soon to keep costs down! 🙏
+กรุณาลงทะเบียนเร็วๆ เพื่อรักษาค่าใช้จ่ายให้ต่ำ!
+
+👉 Sign up here / ลงทะเบียนที่นี่:
+${appUrl}`;
+
+    return message;
+}
