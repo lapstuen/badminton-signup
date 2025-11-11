@@ -1548,9 +1548,9 @@ async function publishSession() {
                                 userId: player.userId,
                                 userName: player.name,
                                 type: 'payment',
-                                amount: state.paymentAmount,
+                                amount: -state.paymentAmount,  // Negative for deduction
                                 balance: newBalance,
-                                reason: 'Session published - payment deducted',
+                                reason: `Auto registration for ${state.sessionDay} ${state.sessionDate}`,
                                 sessionDate: state.sessionDate,
                                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
                             });
