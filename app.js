@@ -772,8 +772,8 @@ async function closeLastSession() {
         // Add action buttons at the bottom
         summaryHTML += `
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="shareSessionSummaryToLine()" style="flex: 1; padding: 15px; background: #00C300; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    📤 แชร์ไปยัง Line<br>Share to Line
+                <button onclick="copySessionSummaryToClipboard()" style="flex: 1; padding: 15px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    📋 คัดลอก<br>Copy List
                 </button>
                 <button onclick="finalizeSessionAccounting()" style="flex: 1; padding: 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
                     💰 บันทึกการเงิน<br>Record Finances
@@ -796,6 +796,66 @@ async function closeLastSession() {
  */
 function closeSessionSummary() {
     document.getElementById('sessionSummaryModal').style.display = 'none';
+}
+
+/**
+ * Copy session summary to clipboard as plain text
+ */
+async function copySessionSummaryToClipboard() {
+    try {
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+
+        // Build plain text summary
+        let text = `✅ ขอบคุณสำหรับการเล่น! Thank you for the session!\n\n`;
+        text += `📅 ${state.sessionDay}\n`;
+        text += `📆 ${state.sessionDate}\n`;
+        text += `🕐 ${state.sessionTime}\n`;
+        text += `👥 Players: ${activePlayers.length}/${state.maxPlayers}\n\n`;
+
+        // List players
+        if (activePlayers.length > 0) {
+            text += `👥 Players Who Played / ผู้เล่นที่เล่น:\n`;
+            activePlayers.forEach((player, index) => {
+                const paidIcon = player.paid ? '✅' : '❌';
+                text += `${index + 1}. ${player.name} ${paidIcon}\n`;
+            });
+            text += `\n`;
+        }
+
+        // List waiting list
+        if (waitingList.length > 0) {
+            text += `⏳ Waiting List / รายชื่อสำรอง:\n`;
+            waitingList.forEach((player, index) => {
+                text += `${index + 1}. ${player.name}\n`;
+            });
+            text += `\n`;
+        }
+
+        // Check for low balance users
+        const lowBalanceUsers = state.authorizedUsers.filter(user => {
+            const balance = user.balance || 0;
+            return balance < 150;
+        }).sort((a, b) => (a.balance || 0) - (b.balance || 0));
+
+        if (lowBalanceUsers.length > 0) {
+            text += `⚠️ Low Balance Warning / แจ้งเตือนยอดเงินต่ำ:\n`;
+            text += `Please top up before next session / กรุณาเติมเงินก่อนรอบถัดไป:\n\n`;
+            lowBalanceUsers.forEach(user => {
+                const balance = user.balance || 0;
+                text += `${user.name}: ${balance} THB\n`;
+            });
+        }
+
+        // Copy to clipboard
+        await navigator.clipboard.writeText(text);
+
+        alert('✅ คัดลอกแล้ว!\n\nCopied to clipboard!\n\nYou can now paste this in Line.');
+
+    } catch (error) {
+        console.error('❌ Error copying to clipboard:', error);
+        alert(`❌ Failed to copy:\n\n${error.message}`);
+    }
 }
 
 // ============================================
