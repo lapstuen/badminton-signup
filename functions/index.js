@@ -383,3 +383,71 @@ ${appUrl}`;
 
     return message;
 }
+
+/**
+ * Generic Line message sender
+ * Send any text message to Line group
+ */
+exports.sendLineMessage = onCall(async (request) => {
+    try {
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        if (!accessToken) {
+            throw new HttpsError('failed-precondition', 'Line Access Token not configured');
+        }
+
+        if (!groupId) {
+            throw new HttpsError('failed-precondition', 'Line Group ID not configured');
+        }
+
+        // Extract message from request
+        const { message } = request.data;
+
+        if (!message) {
+            throw new HttpsError('invalid-argument', 'Message is required');
+        }
+
+        console.log('📤 Sending generic message to Line');
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [
+                    {
+                        type: 'text',
+                        text: message
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Message sent successfully:', response.data);
+
+        return {
+            success: true,
+            message: 'Message sent to Line group'
+        };
+
+    } catch (error) {
+        console.error('❌ Error sending Line message:', error.message);
+
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+
+        throw new HttpsError(
+            'internal',
+            'Failed to send Line message: ' + error.message
+        );
+    }
+});

@@ -809,26 +809,24 @@ async function shareSessionSummaryToLine() {
     try {
         const activePlayers = state.players.slice(0, state.maxPlayers);
         const income = activePlayers.length * state.paymentAmount;
+        const courts = Math.ceil(activePlayers.length / 6);
+        const courtCost = courts * 440;
 
-        // Get Cloud Function reference
-        const sendNotification = functions.httpsCallable('sendSessionSummary');
+        // Build message directly
+        const message = `📊 บันทึกการเงิน / Record Finances\n\n` +
+            `📅 วันที่ / Date: ${state.sessionDate}\n` +
+            `👥 ผู้เล่น / Players: ${activePlayers.length}\n\n` +
+            `💰 รายรับ / Income:\n` +
+            `${activePlayers.length} × ${state.paymentAmount} = ${income} THB\n\n` +
+            `💸 รายจ่าย / Expenses:\n` +
+            `${courts} สนาม × 440 = ${courtCost} THB\n\n` +
+            `💵 กำไร/ขาดทุน / Profit/Loss: ${income - courtCost} THB`;
 
-        // Prepare notification data
-        const notificationData = {
-            sessionDay: state.sessionDay,
-            sessionDate: state.sessionDate,
-            sessionTime: state.sessionTime,
-            playerCount: activePlayers.length,
-            maxPlayers: state.maxPlayers,
-            paymentAmount: state.paymentAmount,
-            totalIncome: income,
-            appUrl: window.location.href
-        };
+        console.log('📤 Sharing session summary to Line...');
 
-        console.log('📤 Sharing session summary to Line...', notificationData);
-
-        // Call Cloud Function
-        const result = await sendNotification(notificationData);
+        // Use generic Line sender
+        const sendToLine = functions.httpsCallable('sendLineMessage');
+        const result = await sendToLine({ message: message });
 
         console.log('✅ Summary shared to Line:', result.data);
         alert('✅ แชร์ไปยัง Line แล้ว!\n\nShared to Line successfully!');
@@ -853,8 +851,8 @@ async function finalizeSessionAccounting() {
         const activePlayers = state.players.slice(0, state.maxPlayers);
         const income = activePlayers.length * state.paymentAmount;
 
-        // Calculate number of courts automatically (4 players per court)
-        const courts = Math.ceil(state.maxPlayers / 4);
+        // Calculate number of courts automatically (6 players per court)
+        const courts = Math.ceil(activePlayers.length / 6);
         const courtCost = courts * 440;
 
         // Confirm before recording
