@@ -837,6 +837,27 @@ async function shareSessionSummaryToLine() {
 }
 
 /**
+ * Test Line message - Simple test without revealing details
+ */
+async function testLineMessage() {
+    try {
+        const message = `🏸 Test message from Badminton app\n\nTesting Line integration... ✅`;
+
+        console.log('📤 Sending test message to Line...');
+
+        // Use generic Line sender
+        const sendToLine = functions.httpsCallable('sendLineMessage');
+        const result = await sendToLine({ message: message });
+
+        console.log('✅ Test message sent:', result.data);
+        alert('✅ Test message sent to Line!\n\nข้อความทดสอบส่งไปแล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending test message:', error);
+        alert(`❌ Failed to send test:\n\n${error.message}`);
+    }
+}
+
+/**
  * Finalize session accounting - Register income and expenses
  */
 async function finalizeSessionAccounting() {
