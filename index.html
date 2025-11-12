@@ -97,7 +97,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-11 15:00 (Add: Nudge players button)</p>
+                <p class="version">v2025-11-12 01:00 (Add: Payment info link on main page)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -110,6 +110,25 @@
                         Cancel Registration<br>ยกเลิก
                     </button>
                 </div>
+
+                <!-- Payment Information Link -->
+                <a href="payment-info.html" target="_blank" style="
+                    display: block;
+                    margin-top: 15px;
+                    padding: 15px;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    text-align: center;
+                    text-decoration: none;
+                    border-radius: 12px;
+                    font-weight: bold;
+                    font-size: 15px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    transition: transform 0.2s, box-shadow 0.2s;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0, 0, 0, 0.15)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 6px rgba(0, 0, 0, 0.1)';">
+                    💰 วิธีการชำระเงิน / Payment Info<br>
+                    <span style="font-size: 13px; opacity: 0.9;">ดูบัญชีธนาคารและ QR Code</span>
+                </a>
             </div>
         </main>
 
@@ -130,6 +149,7 @@
                     <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
                     <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
                     <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
+                    <button onclick="closeLastSession()" style="background: #6366f1; color: white; font-weight: bold;">🏁 Close Last Session / Avslutt forrige seanse</button>
                     <button onclick="shareSessionToLine()" style="background: #00C300; color: white; font-weight: bold;">📤 Share to Line / แชร์ไปยัง Line</button>
                     <button onclick="nudgePlayers()" style="background: #f97316; color: white; font-weight: bold;">📢 Nudge Players / Purr spillere</button>
                     <button onclick="changePaymentAmount()" style="background: #f59e0b;">Change Payment Amount / เปลี่ยนราคา</button>
@@ -214,6 +234,19 @@
                 <button onclick="confirmBalanceAdjust()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
                     Confirm / ยืนยัน
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Summary Modal -->
+    <div class="modal" id="sessionSummaryModal" style="display: none;" onclick="closeSessionSummary()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>🏁 Session Summary / Seanseoppsummering</h2>
+                <button class="close-btn" onclick="closeSessionSummary()">✕</button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div id="sessionSummaryContent"></div>
             </div>
         </div>
     </div>

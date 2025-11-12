@@ -644,6 +644,141 @@ async function nudgePlayers() {
     }
 }
 
+// ============================================
+// CLOSE LAST SESSION - Session Summary
+// ============================================
+
+/**
+ * Close last session and show summary
+ * - Thanks for the session
+ * - Shows session details (date, time, player count)
+ * - Lists all players who played
+ * - Warns about low wallet balance (<150 THB)
+ */
+async function closeLastSession() {
+    try {
+        // Count active players and waiting list
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+
+        // Generate summary HTML
+        let summaryHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">✅ ขอบคุณสำหรับการเล่น!</h3>
+                <h4 style="color: #10b981; margin-top: 5px;">Thank you for the session!</h4>
+            </div>
+
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin-top: 0; color: #374151;">📅 Session Details / รายละเอียดเซสชัน</h4>
+                <p style="margin: 5px 0;"><strong>Day / วัน:</strong> ${state.sessionDay}</p>
+                <p style="margin: 5px 0;"><strong>Date / วันที่:</strong> ${state.sessionDate}</p>
+                <p style="margin: 5px 0;"><strong>Time / เวลา:</strong> ${state.sessionTime}</p>
+                <p style="margin: 5px 0;"><strong>Players / ผู้เล่น:</strong> ${activePlayers.length} of ${state.maxPlayers}</p>
+            </div>
+        `;
+
+        // List all players who played
+        if (activePlayers.length > 0) {
+            summaryHTML += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #374151;">👥 Players Who Played / ผู้เล่นที่เล่น</h4>
+                    <ul style="list-style: none; padding: 0;">
+            `;
+
+            activePlayers.forEach((player, index) => {
+                const paidIcon = player.paid ? '✅' : '❌';
+                const paidText = player.paid ? 'Paid' : 'Unpaid';
+                summaryHTML += `
+                    <li style="padding: 8px; background: ${index % 2 === 0 ? '#f9fafb' : 'white'}; border-radius: 4px; margin-bottom: 5px;">
+                        ${index + 1}. ${player.name} ${paidIcon} ${paidText}
+                    </li>
+                `;
+            });
+
+            summaryHTML += `
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Show waiting list if any
+        if (waitingList.length > 0) {
+            summaryHTML += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #f59e0b;">⏳ Waiting List / รายชื่อสำรอง</h4>
+                    <ul style="list-style: none; padding: 0;">
+            `;
+
+            waitingList.forEach((player, index) => {
+                summaryHTML += `
+                    <li style="padding: 8px; background: #fef3c7; border-radius: 4px; margin-bottom: 5px;">
+                        ${index + 1}. ${player.name}
+                    </li>
+                `;
+            });
+
+            summaryHTML += `
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Check for users with low balance (<150 THB)
+        const lowBalanceUsers = state.authorizedUsers.filter(user => {
+            const balance = user.balance || 0;
+            return balance < 150;
+        }).sort((a, b) => (a.balance || 0) - (b.balance || 0)); // Sort by balance (lowest first)
+
+        if (lowBalanceUsers.length > 0) {
+            summaryHTML += `
+                <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <h4 style="margin-top: 0; color: #dc2626;">⚠️ แจ้งเตือนยอดเงินต่ำ / Low Balance Warning</h4>
+                    <p style="margin-bottom: 10px; color: #7f1d1d; font-weight: bold;">
+                        ผู้เล่นที่ต้องเติมเงินก่อนรอบถัดไป กรุณาเติมวันนี้เนื่องจากรอบถัดไปอาจเปิดพรุ่งนี้
+                    </p>
+                    <p style="margin-bottom: 10px; color: #7f1d1d;">
+                        Players who need to top up wallet before next session. Please top up today as next session may start tomorrow.
+                    </p>
+                    <ul style="list-style: none; padding: 0;">
+            `;
+
+            lowBalanceUsers.forEach(user => {
+                const balance = user.balance || 0;
+                const balanceColor = balance <= 0 ? '#dc2626' : '#f59e0b';
+                summaryHTML += `
+                    <li style="padding: 10px; background: white; border-radius: 4px; margin-bottom: 8px; border-left: 4px solid ${balanceColor};">
+                        <strong>${user.name}</strong>
+                        <span style="float: right; color: ${balanceColor}; font-weight: bold;">${balance} THB</span>
+                    </li>
+                `;
+            });
+
+            summaryHTML += `
+                    </ul>
+                    <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.9em; color: #7f1d1d;">
+                        💡 <a href="payment-info.html" target="_blank" style="color: #dc2626; font-weight: bold; text-decoration: underline;">คลิกที่นี่เพื่อดูข้อมูลการชำระเงิน / Click here for payment information</a>
+                    </p>
+                </div>
+            `;
+        }
+
+        // Display summary in modal
+        document.getElementById('sessionSummaryContent').innerHTML = summaryHTML;
+        document.getElementById('sessionSummaryModal').style.display = 'flex';
+
+    } catch (error) {
+        console.error('❌ Error generating session summary:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
+ * Close session summary modal
+ */
+function closeSessionSummary() {
+    document.getElementById('sessionSummaryModal').style.display = 'none';
+}
+
 /**
  * Send cancellation notification to Line
  * Smart logic: only mention available spot if no waiting list

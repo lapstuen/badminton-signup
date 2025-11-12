@@ -1,5 +1,46 @@
 # Changelog
 
+## v2025-11-12 00:15 - Session Summary Feature
+
+### New Features
+
+#### 1. Close Last Session Summary 🏁
+
+Admin can now close a session and view a comprehensive summary with low wallet balance warnings.
+
+**Features:**
+- Shows thank you message in 3 languages (Norwegian, Thai, English)
+- Displays complete session details (date, time, player count)
+- Lists all players who played with payment status
+- Shows waiting list if any
+- **Warns about users with low wallet balance (<150 THB)**
+- Sorted by balance (lowest first) for easy top-up prioritization
+- Helps prevent payment issues for next session
+
+**Location:** Admin Panel → "🏁 Close Last Session / Avslutt forrige seanse"
+
+**Summary Contents:**
+1. **Thank you message** in 3 languages
+2. **Session details:** Day, date, time, player count
+3. **Players list:** All players with paid/unpaid status
+4. **Waiting list:** If any players were on waiting list
+5. **Low balance warning:** Users with <150 THB balance
+   - Color-coded: Red (≤0 THB), Orange (0-149 THB)
+   - Includes reminder to top up today
+
+**Use Cases:**
+- End-of-session summary for admin
+- Proactive wallet management
+- Payment reconciliation
+- Historical record of who played
+- Identify users who need wallet top-ups before next session
+
+**Technical Implementation:**
+- Modal popup with scrollable content
+- No database changes (read-only)
+- Filters authorized users by balance
+- Sorts by balance (lowest first)
+
 ## v2025-11-11 14:00 - Maintenance Mode
 
 ### New Features
