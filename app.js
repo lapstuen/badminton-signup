@@ -853,25 +853,8 @@ async function finalizeSessionAccounting() {
         const activePlayers = state.players.slice(0, state.maxPlayers);
         const income = activePlayers.length * state.paymentAmount;
 
-        // Ask for number of courts
-        const courtsInput = prompt(
-            `จำนวนสนาม / Number of courts:\n\n` +
-            `ค่าสนามต่อชั่วโมง: 440 บาท\n` +
-            `Court rental per hour: 440 THB\n\n` +
-            `ใส่จำนวนสนาม / Enter number of courts:`,
-            '3' // Default 3 courts
-        );
-
-        if (!courtsInput) {
-            return; // User cancelled
-        }
-
-        const courts = parseInt(courtsInput);
-        if (isNaN(courts) || courts <= 0) {
-            alert('❌ กรุณาใส่จำนวนสนามที่ถูกต้อง\n\nPlease enter valid number of courts');
-            return;
-        }
-
+        // Calculate number of courts automatically (4 players per court)
+        const courts = Math.ceil(state.maxPlayers / 4);
         const courtCost = courts * 440;
 
         // Confirm before recording
