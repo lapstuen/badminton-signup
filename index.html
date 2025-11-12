@@ -97,7 +97,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-12 01:00 (Add: Payment info link on main page)</p>
+                <p class="version">v2025-11-12 02:00 (Add: Accounting system - Income/Expenses)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -160,6 +160,8 @@
                     <!-- HIDDEN: Reset All Balances - uncomment if needed for fresh start -->
                     <!-- <button onclick="initializeAllBalances()" style="background: #ef4444;">🔄 Reset All Balances / รีเซ็ตยอดเงินทั้งหมด</button> -->
                     <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
+                    <button onclick="viewAccountingReport()" style="background: #8b5cf6; font-weight: bold;">📊 Accounting Report / รายงานบัญชี</button>
+                    <button onclick="addManualExpense()" style="background: #ef4444;">💸 Add Expense / เพิ่มค่าใช้จ่าย</button>
                     <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
                     <button onclick="logoutUser()" style="background: #6b7280; margin-top: 10px;">🚪 Logout / ออกจากระบบ</button>
                 </div>

@@ -1,5 +1,105 @@
 # Changelog
 
+## v2025-11-12 02:00 - Accounting System
+
+### New Features
+
+#### 1. Complete Accounting System 💰
+
+Full financial tracking for badminton sessions with income and expense management.
+
+**Features:**
+- **Automatic income registration** when closing sessions (player count × payment amount)
+- **Automatic expense registration** for court rentals (courts × 440 THB)
+- **Manual expense registration** for shuttles, equipment, etc.
+- **Accounting reports** with flexible date ranges (1 day to 2 years)
+- **Session closure validation** - Cannot start new session without closing previous
+- **Financial data protection** - Prevents data loss
+
+**Location:**
+- Admin Panel → "🏁 Close Last Session" → "💰 บันทึกการเงิน / Record Finances"
+- Admin Panel → "📊 Accounting Report / รายงานบัญชี"
+- Admin Panel → "💸 Add Expense / เพิ่มค่าใช้จ่าย"
+
+**Close Last Session Workflow:**
+1. Admin clicks "🏁 Close Last Session"
+2. Reviews session summary (players, waiting list, low balances)
+3. Clicks "💰 บันทึกการเงิน / Record Finances"
+4. Enters number of courts
+5. Confirms financial summary:
+   - Income: players × 150 THB
+   - Expenses: courts × 440 THB
+   - Profit/Loss calculation
+6. Session marked as closed (cannot modify)
+7. Can now start new session with "New Session"
+
+**Accounting Report Features:**
+- 📊 Visual summary cards (Income, Expenses, Profit/Loss)
+- 📅 Flexible date ranges (1-730 days)
+- 📝 Detailed transaction lists with dates
+- 💰 Income breakdown (players × amount)
+- 💸 Expense breakdown by type:
+  - Court rental (courts × cost)
+  - Manual expenses (shuttles, equipment)
+- 💵 Profit/Loss calculation with color coding
+
+**Manual Expense Registration:**
+- Add expenses for shuttles/balls
+- Add expenses for equipment
+- Custom amount and notes
+- Automatic date stamping
+
+**Session Closure Protection:**
+- Cannot start "New Session" unless previous is closed
+- Warning message explains financial data protection
+- Prevents accidental data loss
+- Historical financial records preserved
+
+**Firestore Collections:**
+```
+/income/{incomeId}
+  ├─ date: string (DD/MM/YYYY)
+  ├─ sessionId: string
+  ├─ amount: number (total)
+  ├─ paymentPerPlayer: number (150)
+  ├─ playerCount: number
+  ├─ timestamp: timestamp
+  └─ notes: string
+
+/expenses/{expenseId}
+  ├─ date: string (DD/MM/YYYY)
+  ├─ type: string ("court_rental" | "other")
+  ├─ amount: number
+  ├─ courts: number (if court_rental)
+  ├─ costPerCourt: number (440, if court_rental)
+  ├─ category: string (if other: "Shuttles", "Equipment")
+  ├─ sessionId: string (optional)
+  ├─ timestamp: timestamp
+  └─ notes: string
+
+/sessions/{sessionId}
+  ├─ ... (existing fields)
+  ├─ closed: boolean
+  ├─ closedAt: timestamp
+  ├─ finalPlayerCount: number
+  ├─ finalIncome: number
+  └─ finalExpense: number
+```
+
+**Use Cases:**
+- Track session profitability
+- Monitor long-term financial health
+- Identify when price adjustments needed
+- Record shuttle purchases
+- Justify membership fees
+- Financial transparency
+
+**Future Enhancements:**
+- Configurable court cost (currently hardcoded 440 THB)
+- Export reports to Excel/CSV
+- Monthly/yearly summaries
+- Automatic price adjustment suggestions
+
 ## v2025-11-12 00:15 - Session Summary Feature
 
 ### New Features

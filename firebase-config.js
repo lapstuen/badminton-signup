@@ -24,5 +24,7 @@ const functions = firebase.functions();
 const sessionsRef = db.collection('sessions');
 const usersRef = db.collection('authorizedUsers');
 const transactionsRef = db.collection('transactions');
+const incomeRef = db.collection('income');
+const expensesRef = db.collection('expenses');
 
 console.log('🔥 Firebase initialized successfully!');

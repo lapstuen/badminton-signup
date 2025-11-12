@@ -156,7 +156,7 @@ async function saveSessionData() {
     }
 
     try {
-        await currentSessionRef().update({
+        const updateData = {
             date: state.sessionDate,
             day: state.sessionDay,
             time: state.sessionTime,
@@ -164,7 +164,14 @@ async function saveSessionData() {
             paymentAmount: state.paymentAmount,
             published: state.published,
             maintenanceMode: state.maintenanceMode
-        });
+        };
+
+        // Include closed status if defined in state
+        if (typeof state.closed !== 'undefined') {
+            updateData.closed = state.closed;
+        }
+
+        await currentSessionRef().update(updateData);
         console.log('💾 Session data saved:', {
             day: state.sessionDay,
             time: state.sessionTime,
@@ -762,6 +769,18 @@ async function closeLastSession() {
             `;
         }
 
+        // Add action buttons at the bottom
+        summaryHTML += `
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="shareSessionSummaryToLine()" style="flex: 1; padding: 15px; background: #00C300; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    📤 แชร์ไปยัง Line<br>Share to Line
+                </button>
+                <button onclick="finalizeSessionAccounting()" style="flex: 1; padding: 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    💰 บันทึกการเงิน<br>Record Finances
+                </button>
+            </div>
+        `;
+
         // Display summary in modal
         document.getElementById('sessionSummaryContent').innerHTML = summaryHTML;
         document.getElementById('sessionSummaryModal').style.display = 'flex';
@@ -777,6 +796,379 @@ async function closeLastSession() {
  */
 function closeSessionSummary() {
     document.getElementById('sessionSummaryModal').style.display = 'none';
+}
+
+// ============================================
+// SESSION ACCOUNTING - Income & Expenses
+// ============================================
+
+/**
+ * Share session summary to Line
+ */
+async function shareSessionSummaryToLine() {
+    try {
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const income = activePlayers.length * state.paymentAmount;
+
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendSessionSummary');
+
+        // Prepare notification data
+        const notificationData = {
+            sessionDay: state.sessionDay,
+            sessionDate: state.sessionDate,
+            sessionTime: state.sessionTime,
+            playerCount: activePlayers.length,
+            maxPlayers: state.maxPlayers,
+            paymentAmount: state.paymentAmount,
+            totalIncome: income,
+            appUrl: window.location.href
+        };
+
+        console.log('📤 Sharing session summary to Line...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Summary shared to Line:', result.data);
+        alert('✅ แชร์ไปยัง Line แล้ว!\n\nShared to Line successfully!');
+    } catch (error) {
+        console.error('❌ Error sharing to Line:', error);
+        alert(`❌ Failed to share:\n\n${error.message}`);
+    }
+}
+
+/**
+ * Finalize session accounting - Register income and expenses
+ */
+async function finalizeSessionAccounting() {
+    try {
+        // Check if session is already closed
+        const sessionDoc = await currentSessionRef().get();
+        if (sessionDoc.exists && sessionDoc.data().closed) {
+            alert('⚠️ เซสชันนี้ถูกปิดแล้ว!\n\nThis session is already closed!');
+            return;
+        }
+
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const income = activePlayers.length * state.paymentAmount;
+
+        // Ask for number of courts
+        const courtsInput = prompt(
+            `จำนวนสนาม / Number of courts:\n\n` +
+            `ค่าสนามต่อชั่วโมง: 440 บาท\n` +
+            `Court rental per hour: 440 THB\n\n` +
+            `ใส่จำนวนสนาม / Enter number of courts:`,
+            '3' // Default 3 courts
+        );
+
+        if (!courtsInput) {
+            return; // User cancelled
+        }
+
+        const courts = parseInt(courtsInput);
+        if (isNaN(courts) || courts <= 0) {
+            alert('❌ กรุณาใส่จำนวนสนามที่ถูกต้อง\n\nPlease enter valid number of courts');
+            return;
+        }
+
+        const courtCost = courts * 440;
+
+        // Confirm before recording
+        const confirmed = confirm(
+            `📊 บันทึกการเงิน / Record Finances\n\n` +
+            `📅 วันที่ / Date: ${state.sessionDate}\n` +
+            `👥 ผู้เล่น / Players: ${activePlayers.length}\n\n` +
+            `💰 รายรับ / Income:\n` +
+            `${activePlayers.length} × ${state.paymentAmount} = ${income} THB\n\n` +
+            `💸 รายจ่าย / Expenses:\n` +
+            `${courts} สนาม × 440 = ${courtCost} THB\n\n` +
+            `💵 กำไร/ขาดทุน / Profit/Loss: ${income - courtCost} THB\n\n` +
+            `ยืนยันการบันทึก / Confirm?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        // Register income
+        await incomeRef.add({
+            date: state.sessionDate,
+            sessionId: currentSessionId,
+            amount: income,
+            paymentPerPlayer: state.paymentAmount,
+            playerCount: activePlayers.length,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            notes: `${state.sessionDay} ${state.sessionTime}`
+        });
+
+        console.log('✅ Income registered:', income);
+
+        // Register expense (court rental)
+        await expensesRef.add({
+            date: state.sessionDate,
+            type: 'court_rental',
+            sessionId: currentSessionId,
+            amount: courtCost,
+            courts: courts,
+            costPerCourt: 440,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            notes: `${state.sessionDay} ${state.sessionTime}`
+        });
+
+        console.log('✅ Expense registered:', courtCost);
+
+        // Mark session as closed
+        await currentSessionRef().update({
+            closed: true,
+            closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            finalPlayerCount: activePlayers.length,
+            finalIncome: income,
+            finalExpense: courtCost
+        });
+
+        console.log('✅ Session marked as closed');
+
+        alert(
+            `✅ บันทึกสำเร็จ / Success!\n\n` +
+            `💰 รายรับ / Income: ${income} THB\n` +
+            `💸 รายจ่าย / Expenses: ${courtCost} THB\n` +
+            `💵 กำไร/ขาดทุน / Profit: ${income - courtCost} THB\n\n` +
+            `เซสชันถูกปิดแล้ว / Session closed`
+        );
+
+        // Close the modal
+        closeSessionSummary();
+
+    } catch (error) {
+        console.error('❌ Error finalizing accounting:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
+ * Add manual expense (shuttles, etc.)
+ */
+async function addManualExpense() {
+    try {
+        // Ask for expense type
+        const type = prompt(
+            `ประเภทค่าใช้จ่าย / Expense type:\n\n` +
+            `ตัวอย่าง / Examples:\n` +
+            `- Shuttles / ลูกขนไก่\n` +
+            `- Equipment / อุปกรณ์\n` +
+            `- Other / อื่นๆ\n\n` +
+            `ใส่ประเภท / Enter type:`,
+            'Shuttles'
+        );
+
+        if (!type) return;
+
+        // Ask for amount
+        const amountInput = prompt(
+            `จำนวนเงิน / Amount (THB):\n\n` +
+            `ใส่จำนวนเงิน / Enter amount:`,
+            ''
+        );
+
+        if (!amountInput) return;
+
+        const amount = parseFloat(amountInput);
+        if (isNaN(amount) || amount <= 0) {
+            alert('❌ กรุณาใส่จำนวนเงินที่ถูกต้อง\n\nPlease enter valid amount');
+            return;
+        }
+
+        // Ask for notes (optional)
+        const notes = prompt(
+            `หมายเหตุ (ถ้ามี) / Notes (optional):\n\n` +
+            `เช่น: ซื้อลูก 12 ลูก / Example: Bought 12 shuttles`,
+            ''
+        );
+
+        // Confirm
+        const confirmed = confirm(
+            `📝 บันทึกค่าใช้จ่าย / Add Expense\n\n` +
+            `ประเภท / Type: ${type}\n` +
+            `จำนวน / Amount: ${amount} THB\n` +
+            `หมายเหตุ / Notes: ${notes || '-'}\n` +
+            `วันที่ / Date: ${state.sessionDate}\n\n` +
+            `ยืนยัน / Confirm?`
+        );
+
+        if (!confirmed) return;
+
+        // Register expense
+        await expensesRef.add({
+            date: state.sessionDate,
+            type: 'other',
+            category: type,
+            amount: amount,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            notes: notes || ''
+        });
+
+        console.log('✅ Manual expense registered:', amount);
+
+        alert(`✅ บันทึกสำเร็จ / Success!\n\n${type}: ${amount} THB`);
+
+    } catch (error) {
+        console.error('❌ Error adding manual expense:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+/**
+ * View accounting report - Income vs Expenses
+ */
+async function viewAccountingReport() {
+    try {
+        // Close other admin sections
+        closeAllAdminSections();
+
+        // Ask for date range
+        const range = prompt(
+            `📊 รายงานบัญชี / Accounting Report\n\n` +
+            `เลือกช่วงเวลา / Select period:\n` +
+            `1 = วันนี้ / Today\n` +
+            `7 = 7 วันที่แล้ว / Last 7 days\n` +
+            `30 = 30 วันที่แล้ว / Last 30 days\n` +
+            `365 = 1 ปีที่แล้ว / Last year\n` +
+            `730 = 2 ปีที่แล้ว / Last 2 years\n\n` +
+            `ใส่จำนวนวัน / Enter days:`,
+            '30'
+        );
+
+        if (!range) return;
+
+        const days = parseInt(range);
+        if (isNaN(days) || days <= 0) {
+            alert('❌ กรุณาใส่จำนวนวันที่ถูกต้อง\n\nPlease enter valid number of days');
+            return;
+        }
+
+        // Calculate start date
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        console.log('📊 Fetching accounting report for last', days, 'days');
+
+        // Fetch income
+        const incomeSnapshot = await incomeRef
+            .where('timestamp', '>=', startDate)
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        // Fetch expenses
+        const expensesSnapshot = await expensesRef
+            .where('timestamp', '>=', startDate)
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        let totalIncome = 0;
+        let totalExpenses = 0;
+
+        const incomeData = [];
+        incomeSnapshot.forEach(doc => {
+            const data = doc.data();
+            totalIncome += data.amount;
+            incomeData.push(data);
+        });
+
+        const expensesData = [];
+        expensesSnapshot.forEach(doc => {
+            const data = doc.data();
+            totalExpenses += data.amount;
+            expensesData.push(data);
+        });
+
+        const profit = totalIncome - totalExpenses;
+        const profitColor = profit >= 0 ? '#10b981' : '#ef4444';
+
+        // Generate report HTML
+        let reportHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: #374151; margin-bottom: 10px;">📊 รายงานบัญชี / Accounting Report</h3>
+                <p style="color: #6b7280;">${days} วันที่แล้ว / Last ${days} days</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                <div style="background: #dcfce7; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 12px; color: #16a34a; font-weight: bold;">💰 รายรับ / Income</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #15803d; margin-top: 5px;">${totalIncome.toLocaleString()} ฿</div>
+                </div>
+                <div style="background: #fee2e2; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 12px; color: #dc2626; font-weight: bold;">💸 รายจ่าย / Expenses</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #b91c1c; margin-top: 5px;">${totalExpenses.toLocaleString()} ฿</div>
+                </div>
+                <div style="background: ${profit >= 0 ? '#dcfce7' : '#fee2e2'}; padding: 15px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 12px; color: ${profitColor}; font-weight: bold;">💵 กำไร/ขาดทุน / Profit</div>
+                    <div style="font-size: 20px; font-weight: bold; color: ${profitColor}; margin-top: 5px;">${profit >= 0 ? '+' : ''}${profit.toLocaleString()} ฿</div>
+                </div>
+            </div>
+        `;
+
+        // Show income details
+        if (incomeData.length > 0) {
+            reportHTML += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #10b981;">💰 รายรับ / Income (${incomeData.length} รายการ)</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+            `;
+
+            incomeData.forEach((item, index) => {
+                reportHTML += `
+                    <div style="background: ${index % 2 === 0 ? '#f9fafb' : 'white'}; padding: 10px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between;">
+                        <div>
+                            <strong>${item.date}</strong><br>
+                            <span style="font-size: 12px; color: #6b7280;">${item.playerCount} คน × ${item.paymentPerPlayer} = ${item.amount} ฿</span>
+                        </div>
+                        <div style="font-weight: bold; color: #10b981;">+${item.amount.toLocaleString()} ฿</div>
+                    </div>
+                `;
+            });
+
+            reportHTML += `</div></div>`;
+        }
+
+        // Show expenses details
+        if (expensesData.length > 0) {
+            reportHTML += `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #ef4444;">💸 รายจ่าย / Expenses (${expensesData.length} รายการ)</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+            `;
+
+            expensesData.forEach((item, index) => {
+                let description = '';
+                if (item.type === 'court_rental') {
+                    description = `${item.courts} สนาม × ${item.costPerCourt} = ${item.amount} ฿`;
+                } else {
+                    description = `${item.category || item.type}: ${item.notes || '-'}`;
+                }
+
+                reportHTML += `
+                    <div style="background: ${index % 2 === 0 ? '#f9fafb' : 'white'}; padding: 10px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between;">
+                        <div>
+                            <strong>${item.date}</strong><br>
+                            <span style="font-size: 12px; color: #6b7280;">${description}</span>
+                        </div>
+                        <div style="font-weight: bold; color: #ef4444;">-${item.amount.toLocaleString()} ฿</div>
+                    </div>
+                `;
+            });
+
+            reportHTML += `</div></div>`;
+        }
+
+        // Show in transactions section (reuse existing modal area)
+        document.getElementById('transactionsSection').style.display = 'block';
+        document.getElementById('transactionsList').innerHTML = reportHTML;
+
+    } catch (error) {
+        console.error('❌ Error fetching accounting report:', error);
+        alert(`❌ Error: ${error.message}\n\nNote: You need to create indexes in Firestore first.`);
+    }
 }
 
 /**
@@ -1580,6 +1972,28 @@ async function toggleMaintenanceMode() {
 }
 
 async function clearSession() {
+    try {
+        // Check if current session is closed
+        const sessionDoc = await currentSessionRef().get();
+        if (sessionDoc.exists) {
+            const sessionData = sessionDoc.data();
+            if (!sessionData.closed) {
+                alert(
+                    '⚠️ ไม่สามารถเริ่มเซสชันใหม่ได้!\n' +
+                    'กรุณาปิดเซสชันก่อนด้วย "Close Last Session"\n\n' +
+                    '⚠️ Cannot start new session!\n' +
+                    'Please close current session first with "Close Last Session"\n\n' +
+                    '💡 นี่จะป้องกันการสูญเสียข้อมูลการเงิน\n' +
+                    '💡 This prevents loss of financial data'
+                );
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Error checking session status:', error);
+        // Continue even if check fails (backward compatibility)
+    }
+
     // FIRST confirmation
     const firstConfirm = confirm(
         '⚠️ Are you sure you want to start a NEW session?\n\n' +
@@ -1619,6 +2033,7 @@ async function clearSession() {
             state.sessionTime = '00:00 - 00:00'; // Blank time
             state.maxPlayers = 0; // Show 0 / 0
             state.published = false; // Set to draft mode
+            state.closed = false; // Mark as open (not closed)
             await saveSessionData();
 
             // Remove old userName (deprecated)
