@@ -205,6 +205,7 @@ input:focus {
 .player-status {
     display: flex;
     gap: 5px;
+    align-items: center;
 }
 
 .paid-badge {
@@ -221,6 +222,22 @@ input:focus {
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 12px;
+}
+
+.pay-now-btn {
+    background: #f59e0b;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pay-now-btn:hover {
+    background: #d97706;
 }
 
 .clicked-badge {

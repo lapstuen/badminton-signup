@@ -1372,11 +1372,14 @@ async function cancelRegistration() {
 }
 
 // ============================================
-// PAYMENT MARKING
+// PAYMENT MARKING (Self-Service Wallet Payment)
 // ============================================
 
-// DISABLED: Mark as paid - now using wallet system instead
-/*
+/**
+ * Allow users to pay for their registration from their wallet
+ * This is for players who were added by admin (paid: false)
+ * and need to pay themselves instead of waiting for publish
+ */
 async function markAsPaid() {
     // Check if user is logged in
     if (!state.loggedInUser) {
@@ -1385,30 +1388,74 @@ async function markAsPaid() {
     }
 
     const userName = state.loggedInUser.name;
+    const userId = state.loggedInUser.userId;
+    const currentBalance = state.loggedInUser.balance || 0;
 
-    // Find the player and mark as paid
+    // Find the player
     const currentPlayer = state.players.find(p => p.name === userName);
     if (!currentPlayer) {
         alert('You must be registered first / คุณต้องลงทะเบียนก่อน');
         return;
     }
 
+    // Check if already paid
+    if (currentPlayer.paid) {
+        alert('Already paid / ชำระแล้ว');
+        return;
+    }
+
+    // Check if sufficient balance
+    if (currentBalance < state.paymentAmount) {
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nBalance: ${currentBalance} THB\nRequired: ${state.paymentAmount} THB\nShortfall: ${state.paymentAmount - currentBalance} THB\n\nPlease contact admin to top up your wallet.`);
+        return;
+    }
+
+    // Confirm payment
+    if (!confirm(`Pay ${state.paymentAmount} THB from your wallet?\nชำระ ${state.paymentAmount} บาทจากกระเป๋าเงิน?\n\nCurrent balance: ${currentBalance} THB\nNew balance: ${currentBalance - state.paymentAmount} THB`)) {
+        return;
+    }
+
     try {
-        await playersRef().doc(currentPlayer.id).update({
-            paid: true,
-            markedPaidAt: firebase.firestore.FieldValue.serverTimestamp()
+        // Deduct from wallet
+        const newBalance = currentBalance - state.paymentAmount;
+        await usersRef.doc(userId).update({
+            balance: newBalance
         });
 
-        // Update button to show paid status
-        generatePaymentQR();
+        // Mark player as paid
+        await playersRef().doc(currentPlayer.id).update({
+            paid: true,
+            paidAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-        console.log('✅ Payment marked for:', userName);
+        // Add transaction record
+        await transactionsRef.add({
+            userId: userId,
+            userName: userName,
+            type: 'payment',
+            amount: -state.paymentAmount,
+            balance: newBalance,
+            reason: `Self-payment for ${state.sessionDay} ${state.sessionDate}`,
+            sessionId: currentSessionId,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update local state
+        state.loggedInUser.balance = newBalance;
+        localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
+
+        alert(`✅ Payment successful!\n\nยอดเงินใหม่: ${newBalance} THB`);
+
+        // Refresh UI
+        await checkLoggedInUser();
+        updateUI();
+
+        console.log('✅ Self-payment completed for:', userName);
     } catch (error) {
-        console.error('Error marking payment:', error);
-        alert('Error marking payment. Please try again.');
+        console.error('Error processing payment:', error);
+        alert('Error processing payment. Please try again.');
     }
 }
-*/
 
 // ============================================
 // LOGGED IN USER CHECK
@@ -1851,6 +1898,14 @@ function updateUI() {
             badge.className = 'paid-badge';
             badge.textContent = 'Paid ✓';
             statusDiv.appendChild(badge);
+        } else if (state.loggedInUser && player.name === state.loggedInUser.name && !player.isGuest) {
+            // Show "Pay Now" button for current user if not paid (and not a guest)
+            const payButton = document.createElement('button');
+            payButton.className = 'pay-now-btn';
+            payButton.textContent = '💰 Pay Now';
+            payButton.title = 'Pay from your wallet / ชำระจากกระเป๋าเงิน';
+            payButton.onclick = markAsPaid;
+            statusDiv.appendChild(payButton);
         }
 
         if (player.clickedPaymentLink) {
