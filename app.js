@@ -28,11 +28,79 @@ const currentSessionRef = () => sessionsRef.doc(currentSessionId);
 const playersRef = () => currentSessionRef().collection('players');
 
 // ============================================
+// PRIVATE MODE DETECTION
+// ============================================
+
+/**
+ * Check if browser is in private/incognito mode
+ * Private mode does not support localStorage persistently
+ */
+function isPrivateMode() {
+    try {
+        // Test if localStorage is available and writable
+        const test = '__privatemode_test__';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+        return false; // localStorage works = not private mode
+    } catch (e) {
+        return true; // localStorage blocked = private mode
+    }
+}
+
+/**
+ * Show warning banner if browser is in private mode
+ */
+function checkPrivateMode() {
+    if (isPrivateMode()) {
+        console.warn('⚠️ Private browsing mode detected!');
+
+        // Create warning banner
+        const banner = document.createElement('div');
+        banner.id = 'privateModeWarning';
+        banner.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #dc2626;
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            z-index: 10000;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        `;
+        banner.innerHTML = `
+            ⚠️ <strong>PRIVATE BROWSING MODE / โหมดเปิดเว็บแบบส่วนตัว</strong><br>
+            <span style="font-size: 12px; font-weight: normal;">
+                Auto-login will not work. Please use normal browser tab.<br>
+                การเข้าสู่ระบบอัตโนมัติจะไม่ทำงาน กรุณาใช้แท็บเบราว์เซอร์ปกติ
+            </span>
+        `;
+
+        // Insert at top of body
+        document.body.insertBefore(banner, document.body.firstChild);
+
+        // Add padding to content so it doesn't hide under banner
+        const container = document.querySelector('.container');
+        if (container) {
+            container.style.paddingTop = '80px';
+        }
+
+        // Force logout if user was logged in (localStorage won't persist anyway)
+        localStorage.removeItem('loggedInUser');
+        state.loggedInUser = null;
+    }
+}
+
+// ============================================
 // INITIALIZE APP
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App starting...');
+    checkPrivateMode();
     initializeApp();
 });
 
