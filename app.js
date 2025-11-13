@@ -362,7 +362,8 @@ async function checkLoginMethod() {
         return;
     }
 
-    // Find user in authorized users
+    // Find user in authorized users (EXACT match only, no partial matches)
+    // E.g., "Gei" will NOT match "Geir"
     const user = state.authorizedUsers.find(u => u.name === name);
 
     if (!user) {
@@ -1614,7 +1615,7 @@ async function resetPassword() {
         return;
     }
 
-    // Find user
+    // Find user (EXACT match only - "Gei" will NOT match "Geir")
     const user = state.authorizedUsers.find(u => u.name === name);
 
     if (!user) {
@@ -1629,7 +1630,7 @@ async function resetPassword() {
     }
 
     // Confirm reset
-    if (!confirm(`Reset password to default (123)?\nรีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น (123)?\n\nUser: ${name}\n\nYou can login with password "123" after reset.\nคุณสามารถเข้าสู่ระบบด้วยรหัส "123" หลังจากรีเซ็ต`)) {
+    if (!confirm(`Reset password to default?\nรีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น?\n\nUser: ${name}\n\nYou can login with default password after reset.\nคุณสามารถเข้าสู่ระบบด้วยรหัสเริ่มต้นหลังจากรีเซ็ต`)) {
         return;
     }
 
@@ -1680,11 +1681,11 @@ async function resetPassword() {
             await handleLogin({ preventDefault: () => {} }, name, defaultPassword);
             console.log('✅ Password reset and auto-login completed for:', name);
 
-            alert(`✅ Password reset successful! You are now logged in.\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ! คุณเข้าสู่ระบบแล้ว`);
+            alert(`✅ Password reset successful! You are now logged in.\n\nIMPORTANT: If you have issues, restart your browser and open the link again.\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ! คุณเข้าสู่ระบบแล้ว\n\nสำคัญ: หากมีปัญหา ให้รีสตาร์ทเบราว์เซอร์และเปิดลิงก์ใหม่`);
         } catch (error) {
             console.error('Auto-login failed:', error);
             // If auto-login fails, show manual login message
-            alert(`✅ Password reset successful!\n\nYou can now login with:\nName: ${name}\nPassword: ${defaultPassword}\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ!\n\nเข้าสู่ระบบด้วย:\nชื่อ: ${name}\nรหัสผ่าน: ${defaultPassword}`);
+            alert(`✅ Password reset successful!\n\nPlease restart your browser and open the link again.\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ!\n\nกรุณารีสตาร์ทเบราว์เซอร์และเปิดลิงก์ใหม่`);
         }
     } catch (error) {
         console.error('Error resetting password:', error);
