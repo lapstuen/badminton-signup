@@ -21,7 +21,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-13 17:00 (Add: Self-service password reset)</p>
+            <p class="version-header">v2025-11-13 17:30 (Smart login: Auto-switch to reset button)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -57,18 +57,24 @@
             <!-- User Login Section -->
             <div class="user-login" id="userLogin" style="display: none;">
                 <h2>Login<br>เข้าสู่ระบบ</h2>
-                <form id="loginForm">
-                    <input type="text" id="loginName" placeholder="Name / ชื่อ" required>
+                <input type="text" id="loginName" placeholder="Name / ชื่อ" required>
+
+                <!-- Show password field + login button OR reset button (never both) -->
+                <div id="normalLoginSection">
                     <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
-                    <button type="submit" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
-                </form>
-                <button type="button" onclick="resetPassword()" class="btn btn-secondary" style="background: #f59e0b; margin-top: 10px;">
-                    🔄 Reset Password<br>รีเซ็ตรหัสผ่าน
-                </button>
-                <p class="login-note" style="margin-top: 10px; font-size: 12px; color: #666;">
-                    Forgot password? Enter your name and click Reset Password<br>
-                    ลืมรหัสผ่าน? ใส่ชื่อแล้วคลิกรีเซ็ตรหัสผ่าน
-                </p>
+                    <button type="button" onclick="handleLoginClick()" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
+                </div>
+
+                <div id="resetPasswordSection" style="display: none;">
+                    <button type="button" onclick="resetPassword()" class="btn btn-secondary" style="background: #f59e0b; width: 100%;">
+                        🔄 Reset Password<br>รีเซ็ตรหัสผ่าน
+                    </button>
+                    <p class="login-note" style="margin-top: 10px; font-size: 12px; color: #666;">
+                        Lost access? Click to reset password to 123<br>
+                        เข้าไม่ได้? คลิกเพื่อรีเซ็ตรหัสเป็น 123
+                    </p>
+                </div>
+
                 <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
             </div>
 
@@ -113,7 +119,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-13 17:00 (Add: Self-service password reset)</p>
+                <p class="version">v2025-11-13 17:30 (Smart login: Auto-switch to reset button)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->

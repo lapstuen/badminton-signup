@@ -342,7 +342,69 @@ function setupRealtimeListeners() {
 
 function setupEventListeners() {
     document.getElementById('signupForm').addEventListener('submit', handleSignup);
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+
+    // Listen to name input to switch between login and reset password
+    const loginNameInput = document.getElementById('loginName');
+    loginNameInput.addEventListener('input', checkLoginMethod);
+    loginNameInput.addEventListener('blur', checkLoginMethod);
+}
+
+/**
+ * Check if user should see Login button or Reset Password button
+ * Based on password length in database (UUID = long, 123 = short)
+ */
+async function checkLoginMethod() {
+    const name = document.getElementById('loginName').value.trim();
+
+    if (!name) {
+        // No name entered - show normal login
+        showNormalLogin();
+        return;
+    }
+
+    // Find user in authorized users
+    const user = state.authorizedUsers.find(u => u.name === name);
+
+    if (!user) {
+        // User not found - show normal login
+        showNormalLogin();
+        return;
+    }
+
+    // Check password length
+    if (user.password.length >= 20) {
+        // UUID password - show reset button
+        showResetPassword();
+    } else {
+        // Short password (123 etc.) - show normal login
+        showNormalLogin();
+    }
+}
+
+function showNormalLogin() {
+    document.getElementById('normalLoginSection').style.display = 'block';
+    document.getElementById('resetPasswordSection').style.display = 'none';
+}
+
+function showResetPassword() {
+    document.getElementById('normalLoginSection').style.display = 'none';
+    document.getElementById('resetPasswordSection').style.display = 'block';
+}
+
+/**
+ * Handle login button click
+ * Separated from form submit to allow manual triggering
+ */
+async function handleLoginClick() {
+    const name = document.getElementById('loginName').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    if (!name || !password) {
+        alert('Please enter name and password / กรุณาใส่ชื่อและรหัสผ่าน');
+        return;
+    }
+
+    await handleLogin({ preventDefault: () => {} }, name, password);
 }
 
 // ============================================
@@ -1609,15 +1671,21 @@ async function resetPassword() {
             // Don't block reset if Line fails
         }
 
-        alert(`✅ Password reset successful!\n\nYou can now login with:\nName: ${name}\nPassword: ${defaultPassword}\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ!\n\nเข้าสู่ระบบด้วย:\nชื่อ: ${name}\nรหัสผ่าน: ${defaultPassword}`);
-
-        // Clear form and update user list
-        document.getElementById('loginName').value = '';
-        document.getElementById('loginPassword').value = '';
+        // Reload authorized users to get updated password
         await loadAuthorizedUsers();
-        updateUI();
 
-        console.log('✅ Password reset completed for:', name);
+        // Auto-login with new password
+        console.log('🔐 Auto-logging in with new password...');
+        try {
+            await handleLogin({ preventDefault: () => {} }, name, defaultPassword);
+            console.log('✅ Password reset and auto-login completed for:', name);
+
+            alert(`✅ Password reset successful! You are now logged in.\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ! คุณเข้าสู่ระบบแล้ว`);
+        } catch (error) {
+            console.error('Auto-login failed:', error);
+            // If auto-login fails, show manual login message
+            alert(`✅ Password reset successful!\n\nYou can now login with:\nName: ${name}\nPassword: ${defaultPassword}\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ!\n\nเข้าสู่ระบบด้วย:\nชื่อ: ${name}\nรหัสผ่าน: ${defaultPassword}`);
+        }
     } catch (error) {
         console.error('Error resetting password:', error);
         alert('Error resetting password. Please try again or contact admin.');
@@ -1628,11 +1696,11 @@ async function resetPassword() {
 // USER LOGIN
 // ============================================
 
-async function handleLogin(e) {
+async function handleLogin(e, nameParam = null, passwordParam = null) {
     e.preventDefault();
 
-    const name = document.getElementById('loginName').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const name = nameParam || document.getElementById('loginName').value.trim();
+    const password = passwordParam || document.getElementById('loginPassword').value;
 
     // Check if user is authorized
     const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
