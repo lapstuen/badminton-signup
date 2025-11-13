@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Connection Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .test {
+            background: #2d2d2d;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #666;
+        }
+        .success {
+            border-left-color: #4ec9b0;
+        }
+        .error {
+            border-left-color: #f44747;
+        }
+        .pending {
+            border-left-color: #f59e0b;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 Firebase Connection Test</h1>
+    <div id="tests"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+    <script>
+        const testsDiv = document.getElementById('tests');
+
+        function addTest(name, status, message) {
+            const div = document.createElement('div');
+            div.className = `test ${status}`;
+            div.innerHTML = `
+                <h3>${status === 'success' ? '✅' : status === 'error' ? '❌' : '⏳'} ${name}</h3>
+                <pre>${message}</pre>
+            `;
+            testsDiv.appendChild(div);
+        }
+
+        async function runTests() {
+            // Test 1: Firebase SDK Loaded
+            addTest('Firebase SDK Loaded',
+                typeof firebase !== 'undefined' ? 'success' : 'error',
+                typeof firebase !== 'undefined' ? 'Firebase SDK is loaded' : 'Firebase SDK is NOT loaded'
+            );
+
+            if (typeof firebase === 'undefined') {
+                addTest('FATAL ERROR', 'error', 'Cannot continue - Firebase SDK not loaded');
+                return;
+            }
+
+            // Test 2: Load firebase-config.js
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCYPRnwPGwCJmts58XG3qOBaMGMtgxt5yM",
+                    authDomain: "badminton-b95ac.firebaseapp.com",
+                    projectId: "badminton-b95ac",
+                    storageBucket: "badminton-b95ac.firebasestorage.app",
+                    messagingSenderId: "667668341395",
+                    appId: "1:667668341395:web:a924da2977c1106865a366"
+                };
+
+                firebase.initializeApp(firebaseConfig);
+                addTest('Firebase App Initialized', 'success', `Project ID: ${firebaseConfig.projectId}`);
+            } catch (error) {
+                addTest('Firebase App Initialization', 'error', error.message);
+                return;
+            }
+
+            // Test 3: Initialize Firestore
+            try {
+                const db = firebase.firestore();
+                addTest('Firestore Initialized', 'success', 'Firestore object created');
+
+                // Test 4: Test Firestore Read
+                addTest('Testing Firestore Read...', 'pending', 'Attempting to read data...');
+
+                try {
+                    const snapshot = await db.collection('authorizedUsers').limit(1).get();
+                    addTest('Firestore Read', 'success',
+                        `Read ${snapshot.size} document(s) from authorizedUsers collection`
+                    );
+                } catch (readError) {
+                    addTest('Firestore Read', 'error',
+                        `Error: ${readError.message}\n\nCode: ${readError.code}`
+                    );
+                }
+
+                // Test 5: Test Firestore Write
+                addTest('Testing Firestore Write...', 'pending', 'Attempting to write test data...');
+
+                try {
+                    const testDoc = await db.collection('_test').add({
+                        test: true,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    addTest('Firestore Write', 'success', `Test document created: ${testDoc.id}`);
+
+                    // Clean up
+                    await testDoc.delete();
+                    addTest('Test Cleanup', 'success', 'Test document deleted');
+                } catch (writeError) {
+                    addTest('Firestore Write', 'error',
+                        `Error: ${writeError.message}\n\nCode: ${writeError.code}\n\n` +
+                        `This means Firestore security rules are blocking writes!`
+                    );
+                }
+
+                // Test 6: Test Cloud Functions
+                try {
+                    const functions = firebase.functions();
+                    addTest('Cloud Functions Initialized', 'success', 'Functions object created');
+                } catch (funcError) {
+                    addTest('Cloud Functions', 'error', funcError.message);
+                }
+
+            } catch (error) {
+                addTest('Firestore Initialization', 'error', error.message);
+            }
+
+            // Test 7: Check localStorage
+            const loggedInUser = localStorage.getItem('loggedInUser');
+            addTest('LocalStorage Check',
+                loggedInUser ? 'success' : 'pending',
+                loggedInUser ? `Logged in user: ${loggedInUser}` : 'No logged in user'
+            );
+
+            // Test 8: Test app.js loading
+            addTest('Summary', 'pending',
+                'If all tests pass, the app should work.\n\n' +
+                'If Firestore Read/Write fails, check Firebase Console:\n' +
+                '1. Go to Firestore Database → Rules\n' +
+                '2. Make sure rules allow read/write access\n\n' +
+                'Refresh the main app (index.html) to test.'
+            );
+        }
+
+        // Run tests on load
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 100);
+        });
+    </script>
+</body>
+</html>

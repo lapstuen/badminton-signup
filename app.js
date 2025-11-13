@@ -1537,6 +1537,94 @@ function logoutUser() {
 }
 
 // ============================================
+// PASSWORD RESET (Self-Service)
+// ============================================
+
+/**
+ * Reset password to default (123) for users with UUID passwords
+ * Logs reset in Firestore and sends Line notification
+ */
+async function resetPassword() {
+    const name = document.getElementById('loginName').value.trim();
+
+    if (!name) {
+        alert('Please enter your name first / กรุณาใส่ชื่อก่อน');
+        return;
+    }
+
+    // Find user
+    const user = state.authorizedUsers.find(u => u.name === name);
+
+    if (!user) {
+        alert('User not found / ไม่พบผู้ใช้');
+        return;
+    }
+
+    // Check if user has UUID password (long password)
+    if (user.password.length < 20) {
+        alert('Your password is already simple. Please login normally.\nรหัสผ่านของคุณเป็นรหัสง่ายแล้ว กรุณาเข้าสู่ระบบตามปกติ');
+        return;
+    }
+
+    // Confirm reset
+    if (!confirm(`Reset password to default (123)?\nรีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น (123)?\n\nUser: ${name}\n\nYou can login with password "123" after reset.\nคุณสามารถเข้าสู่ระบบด้วยรหัส "123" หลังจากรีเซ็ต`)) {
+        return;
+    }
+
+    try {
+        const defaultPassword = '123'; // Hardcoded default password
+
+        // Update password in database
+        await usersRef.doc(user.id).update({
+            password: defaultPassword
+        });
+
+        // Log password reset
+        await passwordResetsRef.add({
+            userId: user.id,
+            userName: name,
+            oldPassword: user.password.substring(0, 10) + '...', // Store partial for audit
+            newPassword: defaultPassword,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            ipAddress: 'N/A' // Could add IP detection if needed
+        });
+
+        // Send Line notification
+        try {
+            const sendPasswordResetNotification = functions.httpsCallable('sendPasswordResetNotification');
+            await sendPasswordResetNotification({
+                userName: name,
+                timestamp: new Date().toLocaleString('en-GB', {
+                    timeZone: 'Asia/Bangkok',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+            });
+            console.log('✅ Line notification sent for password reset');
+        } catch (error) {
+            console.error('❌ Line notification failed:', error);
+            // Don't block reset if Line fails
+        }
+
+        alert(`✅ Password reset successful!\n\nYou can now login with:\nName: ${name}\nPassword: ${defaultPassword}\n\n✅ รีเซ็ตรหัสผ่านสำเร็จ!\n\nเข้าสู่ระบบด้วย:\nชื่อ: ${name}\nรหัสผ่าน: ${defaultPassword}`);
+
+        // Clear form and update user list
+        document.getElementById('loginName').value = '';
+        document.getElementById('loginPassword').value = '';
+        await loadAuthorizedUsers();
+        updateUI();
+
+        console.log('✅ Password reset completed for:', name);
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        alert('Error resetting password. Please try again or contact admin.');
+    }
+}
+
+// ============================================
 // USER LOGIN
 // ============================================
 

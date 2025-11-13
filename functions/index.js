@@ -451,3 +451,83 @@ exports.sendLineMessage = onCall(async (request) => {
         );
     }
 });
+
+/**
+ * Send password reset notification to Line group
+ * Notifies admins when a user resets their password
+ */
+exports.sendPasswordResetNotification = onCall(async (request) => {
+    try {
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        if (!accessToken) {
+            throw new HttpsError('failed-precondition', 'Line Access Token not configured');
+        }
+
+        if (!groupId) {
+            throw new HttpsError('failed-precondition', 'Line Group ID not configured');
+        }
+
+        // Extract data from request
+        const { userName, timestamp } = request.data;
+
+        if (!userName || !timestamp) {
+            throw new HttpsError('invalid-argument', 'userName and timestamp are required');
+        }
+
+        console.log(`🔐 Sending password reset notification for: ${userName}`);
+
+        // Build notification message
+        const message = `🔐 PASSWORD RESET / รีเซ็ตรหัสผ่าน
+
+User / ผู้ใช้: ${userName}
+Time / เวลา: ${timestamp}
+
+⚠️ This user has reset their password to default (123)
+ผู้ใช้นี้ได้รีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น (123)
+
+If this was not authorized, please contact admin immediately.
+หากไม่ได้รับอนุญาต กรุณาติดต่อผู้ดูแลระบบทันที`;
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [
+                    {
+                        type: 'text',
+                        text: message
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Password reset notification sent successfully:', response.data);
+
+        return {
+            success: true,
+            message: 'Password reset notification sent to Line group'
+        };
+
+    } catch (error) {
+        console.error('❌ Error sending password reset notification:', error.message);
+
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+
+        throw new HttpsError(
+            'internal',
+            'Failed to send password reset notification: ' + error.message
+        );
+    }
+});

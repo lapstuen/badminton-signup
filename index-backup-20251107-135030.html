@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton Påmelding</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#10b981">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏸 Badminton / แบดมินตัน</h1>
+            <p class="version-header">v2025-11-05 15:30 (Wallet)</p>
+
+            <!-- Logged In User Info (moved here) -->
+            <div class="logged-in-info" id="loggedInInfo" style="display: none;">
+                <p>Logged in as: <strong id="loggedInName"></strong></p>
+                <p class="balance-display">
+                    Wallet Balance / ยอดเงิน: <strong id="userBalance">0</strong> THB
+                    <button onclick="refreshBalance()" class="refresh-balance-btn" title="Refresh balance / รีเฟรชยอดเงิน">🔄</button>
+                </p>
+            </div>
+
+            <div class="session-details">
+                <p class="session-day" id="sessionDay">Monday / วันจันทร์</p>
+                <p class="session-time" id="sessionTime">10:00 - 12:00</p>
+                <p class="session-spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
+            </div>
+        </header>
+
+        <main id="mainContent">
+            <!-- User Login Section -->
+            <div class="user-login" id="userLogin" style="display: none;">
+                <h2>Login<br>เข้าสู่ระบบ</h2>
+                <form id="loginForm">
+                    <input type="text" id="loginName" placeholder="Name / ชื่อ" required>
+                    <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
+                    <button type="submit" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
+                </form>
+                <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
+            </div>
+
+            <div class="registration-form" id="registrationForm">
+                <h2>Sign Up / ลงทะเบียน</h2>
+                <form id="signupForm">
+                    <input type="text" id="playerName" placeholder="Name / ชื่อ" required>
+                    <button type="submit" class="btn btn-primary">Join<br>เข้าร่วม</button>
+                </form>
+            </div>
+
+            <div class="success-message" id="successMessage" style="display: none;">
+                <h2 style="margin-top: 0;">You are registered!<br>คุณลงทะเบียนแล้ว!</h2>
+                <div class="payment-info">
+                    <div class="qr-code" id="qrCode"></div>
+                </div>
+            </div>
+
+            <div class="players-list">
+                <h2>Players / ผู้เล่น</h2>
+                <ul id="playersList"></ul>
+                <h3>Waiting List / รายชื่อสำรอง</h3>
+                <ul id="waitingList"></ul>
+            </div>
+
+            <!-- Logout Button (bottom) -->
+            <div class="logout-container" id="logoutContainer" style="display: none;">
+                <p>.</p>
+                <p>.</p>
+                <p>.</p>
+                <p>.</p>
+                <p>.</p>
+                <p>.</p>
+                <p>─────────────────</p>
+                <p class="version">v2025-11-05 15:30 (Wallet System)</p>
+
+                <div class="bottom-buttons">
+                    <!-- Transaction History Button -->
+                    <button onclick="showMyTransactions()" class="btn-transaction-bottom">
+                        Transaction History<br>ประวัติการทำรายการ
+                    </button>
+
+                    <!-- Cancel Registration Button (only when registered) -->
+                    <button onclick="cancelRegistration()" id="cancelBtn" class="btn-cancel-bottom" style="display: none;">
+                        Cancel Registration<br>ยกเลิก
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <button class="admin-btn" onclick="toggleAdmin()">👤</button>
+        
+        <div class="admin-panel" id="adminPanel" style="display: none;">
+            <div class="admin-header">
+                <h2>Admin Panel / ผู้ดูแล</h2>
+                <button class="close-btn" onclick="toggleAdmin()">✕</button>
+            </div>
+            <div class="admin-controls">
+                <input type="password" id="adminPassword" placeholder="Admin password / รหัสผ่าน">
+                <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
+                <div id="adminActions" style="display: none;">
+                    <button onclick="clearSession()">New Session / เริ่มใหม่</button>
+                    <button onclick="changeSessionDetails()">Edit Session / แก้ไขรายละเอียด</button>
+                    <button onclick="changePaymentAmount()">Change Payment Amount / เปลี่ยนราคา</button>
+                    <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
+                    <button onclick="manageRegularPlayers()">Manage Regular Players / จัดการผู้เล่นประจำ</button>
+                    <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
+                    <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
+                    <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
+                    <!-- HIDDEN: Reset All Balances - uncomment if needed for fresh start -->
+                    <!-- <button onclick="initializeAllBalances()" style="background: #ef4444;">🔄 Reset All Balances / รีเซ็ตยอดเงินทั้งหมด</button> -->
+                    <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
+                    <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
+                    <button onclick="logoutUser()" style="background: #6b7280; margin-top: 10px;">🚪 Logout / ออกจากระบบ</button>
+                </div>
+            </div>
+            <div class="authorized-users-management" id="authorizedUsersSection" style="display: none;">
+                <h3>Authorized Users / ผู้ใช้ที่ได้รับอนุญาต</h3>
+                <button onclick="addAuthorizedUser()" class="btn-add-user">+ Add User / เพิ่มผู้ใช้</button>
+                <div id="authorizedUsersList"></div>
+            </div>
+            <div class="transactions-section" id="transactionsSection" style="display: none;">
+                <h3>Transaction History / ประวัติการทำรายการ</h3>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
+                <div id="transactionsList"></div>
+            </div>
+            <div class="payment-tracking">
+                <h3>Payment Status / สถานะการชำระเงิน</h3>
+                <div id="paymentList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Transaction History Modal (outside container for full-screen overlay) -->
+    <div class="modal" id="userTransactionModal" style="display: none;" onclick="closeMyTransactions()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>My Transactions / รายการของฉัน</h2>
+                <button class="close-btn" onclick="closeMyTransactions()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="userTransactionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Selection Modal for Wallet Management -->
+    <div class="modal" id="userSelectionModal" style="display: none;" onclick="closeUserSelection()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Select User / เลือกผู้ใช้</h2>
+                <button class="close-btn" onclick="closeUserSelection()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">Select a user to adjust wallet balance / เลือกผู้ใช้เพื่อปรับยอดเงิน</p>
+                <div id="userSelectionList" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Adjustment Modal -->
+    <div class="modal" id="balanceAdjustModal" style="display: none;" onclick="closeBalanceAdjust()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="balanceAdjustTitle">Adjust Balance</h2>
+                <button class="close-btn" onclick="closeBalanceAdjust()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="balanceAdjustInfo" style="margin-bottom: 15px; color: #666;"></p>
+
+                <p style="font-weight: bold; margin-bottom: 10px;">Quick Select / เลือกด่วน:</p>
+                <div class="quick-amount-buttons">
+                    <button onclick="selectAmount(200)">200</button>
+                    <button onclick="selectAmount(300)">300</button>
+                    <button onclick="selectAmount(400)">400</button>
+                    <button onclick="selectAmount(500)">500</button>
+                    <button onclick="selectAmount(1000)">1000</button>
+                </div>
+
+                <p style="font-weight: bold; margin: 15px 0 10px 0;">Or enter custom amount / หรือใส่จำนวนเอง:</p>
+                <input type="number" id="balanceAdjustAmount" placeholder="Enter amount (e.g., 700 or -300 to correct)"
+                       style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 15px;">
+
+                <button onclick="confirmBalanceAdjust()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    Confirm / ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+
+    <!-- App JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

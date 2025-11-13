@@ -21,7 +21,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-13 16:30 (Add: Self-service wallet payment button)</p>
+            <p class="version-header">v2025-11-13 17:00 (Add: Self-service password reset)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -62,6 +62,13 @@
                     <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
                     <button type="submit" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
                 </form>
+                <button type="button" onclick="resetPassword()" class="btn btn-secondary" style="background: #f59e0b; margin-top: 10px;">
+                    🔄 Reset Password<br>รีเซ็ตรหัสผ่าน
+                </button>
+                <p class="login-note" style="margin-top: 10px; font-size: 12px; color: #666;">
+                    Forgot password? Enter your name and click Reset Password<br>
+                    ลืมรหัสผ่าน? ใส่ชื่อแล้วคลิกรีเซ็ตรหัสผ่าน
+                </p>
                 <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
             </div>
 
@@ -106,7 +113,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-13 16:30 (Add: Self-service wallet payment button)</p>
+                <p class="version">v2025-11-13 17:00 (Add: Self-service password reset)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
