@@ -33,7 +33,9 @@
       "Bash(gh repo create:*)",
       "Bash(curl:*)",
       "Bash(mkdir:*)",
-      "Bash(xcodebuild:*)"
+      "Bash(xcodebuild:*)",
+      "Bash(firebase functions:list:*)",
+      "Bash(firebase functions:log:*)"
     ],
     "deny": [],
     "ask": []
