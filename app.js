@@ -3307,6 +3307,103 @@ function closeManagedPlayers() {
     document.getElementById('manageTodaysPlayersModal').style.display = 'none';
 }
 
+// ============================================
+// REMOVE PLAYER FROM SESSION
+// ============================================
+
+/**
+ * Admin function to remove a player from current session
+ * Refunds wallet if player had paid
+ */
+async function removePlayerFromSession() {
+    if (state.players.length === 0) {
+        alert('No players registered / ไม่มีผู้เล่นที่ลงทะเบียน');
+        return;
+    }
+
+    // Build player list for selection
+    let playerList = 'Select player number to remove / เลือกหมายเลขผู้เล่นที่จะลบ:\n\n';
+    state.players.forEach((player, index) => {
+        const position = index + 1;
+        const paidStatus = player.paid ? '✓ Paid' : '✗ Unpaid';
+        const guestMarker = player.isGuest ? '👤 Guest' : '';
+        playerList += `${position}. ${player.name} ${guestMarker} - ${paidStatus}\n`;
+    });
+
+    const selection = prompt(playerList + '\nEnter player number / ใส่หมายเลขผู้เล่น:');
+
+    if (!selection) return; // Cancelled
+
+    const playerIndex = parseInt(selection) - 1;
+
+    if (isNaN(playerIndex) || playerIndex < 0 || playerIndex >= state.players.length) {
+        alert('Invalid player number / หมายเลขผู้เล่นไม่ถูกต้อง');
+        return;
+    }
+
+    const playerToRemove = state.players[playerIndex];
+    const playerName = playerToRemove.name;
+    const wasPaid = playerToRemove.paid;
+    const isGuest = playerToRemove.isGuest;
+
+    // Confirm removal
+    const confirmMsg = `Remove player from session?\nลบผู้เล่นออกจากเซสชัน?\n\n` +
+                      `Player: ${playerName}\n` +
+                      `Status: ${wasPaid ? 'Paid ✓' : 'Unpaid ✗'}\n` +
+                      `${isGuest ? '(Guest player)' : ''}\n\n` +
+                      `${wasPaid && !isGuest ? 'Wallet will be refunded ' + state.paymentAmount + ' THB' : ''}`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        // If player paid and is not a guest, refund to wallet
+        if (wasPaid && !isGuest && playerToRemove.userId) {
+            const user = state.authorizedUsers.find(u => u.id === playerToRemove.userId);
+            if (user) {
+                const currentBalance = user.balance || 0;
+                const newBalance = currentBalance + state.paymentAmount;
+
+                await usersRef.doc(playerToRemove.userId).update({
+                    balance: newBalance
+                });
+
+                // Add transaction record
+                await transactionsRef.add({
+                    userId: playerToRemove.userId,
+                    userName: playerName,
+                    type: 'refund',
+                    amount: state.paymentAmount,
+                    balance: newBalance,
+                    reason: `Admin removed from session ${state.sessionDay} ${state.sessionDate}`,
+                    sessionId: currentSessionId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                console.log(`✅ Refunded ${state.paymentAmount} THB to ${playerName}`);
+            }
+        }
+
+        // Delete player from Firestore
+        await playersRef().doc(playerToRemove.id).delete();
+
+        console.log(`✅ Player removed: ${playerName}`);
+
+        alert(`✅ Player removed successfully!\n\n${wasPaid && !isGuest ? `Refunded ${state.paymentAmount} THB to wallet` : ''}\n\nลบผู้เล่นสำเร็จ!`);
+
+        // Reload authorized users if refund happened
+        if (wasPaid && !isGuest) {
+            await loadAuthorizedUsers();
+        }
+
+        updateUI();
+    } catch (error) {
+        console.error('Error removing player:', error);
+        alert('Error removing player. Please try again.');
+    }
+}
+
 async function viewTransactions() {
     const section = document.getElementById('transactionsSection');
 

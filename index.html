@@ -21,7 +21,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-13 18:15 (Re-enable: Test Line button)</p>
+            <p class="version-header">v2025-11-13 18:30 (Major: Collapsible admin groups + Remove player)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -119,7 +119,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-13 18:15 (Re-enable: Test Line button)</p>
+                <p class="version">v2025-11-13 18:30 (Major: Collapsible admin groups + Remove player)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -165,29 +165,71 @@
                 <input type="password" id="adminPassword" placeholder="Admin password / รหัสผ่าน">
                 <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
                 <div id="adminActions" style="display: none;">
-                    <button id="maintenanceModeBtn" onclick="toggleMaintenanceMode()" style="background: #ef4444; font-weight: bold;">🔧 Enable Maintenance Mode / เปิดโหมดซ่อมบำรุง</button>
-                    <button onclick="clearSession()">New Session / เริ่มใหม่</button>
-                    <button onclick="changeSessionDetails()" style="background: #f59e0b;">Edit Session / แก้ไขรายละเอียด</button>
-                    <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
-                    <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
-                    <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
-                    <button onclick="closeLastSession()" style="background: #6366f1; color: white; font-weight: bold;">🏁 Close Last Session / Avslutt forrige seanse</button>
-                    <!-- Line notification buttons - use sparingly to avoid hitting monthly quota -->
-                    <!-- <button onclick="shareSessionToLine()" style="background: #00C300; color: white; font-weight: bold;">📤 Share to Line / แชร์ไปยัง Line</button> -->
-                    <button onclick="testLineMessage()" style="background: #22c55e; color: white; font-weight: bold;">🧪 Test Line / ทดสอบ Line</button>
-                    <!-- <button onclick="nudgePlayers()" style="background: #f97316; color: white; font-weight: bold;">📢 Nudge Players / Purr spillere</button> -->
-                    <button onclick="changePaymentAmount()" style="background: #f59e0b;">Change Payment Amount / เปลี่ยนราคา</button>
-                    <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
-                    <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
-                    <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
-                    <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
-                    <!-- HIDDEN: Reset All Balances - uncomment if needed for fresh start -->
-                    <!-- <button onclick="initializeAllBalances()" style="background: #ef4444;">🔄 Reset All Balances / รีเซ็ตยอดเงินทั้งหมด</button> -->
-                    <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
-                    <button onclick="viewAccountingReport()" style="background: #8b5cf6; font-weight: bold;">📊 Accounting Report / รายงานบัญชี</button>
-                    <button onclick="addManualExpense()" style="background: #ef4444;">💸 Add Expense / เพิ่มค่าใช้จ่าย</button>
-                    <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
-                    <button onclick="logoutUser()" style="background: #6b7280; margin-top: 10px;">🚪 Logout / ออกจากระบบ</button>
+                    <!-- Session Management -->
+                    <details class="admin-group" open>
+                        <summary class="admin-group-title">📅 Session Management</summary>
+                        <div class="admin-group-content">
+                            <button onclick="clearSession()">New Session / เริ่มใหม่</button>
+                            <button onclick="changeSessionDetails()" style="background: #f59e0b;">Edit Session / แก้ไขรายละเอียด</button>
+                            <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
+                            <button onclick="closeLastSession()" style="background: #6366f1; color: white; font-weight: bold;">🏁 Close Last Session / Avslutt forrige seanse</button>
+                            <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
+                        </div>
+                    </details>
+
+                    <!-- Player Management -->
+                    <details class="admin-group">
+                        <summary class="admin-group-title">👥 Player Management</summary>
+                        <div class="admin-group-content">
+                            <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
+                            <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
+                            <button onclick="removePlayerFromSession()" style="background: #ef4444;">❌ Remove Player / ลบผู้เล่น</button>
+                            <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
+                        </div>
+                    </details>
+
+                    <!-- User Management -->
+                    <details class="admin-group">
+                        <summary class="admin-group-title">👤 User Management</summary>
+                        <div class="admin-group-content">
+                            <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
+                            <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
+                        </div>
+                    </details>
+
+                    <!-- Financial / Accounting -->
+                    <details class="admin-group">
+                        <summary class="admin-group-title">💰 Financial / Accounting</summary>
+                        <div class="admin-group-content">
+                            <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
+                            <button onclick="viewAccountingReport()" style="background: #8b5cf6; font-weight: bold;">📊 Accounting Report / รายงานบัญชี</button>
+                            <button onclick="addManualExpense()" style="background: #ef4444;">💸 Add Expense / เพิ่มค่าใช้จ่าย</button>
+                            <button onclick="changePaymentAmount()" style="background: #f59e0b;">Change Payment Amount / เปลี่ยนราคา</button>
+                        </div>
+                    </details>
+
+                    <!-- Settings -->
+                    <details class="admin-group">
+                        <summary class="admin-group-title">⚙️ Settings</summary>
+                        <div class="admin-group-content">
+                            <button id="maintenanceModeBtn" onclick="toggleMaintenanceMode()" style="background: #ef4444; font-weight: bold;">🔧 Enable Maintenance Mode / เปิดโหมดซ่อมบำรุง</button>
+                            <button onclick="changeMaxPlayers()">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
+                        </div>
+                    </details>
+
+                    <!-- Line Notifications -->
+                    <details class="admin-group">
+                        <summary class="admin-group-title">📲 Line Notifications</summary>
+                        <div class="admin-group-content">
+                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">⚠️ Use sparingly to avoid hitting monthly quota</p>
+                            <button onclick="testLineMessage()" style="background: #22c55e; color: white; font-weight: bold;">🧪 Test Line / ทดสอบ Line</button>
+                            <!-- <button onclick="shareSessionToLine()" style="background: #00C300; color: white; font-weight: bold;">📤 Share to Line / แชร์ไปยัง Line</button> -->
+                            <!-- <button onclick="nudgePlayers()" style="background: #f97316; color: white; font-weight: bold;">📢 Nudge Players / Purr spillere</button> -->
+                        </div>
+                    </details>
+
+                    <!-- Logout -->
+                    <button onclick="logoutUser()" style="background: #6b7280; margin-top: 20px; width: 100%;">🚪 Logout / ออกจากระบบ</button>
                 </div>
             </div>
             <div class="authorized-users-management" id="authorizedUsersSection" style="display: none;">

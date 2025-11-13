@@ -333,6 +333,57 @@ input:focus {
     background: #e5e7eb;
 }
 
+/* Collapsible Admin Groups */
+.admin-group {
+    margin: 15px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+}
+
+.admin-group-title {
+    cursor: pointer;
+    padding: 12px 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+    user-select: none;
+    list-style: none;
+}
+
+.admin-group-title:hover {
+    background: #f3f4f6;
+}
+
+.admin-group-title::marker {
+    content: "";
+}
+
+.admin-group-title::before {
+    content: "▶ ";
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.admin-group[open] .admin-group-title::before {
+    transform: rotate(90deg);
+}
+
+.admin-group-content {
+    padding: 10px;
+}
+
+.admin-group-content button {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.admin-group-content p {
+    margin: 0 0 10px 0;
+}
+
 .payment-tracking h3 {
     margin-bottom: 15px;
     color: #333;

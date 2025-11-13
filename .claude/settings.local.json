@@ -35,7 +35,8 @@
       "Bash(mkdir:*)",
       "Bash(xcodebuild:*)",
       "Bash(firebase functions:list:*)",
-      "Bash(firebase functions:log:*)"
+      "Bash(firebase functions:log:*)",
+      "Bash(firebase functions:secrets:list:*)"
     ],
     "deny": [],
     "ask": []
