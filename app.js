@@ -1073,6 +1073,17 @@ async function finalizeSessionAccounting() {
         const courts = Math.ceil(activePlayers.length / 6);
         const courtCost = courts * 440;
 
+        // Calculate shuttlecock cost
+        const shuttlecockCost = (state.shuttlecocksUsed || 0) * 90;
+        const totalExpense = courtCost + shuttlecockCost;
+
+        // Build expense breakdown text
+        let expenseText = `💸 รายจ่าย / Expenses:\n${courts} สนาม × 440 = ${courtCost} THB\n`;
+        if (state.shuttlecocksUsed > 0) {
+            expenseText += `${state.shuttlecocksUsed} ลูก × 90 = ${shuttlecockCost} THB\n`;
+            expenseText += `รวม / Total: ${totalExpense} THB\n`;
+        }
+
         // Confirm before recording
         const confirmed = confirm(
             `📊 บันทึกการเงิน / Record Finances\n\n` +
@@ -1080,9 +1091,8 @@ async function finalizeSessionAccounting() {
             `👥 ผู้เล่น / Players: ${activePlayers.length}\n\n` +
             `💰 รายรับ / Income:\n` +
             `${activePlayers.length} × ${state.paymentAmount} = ${income} THB\n\n` +
-            `💸 รายจ่าย / Expenses:\n` +
-            `${courts} สนาม × 440 = ${courtCost} THB\n\n` +
-            `💵 กำไร/ขาดทุน / Profit/Loss: ${income - courtCost} THB\n\n` +
+            expenseText + `\n` +
+            `💵 กำไร/ขาดทุน / Profit/Loss: ${income - totalExpense} THB\n\n` +
             `ยืนยันการบันทึก / Confirm?`
         );
 
@@ -1090,10 +1100,66 @@ async function finalizeSessionAccounting() {
             return;
         }
 
+        // ============================================
+        // STEP 1: ARCHIVE SESSION TO DATED DOCUMENT
+        // ============================================
+
+        // Generate ISO date for archived document (YYYY-MM-DD)
+        const today = new Date();
+        const archivedSessionId = today.toISOString().split('T')[0]; // e.g., "2025-11-14"
+
+        console.log(`📦 Archiving session to: sessions/${archivedSessionId}`);
+
+        // Copy session data to archived document
+        const archivedSessionRef = sessionsRef.doc(archivedSessionId);
+        await archivedSessionRef.set({
+            date: state.sessionDate,
+            day: state.sessionDay,
+            time: state.sessionTime,
+            maxPlayers: state.maxPlayers,
+            paymentAmount: state.paymentAmount,
+            shuttlecocksUsed: state.shuttlecocksUsed || 0,
+            published: state.published,
+            closed: true,
+            closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            finalPlayerCount: activePlayers.length,
+            finalIncome: income,
+            finalExpense: totalExpense,
+            courts: courts,
+            archivedFrom: 'current',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log('✅ Session data archived');
+
+        // Copy ALL players to archived session
+        const playersSnapshot = await playersRef().get();
+        const archivedPlayersRef = archivedSessionRef.collection('players');
+
+        const batch = db.batch();
+        let playersCopied = 0;
+
+        playersSnapshot.forEach(doc => {
+            const playerData = doc.data();
+            const newPlayerRef = archivedPlayersRef.doc(); // Auto-generate new ID
+            batch.set(newPlayerRef, {
+                ...playerData,
+                archivedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            playersCopied++;
+        });
+
+        await batch.commit();
+        console.log(`✅ ${playersCopied} players copied to archived session`);
+
+        // ============================================
+        // STEP 2: REGISTER INCOME & EXPENSES
+        // ============================================
+
         // Register income
         await incomeRef.add({
             date: state.sessionDate,
-            sessionId: currentSessionId,
+            sessionId: archivedSessionId, // Link to archived session
             amount: income,
             paymentPerPlayer: state.paymentAmount,
             playerCount: activePlayers.length,
@@ -1103,11 +1169,11 @@ async function finalizeSessionAccounting() {
 
         console.log('✅ Income registered:', income);
 
-        // Register expense (court rental)
+        // Register court rental expense
         await expensesRef.add({
             date: state.sessionDate,
             type: 'court_rental',
-            sessionId: currentSessionId,
+            sessionId: archivedSessionId,
             amount: courtCost,
             courts: courts,
             costPerCourt: 440,
@@ -1115,26 +1181,57 @@ async function finalizeSessionAccounting() {
             notes: `${state.sessionDay} ${state.sessionTime}`
         });
 
-        console.log('✅ Expense registered:', courtCost);
+        console.log('✅ Court expense registered:', courtCost);
 
-        // Mark session as closed
+        // Register shuttlecock expense (if any)
+        if (state.shuttlecocksUsed > 0) {
+            await expensesRef.add({
+                date: state.sessionDate,
+                type: 'shuttlecocks',
+                sessionId: archivedSessionId,
+                amount: shuttlecockCost,
+                quantity: state.shuttlecocksUsed,
+                costPerItem: 90,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                notes: `${state.sessionDay} ${state.sessionTime}`
+            });
+
+            console.log('✅ Shuttlecock expense registered:', shuttlecockCost);
+        }
+
+        // ============================================
+        // STEP 3: MARK CURRENT SESSION AS CLOSED
+        // ============================================
+
         await currentSessionRef().update({
             closed: true,
             closedAt: firebase.firestore.FieldValue.serverTimestamp(),
             finalPlayerCount: activePlayers.length,
             finalIncome: income,
-            finalExpense: courtCost
+            finalExpense: totalExpense,
+            archivedTo: archivedSessionId
         });
 
-        console.log('✅ Session marked as closed');
+        console.log('✅ Current session marked as closed');
 
-        alert(
-            `✅ บันทึกสำเร็จ / Success!\n\n` +
+        // Success message
+        let successMsg = `✅ บันทึกสำเร็จ / Success!\n\n` +
+            `📦 เซสชันถูกบันทึกที่ / Session archived to:\n` +
+            `sessions/${archivedSessionId}\n\n` +
+            `👥 ผู้เล่น / Players copied: ${playersCopied}\n\n` +
             `💰 รายรับ / Income: ${income} THB\n` +
-            `💸 รายจ่าย / Expenses: ${courtCost} THB\n` +
-            `💵 กำไร/ขาดทุน / Profit: ${income - courtCost} THB\n\n` +
-            `เซสชันถูกปิดแล้ว / Session closed`
-        );
+            `💸 รายจ่าย / Expenses:\n` +
+            `  - สนาม / Courts: ${courtCost} THB\n`;
+
+        if (state.shuttlecocksUsed > 0) {
+            successMsg += `  - ลูกขนไก่ / Shuttlecocks: ${shuttlecockCost} THB\n`;
+        }
+
+        successMsg += `  - รวม / Total: ${totalExpense} THB\n\n` +
+            `💵 กำไร/ขาดทุน / Profit: ${income - totalExpense} THB\n\n` +
+            `เซสชันถูกปิดแล้ว / Session closed`;
+
+        alert(successMsg);
 
         // Close the modal
         closeSessionSummary();
