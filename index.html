@@ -36,6 +36,9 @@
                 <p class="session-day" id="sessionDay">Monday / วันจันทร์</p>
                 <p class="session-time" id="sessionTime">10:00 - 12:00</p>
                 <p class="session-spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
+                <p class="session-shuttlecocks" id="sessionShuttlecocks" style="display: none; font-size: 14px; color: #6b7280; margin-top: 8px;">
+                    🏸 Shuttlecocks / ลูกแบด: <strong id="shuttlecocksCount">0</strong> (<span id="shuttlecocksCost">0</span> THB)
+                </p>
             </div>
         </header>
 
@@ -119,7 +122,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-13 18:40 (Move: Payment Status to collapsible group)</p>
+                <p class="version">v2025-11-14 20:15 (Feature: Track shuttlecocks used for cost calculation)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -173,6 +176,7 @@
                             <button onclick="changeSessionDetails()" style="background: #f59e0b;">Edit Session / แก้ไขรายละเอียด</button>
                             <button onclick="publishSession()" style="background: #10b981; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
                             <button onclick="closeLastSession()" style="background: #6366f1; color: white; font-weight: bold;">🏁 Close Last Session / Avslutt forrige seanse</button>
+                            <button onclick="registerShuttlecocks()" style="background: #ec4899;">🏸 Register Shuttlecocks / ลงทะเบียนลูกแบด</button>
                             <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
                         </div>
                     </details>

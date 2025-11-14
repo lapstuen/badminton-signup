@@ -17,6 +17,7 @@ let state = {
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
     maintenanceMode: false, // Maintenance mode (blocks all user actions)
+    shuttlecocksUsed: 0, // Number of shuttlecocks used in session (for cost tracking)
     isAdmin: false,
     authorizedUsers: [],
     loggedInUser: null, // Now includes: { name, balance, userId, role }
@@ -180,11 +181,13 @@ async function loadSessionData() {
             state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false; // Default false
+            state.shuttlecocksUsed = data.shuttlecocksUsed !== undefined ? data.shuttlecocksUsed : 0; // Default 0 for old sessions
             console.log('📥 Session data loaded from Firestore:', {
                 day: state.sessionDay,
                 time: state.sessionTime,
                 published: state.published,
-                maintenanceMode: state.maintenanceMode
+                maintenanceMode: state.maintenanceMode,
+                shuttlecocksUsed: state.shuttlecocksUsed
             });
         } else {
             // Create new session
@@ -196,6 +199,7 @@ async function loadSessionData() {
                 paymentAmount: state.paymentAmount,
                 published: true,
                 maintenanceMode: false,
+                shuttlecocksUsed: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('📝 New session created');
@@ -231,7 +235,8 @@ async function saveSessionData() {
             maxPlayers: state.maxPlayers,
             paymentAmount: state.paymentAmount,
             published: state.published,
-            maintenanceMode: state.maintenanceMode
+            maintenanceMode: state.maintenanceMode,
+            shuttlecocksUsed: state.shuttlecocksUsed
         };
 
         // Include closed status if defined in state
@@ -244,7 +249,8 @@ async function saveSessionData() {
             day: state.sessionDay,
             time: state.sessionTime,
             published: state.published,
-            maintenanceMode: state.maintenanceMode
+            maintenanceMode: state.maintenanceMode,
+            shuttlecocksUsed: state.shuttlecocksUsed
         });
     } catch (error) {
         console.error('Error saving session:', error);
@@ -2053,6 +2059,18 @@ function updateUI() {
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
     document.getElementById('maxPlayers').textContent = state.maxPlayers;
 
+    // Update shuttlecocks display (only show if > 0)
+    const shuttlecocksEl = document.getElementById('sessionShuttlecocks');
+    const shuttlecocksCount = state.shuttlecocksUsed || 0;
+    if (shuttlecocksCount > 0) {
+        const cost = shuttlecocksCount * 90;
+        document.getElementById('shuttlecocksCount').textContent = shuttlecocksCount;
+        document.getElementById('shuttlecocksCost').textContent = cost;
+        shuttlecocksEl.style.display = 'block';
+    } else {
+        shuttlecocksEl.style.display = 'none';
+    }
+
     // Update payment amount display
     const paymentAmountElement = document.getElementById('paymentAmount');
     if (paymentAmountElement) {
@@ -2376,6 +2394,7 @@ async function clearSession() {
             state.maxPlayers = 0; // Show 0 / 0
             state.published = false; // Set to draft mode
             state.closed = false; // Mark as open (not closed)
+            state.shuttlecocksUsed = 0; // Reset shuttlecocks count
             await saveSessionData();
 
             // Remove old userName (deprecated)
@@ -2666,6 +2685,40 @@ async function changeMaxPlayers() {
     } else {
         alert(`✅ Max players reduced to ${newMaxInt}`);
     }
+}
+
+/**
+ * Register shuttlecocks used in session
+ * Track shuttlecock consumption for cost calculation
+ */
+async function registerShuttlecocks() {
+    const currentShuttlecocks = state.shuttlecocksUsed || 0;
+
+    const newCount = prompt(
+        `Current shuttlecocks used: ${currentShuttlecocks}\n` +
+        `ลูกที่ใช้ปัจจุบัน: ${currentShuttlecocks}\n\n` +
+        `New shuttlecock count / จำนวนลูกใหม่:`,
+        currentShuttlecocks
+    );
+
+    if (newCount === null || newCount === '' || isNaN(newCount) || newCount < 0) {
+        return; // User cancelled or invalid input
+    }
+
+    const newCountInt = parseInt(newCount);
+
+    // Update shuttlecocks count
+    state.shuttlecocksUsed = newCountInt;
+    await saveSessionData();
+    updateUI();
+
+    const cost = newCountInt * 90; // 90 THB per shuttlecock
+
+    alert(
+        `✅ Shuttlecocks registered / ลงทะเบียนลูกแล้ว\n\n` +
+        `Count / จำนวน: ${newCountInt}\n` +
+        `Cost / ต้นทุน: ${cost} THB (${newCountInt} × 90 THB)`
+    );
 }
 
 // ============================================
