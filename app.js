@@ -896,8 +896,9 @@ async function copyAndCloseSession() {
         // ============================================
 
         // Generate ISO date for archived document (YYYY-MM-DD)
-        const today = new Date();
-        const archivedSessionId = today.toISOString().split('T')[0]; // e.g., "2025-11-18"
+        // Convert sessionDate from "DD/MM/YYYY" to "YYYY-MM-DD"
+        const [day, month, year] = state.sessionDate.split('/');
+        const archivedSessionId = `${year}-${month}-${day}`; // e.g., "2025-11-22"
 
         console.log(`📦 Archiving session to: sessions/${archivedSessionId}`);
 
@@ -2739,7 +2740,6 @@ async function previewSession() {
         message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
         message += `💰 PAYMENT SUMMARY:\n`;
         message += `- Total players: ${totalPlayers}\n`;
-        message += `- Already paid: ${totalPlayers - unpaidPlayers.length}\n`;
         message += `- Will be charged: ${unpaidPlayers.length} players\n`;
         message += `- Total deduction: ${totalDeduction} THB\n`;
 
