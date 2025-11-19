@@ -54,7 +54,9 @@ exports.lineWebhook = onRequest(async (req, res) => {
  * Send session announcement to Line group
  * When admin publishes a new session
  */
-exports.sendSessionAnnouncement = onCall(async (request) => {
+exports.sendSessionAnnouncement = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
@@ -141,7 +143,9 @@ exports.sendSessionAnnouncement = onCall(async (request) => {
  * Send cancellation notification to Line group
  * Smart logic: only mention available spot if no waiting list
  */
-exports.sendCancellationNotification = onCall(async (request) => {
+exports.sendCancellationNotification = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
@@ -305,7 +309,9 @@ Reply quickly! / ตอบเร็ว!`;
  * Send nudge notification to Line group
  * Remind players to register when there are available spots
  */
-exports.sendNudgeNotification = onCall(async (request) => {
+exports.sendNudgeNotification = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
@@ -424,7 +430,9 @@ ${appUrl}`;
  * Generic Line message sender
  * Send any text message to Line group
  */
-exports.sendLineMessage = onCall(async (request) => {
+exports.sendLineMessage = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
@@ -492,7 +500,9 @@ exports.sendLineMessage = onCall(async (request) => {
  * Send password reset notification to Line group
  * Notifies admins when a user resets their password
  */
-exports.sendPasswordResetNotification = onCall(async (request) => {
+exports.sendPasswordResetNotification = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
@@ -572,7 +582,9 @@ If this was not authorized, please contact admin immediately.
  * Test Line configuration - Send test message and log Group ID
  * Use this to verify Line is working and see which group is configured
  */
-exports.testLineConfig = onCall(async (request) => {
+exports.testLineConfig = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
     try {
         // Get environment variables
         const accessToken = lineToken.value();
