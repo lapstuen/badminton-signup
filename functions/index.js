@@ -531,3 +531,84 @@ If this was not authorized, please contact admin immediately.
         );
     }
 });
+
+/**
+ * Test Line configuration - Send test message and log Group ID
+ * Use this to verify Line is working and see which group is configured
+ */
+exports.testLineConfig = onCall(async (request) => {
+    try {
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        console.log('🧪 Testing Line configuration...');
+        console.log('📋 Group ID:', groupId);
+        console.log('🔑 Token exists:', !!accessToken);
+
+        if (!accessToken) {
+            throw new HttpsError('failed-precondition', 'Line Access Token not configured');
+        }
+
+        if (!groupId) {
+            throw new HttpsError('failed-precondition', 'Line Group ID not configured');
+        }
+
+        // Build test message
+        const message = `🧪 LINE TEST / ทดสอบ LINE
+
+This is a test message from your Badminton app.
+นี่คือข้อความทดสอบจากแอปแบดมินตัน
+
+✅ Line integration is working!
+✅ การเชื่อมต่อ Line ใช้งานได้!
+
+Group ID: ${groupId}
+
+You can ignore this message.
+คุณสามารถเพิกเฉยข้อความนี้ได้`;
+
+        console.log('📤 Sending test message to group:', groupId);
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [
+                    {
+                        type: 'text',
+                        text: message
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Test message sent successfully!');
+        console.log('Response:', response.data);
+
+        return {
+            success: true,
+            message: 'Test message sent successfully',
+            groupId: groupId
+        };
+
+    } catch (error) {
+        console.error('❌ Error testing Line config:', error.message);
+
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+
+        throw new HttpsError(
+            'internal',
+            'Failed to send test message: ' + error.message
+        );
+    }
+});

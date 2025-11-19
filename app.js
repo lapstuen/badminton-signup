@@ -727,6 +727,55 @@ async function shareSessionToLine() {
 }
 
 /**
+ * Test Line configuration
+ * Sends a test message and displays Group ID
+ */
+async function testLineConfig() {
+    try {
+        console.log('🧪 Testing Line configuration...');
+
+        // Get Cloud Function reference
+        const testConfig = functions.httpsCallable('testLineConfig');
+
+        // Call the test function
+        const result = await testConfig({});
+
+        console.log('✅ Test result:', result.data);
+
+        // Show success message with Group ID
+        alert(
+            `✅ LINE TEST SUCCESSFUL! / สำเร็จ!\n\n` +
+            `Group ID: ${result.data.groupId}\n\n` +
+            `✅ Test message sent to Line group!\n` +
+            `✅ ข้อความทดสอบส่งไปยังกลุ่ม Line แล้ว!\n\n` +
+            `Check your Line group for the test message.\n` +
+            `ตรวจสอบกลุ่ม Line ของคุณสำหรับข้อความทดสอบ`
+        );
+
+    } catch (error) {
+        console.error('❌ Error testing Line config:', error);
+
+        let errorMessage = '❌ LINE TEST FAILED / ล้มเหลว\n\n';
+
+        if (error.message.includes('not configured')) {
+            errorMessage += 'LINE_TOKEN or LINE_GROUP_ID not configured.\n';
+            errorMessage += 'Please set Firebase secrets first.\n\n';
+            errorMessage += 'ไม่ได้ตั้งค่า LINE_TOKEN หรือ LINE_GROUP_ID\n';
+            errorMessage += 'กรุณาตั้งค่า Firebase secrets ก่อน';
+        } else if (error.message.includes('monthly limit')) {
+            errorMessage += 'You have reached your monthly message limit.\n';
+            errorMessage += 'Please upgrade your Line plan.\n\n';
+            errorMessage += 'คุณถึงขีดจำกัดข้อความรายเดือนแล้ว\n';
+            errorMessage += 'กรุณาอัพเกรดแผน Line ของคุณ';
+        } else {
+            errorMessage += `Error: ${error.message}`;
+        }
+
+        alert(errorMessage);
+    }
+}
+
+/**
  * Send nudge notification to Line group
  * Remind players about available spots
  */
