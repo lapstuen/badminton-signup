@@ -3,7 +3,7 @@
  * When a user cancels their badminton registration
  */
 
-const {onCall, HttpsError} = require('firebase-functions/v2/https');
+const {onCall, onRequest, HttpsError} = require('firebase-functions/v2/https');
 const {defineString} = require('firebase-functions/params');
 const axios = require('axios');
 
@@ -13,6 +13,42 @@ const lineGroupId = defineString('LINE_GROUP_ID');
 
 // Line Messaging API endpoint
 const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
+
+/**
+ * LINE Webhook Endpoint
+ * Receives webhook events from LINE Messaging API
+ * Logs group IDs when messages are sent in groups
+ */
+exports.lineWebhook = onRequest(async (req, res) => {
+    try {
+        console.log('📨 Webhook received:', JSON.stringify(req.body, null, 2));
+
+        // LINE sends events in the body
+        const events = req.body.events || [];
+
+        events.forEach(event => {
+            console.log('🎯 Event type:', event.type);
+            console.log('📍 Source:', JSON.stringify(event.source));
+
+            if (event.source && event.source.type === 'group') {
+                const groupId = event.source.groupId;
+                console.log('🔍 GROUP ID FOUND:', groupId);
+                console.log('👤 User ID:', event.source.userId);
+
+                if (event.type === 'message') {
+                    console.log('💬 Message:', event.message.text);
+                }
+            }
+        });
+
+        // Respond to LINE that we received the webhook
+        res.status(200).send('OK');
+
+    } catch (error) {
+        console.error('❌ Webhook error:', error);
+        res.status(500).send('Error');
+    }
+});
 
 /**
  * Send session announcement to Line group
