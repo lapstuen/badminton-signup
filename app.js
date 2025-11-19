@@ -2,6 +2,11 @@
 // BADMINTON APP - FIREBASE VERSION
 // ============================================
 
+// App URL - Production URL for sharing in Line messages
+const APP_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : 'https://lapstuen.github.io/badminton-signup/';
+
 // Current session ID - FIXED to "current" (does not auto-change daily)
 // Admin must manually start "New Session" to create a new session
 let currentSessionId = 'current';
