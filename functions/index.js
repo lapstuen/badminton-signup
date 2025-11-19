@@ -591,7 +591,7 @@ exports.testLineConfig = onCall(async (request) => {
         }
 
         // Build test message
-        const message = `🧪 LINE TEST / ทดสอบ LINE
+        const message = `🧪 LINE TEST PRODUKSJON / ทดสอบ LINE โปรดักชัน
 
 This is a test message from your Badminton app.
 นี่คือข้อความทดสอบจากแอปแบดมินตัน
@@ -600,6 +600,9 @@ This is a test message from your Badminton app.
 ✅ การเชื่อมต่อ Line ใช้งานได้!
 
 Group ID: ${groupId}
+
+Version: 2025-11-19 14:15 TESTGRUPPE
+Hvis denne går til produksjon er det feil!
 
 You can ignore this message.
 คุณสามารถเพิกเฉยข้อความนี้ได้`;
