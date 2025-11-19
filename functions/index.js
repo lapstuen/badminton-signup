@@ -4,12 +4,12 @@
  */
 
 const {onCall, onRequest, HttpsError} = require('firebase-functions/v2/https');
-const {defineString} = require('firebase-functions/params');
+const {defineSecret} = require('firebase-functions/params');
 const axios = require('axios');
 
-// Environment parameters (for v2 Cloud Functions)
-const lineToken = defineString('LINE_TOKEN');
-const lineGroupId = defineString('LINE_GROUP_ID');
+// Environment secrets (for v2 Cloud Functions)
+const lineToken = defineSecret('LINE_TOKEN');
+const lineGroupId = defineSecret('LINE_GROUP_ID');
 
 // Line Messaging API endpoint
 const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
