@@ -2956,6 +2956,24 @@ async function changeSessionDetails() {
     if (dayChoice && dayChoice >= 1 && dayChoice <= 8) {
         state.sessionDay = days[dayChoice - 1];
 
+        // Calculate date based on selected day
+        if (dayChoice <= 7) {
+            // Calculate next occurrence of selected day
+            const today = new Date();
+            const todayDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            const selectedDayOfWeek = dayChoice == 7 ? 0 : parseInt(dayChoice); // Convert 1-7 to 1-6,0 (Mon-Sun)
+
+            let daysToAdd = selectedDayOfWeek - todayDayOfWeek;
+            if (daysToAdd <= 0) {
+                daysToAdd += 7; // If day has passed or is today, go to next week
+            }
+
+            const sessionDate = new Date(today);
+            sessionDate.setDate(today.getDate() + daysToAdd);
+            state.sessionDate = sessionDate.toLocaleDateString('en-GB');
+        }
+        // Day 8 (Not Set) keeps current date
+
         // If day 8 (Not Set), automatically set time to 00:00 - 00:00
         const defaultTime = (dayChoice == 8) ? '00:00 - 00:00' : state.sessionTime;
 
@@ -2970,8 +2988,8 @@ async function changeSessionDetails() {
             // Reset auto-load flag so regular players for NEW day will be loaded
             hasAutoLoadedRegularPlayers = false;
 
-            alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
-            console.log(`✅ Session updated: ${state.sessionDay} ${time}`);
+            alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nDate: ${state.sessionDate}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
+            console.log(`✅ Session updated: ${state.sessionDay} ${state.sessionDate} ${time}`);
 
             // Mark step 2 as completed
             markStepCompleted('Edit Session');
