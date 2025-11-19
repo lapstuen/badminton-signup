@@ -2738,7 +2738,7 @@ async function previewSession() {
 
         // Summary
         message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-        message += `💰 PAYMENT SUMMARY:\n`;
+        message += `💰 SUMMARY:\n`;
         message += `- Total players: ${totalPlayers}\n`;
         message += `- Will be charged: ${unpaidPlayers.length} players\n`;
         message += `- Total deduction: ${totalDeduction} THB\n`;
@@ -2951,9 +2951,10 @@ async function changeSessionDetails() {
     ];
 
     const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-8):`;
-    const dayChoice = prompt(dayPrompt);
+    const dayChoiceStr = prompt(dayPrompt);
+    const dayChoice = parseInt(dayChoiceStr);
 
-    if (dayChoice && dayChoice >= 1 && dayChoice <= 8) {
+    if (dayChoice >= 1 && dayChoice <= 8) {
         state.sessionDay = days[dayChoice - 1];
 
         // Calculate date based on selected day
@@ -2964,10 +2965,10 @@ async function changeSessionDetails() {
 
             // Map our menu choice (1=Mon, 2=Tue, ..., 7=Sun) to JS day (0=Sun, 1=Mon, ...)
             let selectedDayOfWeek;
-            if (dayChoice == 7) {
+            if (dayChoice === 7) {
                 selectedDayOfWeek = 0; // Sunday
             } else {
-                selectedDayOfWeek = parseInt(dayChoice); // Mon=1, Tue=2, ..., Sat=6
+                selectedDayOfWeek = dayChoice; // Mon=1, Tue=2, ..., Sat=6
             }
 
             let daysToAdd = selectedDayOfWeek - todayDayOfWeek;
