@@ -2730,7 +2730,7 @@ async function previewSession() {
         message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
         // List all players
-        message += `👥 PLAYERS ON LIST (${totalPlayers}):\n\n`;
+        message += `👥 PLAYERS (${totalPlayers}):\n\n`;
         state.players.forEach((player, index) => {
             const paidStatus = player.paid ? '✅' : '❌';
             message += `${index + 1}. ${player.name} ${paidStatus}\n`;
@@ -2954,35 +2954,46 @@ async function changeSessionDetails() {
     const dayChoiceStr = prompt(dayPrompt);
     const dayChoice = parseInt(dayChoiceStr);
 
+    console.log(`🔍 User selected: dayChoice=${dayChoice}`);
+
     if (dayChoice >= 1 && dayChoice <= 8) {
         state.sessionDay = days[dayChoice - 1];
+        console.log(`🔍 Session day set to: ${state.sessionDay}`);
 
-        // Calculate date based on selected day
+        // Calculate date based on selected day (NOT for day 8)
         if (dayChoice <= 7) {
-            // Calculate next occurrence of selected day
             const today = new Date();
-            const todayDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            const todayDayOfWeek = today.getDay(); // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 
-            // Map our menu choice (1=Mon, 2=Tue, ..., 7=Sun) to JS day (0=Sun, 1=Mon, ...)
-            let selectedDayOfWeek;
-            if (dayChoice === 7) {
-                selectedDayOfWeek = 0; // Sunday
-            } else {
-                selectedDayOfWeek = dayChoice; // Mon=1, Tue=2, ..., Sat=6
-            }
+            console.log(`🔍 Today is: ${today.toLocaleDateString('en-GB')} (day ${todayDayOfWeek})`);
 
+            // Map menu choice to JavaScript day number
+            // Menu: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+            // JS:    1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 0=Sun
+            const selectedDayOfWeek = (dayChoice === 7) ? 0 : dayChoice;
+
+            console.log(`🔍 Selected day number: ${selectedDayOfWeek}`);
+
+            // Calculate days to add
             let daysToAdd = selectedDayOfWeek - todayDayOfWeek;
+
+            console.log(`🔍 Initial daysToAdd: ${daysToAdd} (${selectedDayOfWeek} - ${todayDayOfWeek})`);
+
+            // If the day has passed or is today, add 7 to go to next week
             if (daysToAdd <= 0) {
-                daysToAdd += 7; // If day has passed or is today, go to next week
+                daysToAdd += 7;
+                console.log(`🔍 Day has passed or is today, adding 7: daysToAdd=${daysToAdd}`);
             }
 
-            const sessionDate = new Date(today);
-            sessionDate.setDate(today.getDate() + daysToAdd);
-            state.sessionDate = sessionDate.toLocaleDateString('en-GB');
+            // Create new date
+            const newDate = new Date(today);
+            newDate.setDate(today.getDate() + daysToAdd);
+            state.sessionDate = newDate.toLocaleDateString('en-GB');
 
-            console.log(`📅 Date calculation: Today=${todayDayOfWeek}, Selected=${selectedDayOfWeek}, DaysToAdd=${daysToAdd}, Result=${state.sessionDate}`);
+            console.log(`✅ NEW DATE CALCULATED: ${state.sessionDate}`);
+        } else {
+            console.log(`🔍 Day 8 selected, keeping current date: ${state.sessionDate}`);
         }
-        // Day 8 (Not Set) keeps current date
 
         // If day 8 (Not Set), automatically set time to 00:00 - 00:00
         const defaultTime = (dayChoice == 8) ? '00:00 - 00:00' : state.sessionTime;
@@ -2992,6 +3003,8 @@ async function changeSessionDetails() {
 
         if (time) {
             state.sessionTime = time;
+
+            console.log(`💾 SAVING to Firestore: date=${state.sessionDate}, day=${state.sessionDay}, time=${time}`);
             await saveSessionData();
             updateUI();
 
