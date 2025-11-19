@@ -2761,7 +2761,9 @@ async function previewSession() {
         message += `Click "Publish Session" to proceed!\n`;
         message += `คลิก "Publish Session" เพื่อดำเนินการ!`;
 
-        alert(message);
+        // Display in scrollable modal instead of alert
+        document.getElementById('previewSessionContent').textContent = message;
+        document.getElementById('previewSessionModal').style.display = 'flex';
 
         // Mark step 7 as completed
         markStepCompleted('Preview Session');
@@ -2770,6 +2772,13 @@ async function previewSession() {
         console.error('❌ Error previewing session:', error);
         alert(`❌ Error: ${error.message}`);
     }
+}
+
+/**
+ * Close preview session modal
+ */
+function closePreviewSession() {
+    document.getElementById('previewSessionModal').style.display = 'none';
 }
 
 async function publishSession() {
