@@ -800,132 +800,8 @@ async function nudgePlayers() {
  * - Warns about low wallet balance (<150 THB)
  */
 async function closeLastSession() {
-    try {
-        // Count active players and waiting list
-        const activePlayers = state.players.slice(0, state.maxPlayers);
-        const waitingList = state.players.slice(state.maxPlayers);
-
-        // Generate summary HTML
-        let summaryHTML = `
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #10b981; margin-bottom: 10px;">✅ ขอบคุณสำหรับการเล่น!</h3>
-                <h4 style="color: #10b981; margin-top: 5px;">Thank you for the session!</h4>
-            </div>
-
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="margin-top: 0; color: #374151;">📅 Session Details / รายละเอียดเซสชัน</h4>
-                <p style="margin: 5px 0;"><strong>Day / วัน:</strong> ${state.sessionDay}</p>
-                <p style="margin: 5px 0;"><strong>Date / วันที่:</strong> ${state.sessionDate}</p>
-                <p style="margin: 5px 0;"><strong>Time / เวลา:</strong> ${state.sessionTime}</p>
-                <p style="margin: 5px 0;"><strong>Players / ผู้เล่น:</strong> ${activePlayers.length} of ${state.maxPlayers}</p>
-            </div>
-        `;
-
-        // List all players who played
-        if (activePlayers.length > 0) {
-            summaryHTML += `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #374151;">👥 Players Who Played / ผู้เล่นที่เล่น</h4>
-                    <ul style="list-style: none; padding: 0;">
-            `;
-
-            activePlayers.forEach((player, index) => {
-                const paidIcon = player.paid ? '✅' : '❌';
-                const paidText = player.paid ? 'Paid' : 'Unpaid';
-                summaryHTML += `
-                    <li style="padding: 8px; background: ${index % 2 === 0 ? '#f9fafb' : 'white'}; border-radius: 4px; margin-bottom: 5px;">
-                        ${index + 1}. ${player.name} ${paidIcon} ${paidText}
-                    </li>
-                `;
-            });
-
-            summaryHTML += `
-                    </ul>
-                </div>
-            `;
-        }
-
-        // Show waiting list if any
-        if (waitingList.length > 0) {
-            summaryHTML += `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #f59e0b;">⏳ Waiting List / รายชื่อสำรอง</h4>
-                    <ul style="list-style: none; padding: 0;">
-            `;
-
-            waitingList.forEach((player, index) => {
-                summaryHTML += `
-                    <li style="padding: 8px; background: #fef3c7; border-radius: 4px; margin-bottom: 5px;">
-                        ${index + 1}. ${player.name}
-                    </li>
-                `;
-            });
-
-            summaryHTML += `
-                    </ul>
-                </div>
-            `;
-        }
-
-        // Check for users with low balance (<150 THB)
-        const lowBalanceUsers = state.authorizedUsers.filter(user => {
-            const balance = user.balance || 0;
-            return balance < 150;
-        }).sort((a, b) => (a.balance || 0) - (b.balance || 0)); // Sort by balance (lowest first)
-
-        if (lowBalanceUsers.length > 0) {
-            summaryHTML += `
-                <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                    <h4 style="margin-top: 0; color: #dc2626;">⚠️ แจ้งเตือนยอดเงินต่ำ / Low Balance Warning</h4>
-                    <p style="margin-bottom: 10px; color: #7f1d1d; font-weight: bold;">
-                        ผู้เล่นที่ต้องเติมเงินก่อนรอบถัดไป กรุณาเติมวันนี้เนื่องจากรอบถัดไปอาจเปิดพรุ่งนี้
-                    </p>
-                    <p style="margin-bottom: 10px; color: #7f1d1d;">
-                        Players who need to top up wallet before next session. Please top up today as next session may start tomorrow.
-                    </p>
-                    <ul style="list-style: none; padding: 0;">
-            `;
-
-            lowBalanceUsers.forEach(user => {
-                const balance = user.balance || 0;
-                const balanceColor = balance <= 0 ? '#dc2626' : '#f59e0b';
-                summaryHTML += `
-                    <li style="padding: 10px; background: white; border-radius: 4px; margin-bottom: 8px; border-left: 4px solid ${balanceColor};">
-                        <strong>${user.name}</strong>
-                        <span style="float: right; color: ${balanceColor}; font-weight: bold;">${balance} THB</span>
-                    </li>
-                `;
-            });
-
-            summaryHTML += `
-                    </ul>
-                    <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.9em; color: #7f1d1d;">
-                        💡 <a href="payment-info.html" target="_blank" style="color: #dc2626; font-weight: bold; text-decoration: underline;">คลิกที่นี่เพื่อดูข้อมูลการชำระเงิน / Click here for payment information</a>
-                    </p>
-                </div>
-            `;
-        }
-
-        // Add action buttons at the bottom
-        summaryHTML += `
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="copySessionSummaryToClipboard()" style="flex: 1; padding: 15px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    📋 คัดลอก<br>Copy List
-                </button>
-                <button onclick="finalizeSessionAccounting()" style="flex: 1; padding: 15px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    💰 บันทึกการเงิน<br>Record Finances
-                </button>
-            </div>
-        `;
-
-        // Display summary in modal
-        document.getElementById('sessionSummaryContent').innerHTML = summaryHTML;
-        document.getElementById('sessionSummaryModal').style.display = 'flex';
-
-    } catch (error) {
-        console.error('❌ Error generating session summary:', error);
-        alert(`❌ Error: ${error.message}`);
-    }
+    // Directly call copyAndCloseSession to do everything in one step
+    await copyAndCloseSession();
 }
 
 /**
@@ -933,6 +809,233 @@ async function closeLastSession() {
  */
 function closeSessionSummary() {
     document.getElementById('sessionSummaryModal').style.display = 'none';
+}
+
+/**
+ * Copy & Close Session - Does everything in one action:
+ * 1. Copy session summary to clipboard
+ * 2. Archive session with all players
+ * 3. Register income & expenses
+ * 4. Mark session as closed
+ * 5. Close modal
+ */
+async function copyAndCloseSession() {
+    try {
+        // Check if session is already closed
+        const sessionDoc = await currentSessionRef().get();
+        if (sessionDoc.exists && sessionDoc.data().closed) {
+            alert('⚠️ เซสชันนี้ถูกปิดแล้ว!\n\nThis session is already closed!');
+            return;
+        }
+
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+
+        // ============================================
+        // STEP 1: BUILD & COPY TEXT TO CLIPBOARD
+        // ============================================
+        let text = `✅ ขอบคุณสำหรับการเล่น! Thank you for the session!\n\n`;
+        text += `📅 ${state.sessionDay}\n`;
+        text += `📆 ${state.sessionDate}\n`;
+        text += `🕐 ${state.sessionTime}\n`;
+        text += `👥 Players: ${activePlayers.length}/${state.maxPlayers}\n\n`;
+
+        // List players
+        if (activePlayers.length > 0) {
+            text += `👥 Players Who Played / ผู้เล่นที่เล่น:\n`;
+            activePlayers.forEach((player, index) => {
+                const paidIcon = player.paid ? '✅' : '❌';
+                text += `${index + 1}. ${player.name} ${paidIcon}\n`;
+            });
+            text += `\n`;
+        }
+
+        // List waiting list
+        if (waitingList.length > 0) {
+            text += `⏳ Waiting List / รายชื่อสำรอง:\n`;
+            waitingList.forEach((player, index) => {
+                text += `${index + 1}. ${player.name}\n`;
+            });
+            text += `\n`;
+        }
+
+        // Check for low balance users
+        const lowBalanceUsers = state.authorizedUsers.filter(user => {
+            const balance = user.balance || 0;
+            return balance < 150;
+        }).sort((a, b) => (a.balance || 0) - (b.balance || 0));
+
+        if (lowBalanceUsers.length > 0) {
+            text += `⚠️ Low Balance Warning / แจ้งเตือนยอดเงินต่ำ:\n`;
+            text += `Please top up before next session / กรุณาเติมเงินก่อนรอบถัดไป:\n\n`;
+            lowBalanceUsers.forEach(user => {
+                const balance = user.balance || 0;
+                text += `${user.name}: ${balance} THB\n`;
+            });
+        }
+
+        // Copy to clipboard
+        await navigator.clipboard.writeText(text);
+        console.log('✅ Session summary copied to clipboard');
+
+        // ============================================
+        // STEP 2: CALCULATE FINANCES
+        // ============================================
+        const income = activePlayers.length * state.paymentAmount;
+
+        // Calculate number of courts automatically (6 players per court)
+        const courts = Math.ceil(activePlayers.length / 6);
+        const courtCost = courts * 440;
+
+        // Calculate shuttlecock cost
+        const shuttlecockCost = (state.shuttlecocksUsed || 0) * 90;
+        const totalExpense = courtCost + shuttlecockCost;
+
+        // ============================================
+        // STEP 3: ARCHIVE SESSION TO DATED DOCUMENT
+        // ============================================
+
+        // Generate ISO date for archived document (YYYY-MM-DD)
+        const today = new Date();
+        const archivedSessionId = today.toISOString().split('T')[0]; // e.g., "2025-11-18"
+
+        console.log(`📦 Archiving session to: sessions/${archivedSessionId}`);
+
+        // Copy session data to archived document
+        const archivedSessionRef = sessionsRef.doc(archivedSessionId);
+        await archivedSessionRef.set({
+            date: state.sessionDate,
+            day: state.sessionDay,
+            time: state.sessionTime,
+            maxPlayers: state.maxPlayers,
+            paymentAmount: state.paymentAmount,
+            shuttlecocksUsed: state.shuttlecocksUsed || 0,
+            published: state.published,
+            closed: true,
+            closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            finalPlayerCount: activePlayers.length,
+            finalIncome: income,
+            finalExpense: totalExpense,
+            courts: courts,
+            archivedFrom: 'current',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log('✅ Session data archived');
+
+        // Copy ALL players to archived session
+        const playersSnapshot = await playersRef().get();
+        const archivedPlayersRef = archivedSessionRef.collection('players');
+
+        const batch = db.batch();
+        let playersCopied = 0;
+
+        playersSnapshot.forEach(doc => {
+            const playerData = doc.data();
+            const newPlayerRef = archivedPlayersRef.doc(); // Auto-generate new ID
+            batch.set(newPlayerRef, {
+                ...playerData,
+                archivedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            playersCopied++;
+        });
+
+        await batch.commit();
+        console.log(`✅ ${playersCopied} players copied to archived session`);
+
+        // ============================================
+        // STEP 4: REGISTER INCOME & EXPENSES
+        // ============================================
+
+        // Register income
+        await incomeRef.add({
+            date: state.sessionDate,
+            sessionId: archivedSessionId, // Link to archived session
+            amount: income,
+            paymentPerPlayer: state.paymentAmount,
+            playerCount: activePlayers.length,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            notes: `${state.sessionDay} ${state.sessionTime}`
+        });
+
+        console.log('✅ Income registered:', income);
+
+        // Register court rental expense
+        await expensesRef.add({
+            date: state.sessionDate,
+            type: 'court_rental',
+            sessionId: archivedSessionId,
+            amount: courtCost,
+            courts: courts,
+            costPerCourt: 440,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            notes: `${state.sessionDay} ${state.sessionTime}`
+        });
+
+        console.log('✅ Court expense registered:', courtCost);
+
+        // Register shuttlecock expense (if any)
+        if (state.shuttlecocksUsed > 0) {
+            await expensesRef.add({
+                date: state.sessionDate,
+                type: 'shuttlecocks',
+                sessionId: archivedSessionId,
+                amount: shuttlecockCost,
+                quantity: state.shuttlecocksUsed,
+                costPerItem: 90,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                notes: `${state.sessionDay} ${state.sessionTime}`
+            });
+
+            console.log('✅ Shuttlecock expense registered:', shuttlecockCost);
+        }
+
+        // ============================================
+        // STEP 5: MARK CURRENT SESSION AS CLOSED
+        // ============================================
+
+        await currentSessionRef().update({
+            closed: true,
+            closedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            finalPlayerCount: activePlayers.length,
+            finalIncome: income,
+            finalExpense: totalExpense,
+            archivedTo: archivedSessionId
+        });
+
+        console.log('✅ Current session marked as closed');
+
+        // Build expense text for alert
+        let expenseText = `💸 รายจ่าย / Expenses:\n${courts} สนาม × 440 = ${courtCost} THB\n`;
+        if (state.shuttlecocksUsed > 0) {
+            expenseText += `${state.shuttlecocksUsed} ลูก × 90 = ${shuttlecockCost} THB\n`;
+            expenseText += `รวม / Total: ${totalExpense} THB\n`;
+        }
+
+        // Success message with clipboard info
+        let successMsg = `✅ เสร็จสมบูรณ์! / Complete!\n\n` +
+            `📋 คัดลอกไปยัง Clipboard แล้ว!\n` +
+            `📋 Copied to clipboard!\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `📦 เซสชันถูกบันทึกที่ / Session archived to:\n` +
+            `sessions/${archivedSessionId}\n\n` +
+            `👥 ผู้เล่น / Players copied: ${playersCopied}\n\n` +
+            `💰 รายรับ / Income: ${income} THB\n` +
+            expenseText + `\n` +
+            `💵 กำไร/ขาดทุน / Profit: ${income - totalExpense} THB\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `💡 คุณสามารถวาง (Paste) รายชื่อใน Line ได้เลย!\n` +
+            `💡 You can now paste the list in Line!`;
+
+        alert(successMsg);
+
+        // Close the modal
+        closeSessionSummary();
+
+    } catch (error) {
+        console.error('❌ Error closing session:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
 }
 
 /**
@@ -2428,23 +2531,75 @@ async function toggleMaintenanceMode() {
     }
 }
 
+// Track which setup steps are completed
+function markStepCompleted(stepName) {
+    // Mark button as completed (grey)
+    const buttons = document.querySelectorAll('.admin-group-content button');
+    buttons.forEach(btn => {
+        if (btn.textContent.includes(stepName)) {
+            btn.style.background = '#9ca3af'; // Grey
+            btn.style.color = 'white';
+        }
+    });
+}
+
+function resetSetupSteps() {
+    // Reset all NEW SESSION buttons to original colors
+    const newSessionButtons = document.querySelector('.admin-group[open] .admin-group-content');
+    if (newSessionButtons) {
+        const buttons = newSessionButtons.querySelectorAll('button');
+        buttons.forEach((btn, index) => {
+            // Reset to original colors based on button type
+            if (index === 0) {
+                // New Session - red
+                btn.style.background = '#ef4444';
+                btn.style.color = 'white';
+            } else if (index >= 1 && index <= 5) {
+                // Edit, Payment, Max, Regular, Today's - orange
+                btn.style.background = '#f59e0b';
+                btn.style.color = '';
+            } else if (index === 6) {
+                // Preview - blue
+                btn.style.background = '#3b82f6';
+                btn.style.color = 'white';
+            } else if (index === 7) {
+                // Publish - green
+                btn.style.background = '#10b981';
+                btn.style.color = 'white';
+            }
+        });
+    }
+}
+
 async function clearSession() {
+    // Reset setup step tracking
+    resetSetupSteps();
+
     try {
         // Check if current session is closed
         const sessionDoc = await currentSessionRef().get();
         if (sessionDoc.exists) {
             const sessionData = sessionDoc.data();
-            if (!sessionData.closed) {
-                alert(
-                    '⚠️ ไม่สามารถเริ่มเซสชันใหม่ได้!\n' +
-                    'กรุณาปิดเซสชันก่อนด้วย "Close Last Session"\n\n' +
-                    '⚠️ Cannot start new session!\n' +
-                    'Please close current session first with "Close Last Session"\n\n' +
-                    '💡 นี่จะป้องกันการสูญเสียข้อมูลการเงิน\n' +
-                    '💡 This prevents loss of financial data'
+
+            // Only warn if session is PUBLISHED and not closed
+            // Draft sessions can be safely overwritten
+            if (!sessionData.closed && sessionData.published) {
+                const continueAnyway = confirm(
+                    '⚠️ WARNING / คำเตือน\n\n' +
+                    'Current session is PUBLISHED but not closed yet.\n' +
+                    'เซสชันปัจจุบันถูกเผยแพร่แล้วแต่ยังไม่ได้ปิด\n\n' +
+                    'This may lose financial data!\n' +
+                    'อาจทำให้สูญเสียข้อมูลการเงิน!\n\n' +
+                    '💡 Recommended: Close session first with "Close Last Session"\n' +
+                    '💡 แนะนำ: ปิดเซสชันก่อนด้วย "Close Last Session"\n\n' +
+                    'Continue anyway? / ดำเนินการต่อหรือไม่?'
                 );
-                return;
+
+                if (!continueAnyway) {
+                    return; // User cancelled
+                }
             }
+            // If session is draft (unpublished), we can safely continue without warning
         }
     } catch (error) {
         console.error('Error checking session status:', error);
@@ -2488,7 +2643,7 @@ async function clearSession() {
             state.sessionDate = new Date().toLocaleDateString('en-GB');
             state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
             state.sessionTime = '00:00 - 00:00'; // Blank time
-            state.maxPlayers = 0; // Show 0 / 0
+            state.maxPlayers = 12; // Keep default 12 (show 0 / 12)
             state.published = false; // Set to draft mode
             state.closed = false; // Mark as open (not closed)
             state.shuttlecocksUsed = 0; // Reset shuttlecocks count
@@ -2507,11 +2662,113 @@ async function clearSession() {
             hasAutoLoadedRegularPlayers = false;
 
             console.log('✅ Session cleared and set to DRAFT mode');
-            alert('✅ Session cleared!\n\nSession is now in DRAFT mode (not visible to users).\n\nUse "Edit Session" to set day/time, then "Manage Today\'s Players" to add players, then "Publish Session" when ready.');
+            alert('✅ Session cleared!\n\nSession is now in DRAFT mode (not visible to users).\n\nNEXT: Click "Edit Session" to set day/time!');
+
+            // Mark step 1 as completed
+            markStepCompleted('New Session');
         } catch (error) {
             console.error('Error clearing session:', error);
             alert('Error clearing session. Please try again.');
         }
+    }
+}
+
+/**
+ * Preview Session - Show summary before publishing
+ * - Shows all players on the list
+ * - Shows regular players who were skipped due to low balance
+ * - Shows total payment amount
+ */
+async function previewSession() {
+    try {
+        const days = [
+            'Monday / วันจันทร์',
+            'Tuesday / วันอังคาร',
+            'Wednesday / วันพุธ',
+            'Thursday / พฤหัสบดี',
+            'Friday / วันศุกร์',
+            'Saturday / วันเสาร์',
+            'Sunday / อาทิตย์'
+        ];
+        const currentDayIndex = days.findIndex(d => d === state.sessionDay);
+        const dayNumber = currentDayIndex + 1;
+
+        // Get regular players for this day
+        const regularPlayersForToday = await getRegularPlayersForDay(dayNumber);
+
+        // Count players
+        const totalPlayers = state.players.length;
+        const unpaidPlayers = state.players.filter(p => !p.paid);
+        const totalDeduction = unpaidPlayers.length * state.paymentAmount;
+
+        // Find regular players who are NOT on the list (potential low balance issue)
+        const missingRegularPlayers = [];
+        for (const playerName of regularPlayersForToday) {
+            const isOnList = state.players.some(p => p.name === playerName);
+            if (!isOnList) {
+                // Check their balance
+                const user = state.authorizedUsers.find(u => u.name === playerName);
+                if (user) {
+                    const balance = user.balance || 0;
+                    missingRegularPlayers.push({
+                        name: playerName,
+                        balance: balance,
+                        insufficient: balance < state.paymentAmount
+                    });
+                }
+            }
+        }
+
+        // Build preview message
+        let message = `📋 SESSION PREVIEW / ตรวจสอบเซสชัน\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `📅 ${state.sessionDay}\n`;
+        message += `📆 ${state.sessionDate}\n`;
+        message += `🕐 ${state.sessionTime}\n`;
+        message += `💰 ${state.paymentAmount} THB per player\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+        // List all players
+        message += `👥 PLAYERS ON LIST (${totalPlayers}):\n\n`;
+        state.players.forEach((player, index) => {
+            const paidStatus = player.paid ? '✅ Paid' : '❌ Will be charged';
+            message += `${index + 1}. ${player.name} ${paidStatus}\n`;
+        });
+
+        // Summary
+        message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `💰 PAYMENT SUMMARY:\n`;
+        message += `- Total players: ${totalPlayers}\n`;
+        message += `- Already paid: ${totalPlayers - unpaidPlayers.length}\n`;
+        message += `- Will be charged: ${unpaidPlayers.length} players\n`;
+        message += `- Total deduction: ${totalDeduction} THB\n`;
+
+        // Show missing regular players (especially those with low balance)
+        const insufficientBalance = missingRegularPlayers.filter(p => p.insufficient);
+        if (insufficientBalance.length > 0) {
+            message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+            message += `⚠️ MISSING REGULAR PLAYERS (Low Balance):\n`;
+            message += `ผู้เล่นประจำที่ขาดหายไป (ยอดเงินต่ำ):\n\n`;
+            insufficientBalance.forEach(p => {
+                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
+            });
+            message += `\n💡 These players were NOT added due to insufficient balance.\n`;
+            message += `💡 ผู้เล่นเหล่านี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ\n`;
+        }
+
+        message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `\nReady to publish? / พร้อมเผยแพร่?\n`;
+        message += `Click "Publish Session" to proceed!\n`;
+        message += `คลิก "Publish Session" เพื่อดำเนินการ!`;
+
+        alert(message);
+
+        // Mark step 7 as completed
+        markStepCompleted('Preview Session');
+
+    } catch (error) {
+        console.error('❌ Error previewing session:', error);
+        alert(`❌ Error: ${error.message}`);
     }
 }
 
@@ -2591,6 +2848,9 @@ async function publishSession() {
 
             alert(resultMessage);
             console.log('✅ Session published with payments processed');
+
+            // Mark step 8 as completed
+            markStepCompleted('Publish Session');
         } catch (error) {
             console.error('Error publishing session:', error);
             alert('Error publishing session. Please try again.');
@@ -2703,6 +2963,9 @@ async function changeSessionDetails() {
 
             alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
             console.log(`✅ Session updated: ${state.sessionDay} ${time}`);
+
+            // Mark step 2 as completed
+            markStepCompleted('Edit Session');
         }
     }
 }
@@ -2730,6 +2993,9 @@ async function changePaymentAmount() {
         await saveSessionData();
         updateUI();
         alert(`Payment amount updated to ${state.paymentAmount} THB / อัปเดตราคาเป็น ${state.paymentAmount} บาทแล้ว`);
+
+        // Mark step 3 as completed
+        markStepCompleted('Change Payment Amount');
     }
 }
 
@@ -2782,6 +3048,9 @@ async function changeMaxPlayers() {
     } else {
         alert(`✅ Max players reduced to ${newMaxInt}`);
     }
+
+    // Mark step 4 as completed
+    markStepCompleted('Change Max Players');
 }
 
 /**
@@ -2973,6 +3242,9 @@ async function toggleRegularPlayer(userName, dayNumber, isCurrentlyRegular) {
 
 function closeRegularPlayers() {
     document.getElementById('manageRegularPlayersModal').style.display = 'none';
+
+    // Mark step 5 as completed
+    markStepCompleted('Manage Regular Players');
 }
 
 // ============================================
@@ -3200,6 +3472,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
     // Auto-add regular players ONLY on first open (not when refreshing after add/remove)
     let addedCount = 0;
+    let skippedLowBalance = [];
     if (!skipAutoLoad && !hasAutoLoadedRegularPlayers) {
         for (const playerName of regularPlayersForToday) {
             const alreadyInSession = currentPlayers.some(p => p.name === playerName);
@@ -3209,6 +3482,16 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
                 const user = state.authorizedUsers.find(u => u.name === playerName);
 
                 if (user) {
+                    // CHECK BALANCE FIRST (same as manual add)
+                    const userBalance = user.balance || 0;
+
+                    if (userBalance < state.paymentAmount) {
+                        // Skip this player due to insufficient balance
+                        skippedLowBalance.push({name: playerName, balance: userBalance});
+                        console.log(`⚠️ Skipped ${playerName} - insufficient balance (${userBalance} THB)`);
+                        continue; // Skip to next player
+                    }
+
                     // Use 'id' field (not 'userId') from authorized users
                     const userId = user.id || user.userId;
 
@@ -3232,6 +3515,18 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         // Wait a moment for Firestore to update before showing UI
         if (addedCount > 0) {
             await new Promise(resolve => setTimeout(resolve, 800));
+        }
+
+        // Show warning if any players were skipped due to low balance
+        if (skippedLowBalance.length > 0) {
+            let message = `⚠️ Warning: Low Balance / คำเตือน: ยอดเงินต่ำ\n\n`;
+            message += `The following regular players were NOT added due to insufficient balance:\n`;
+            message += `ผู้เล่นประจำต่อไปนี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ:\n\n`;
+            skippedLowBalance.forEach(p => {
+                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
+            });
+            message += `\nPlease top up their wallets!\nกรุณาเติมเงินให้พวกเขา!`;
+            alert(message);
         }
     }
 
@@ -3392,7 +3687,25 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                 await manageTodaysPlayers(true); // Skip auto-load when refreshing
             }
         } else {
-            // User not registered - ask HOW to add using confirm dialog
+            // User not registered - CHECK BALANCE FIRST
+            const userBalance = user.balance || 0;
+
+            if (userBalance < state.paymentAmount) {
+                // Insufficient balance - CANNOT add
+                alert(
+                    `❌ Cannot add ${user.name}\n` +
+                    `ไม่สามารถเพิ่ม ${user.name}\n\n` +
+                    `Balance: ${userBalance} THB\n` +
+                    `ยอดเงิน: ${userBalance} บาท\n\n` +
+                    `Required: ${state.paymentAmount} THB\n` +
+                    `ต้องการ: ${state.paymentAmount} บาท\n\n` +
+                    `Please top up wallet first!\n` +
+                    `กรุณาเติมเงินก่อน!`
+                );
+                return; // Don't add to session
+            }
+
+            // Balance OK - ask HOW to add using confirm dialog
             const addThisOnly = confirm(
                 `Add ${user.name} to THIS ${dayName} only?\n` +
                 `เพิ่ม ${user.name} ไปยังเฉพาะ${dayName}นี้?\n\n` +
@@ -3455,6 +3768,9 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
 
 function closeManagedPlayers() {
     document.getElementById('manageTodaysPlayersModal').style.display = 'none';
+
+    // Mark step 6 as completed
+    markStepCompleted("Manage Today's Players");
 }
 
 // ============================================
