@@ -775,6 +775,200 @@ async function testLineConfig() {
     }
 }
 
+// ============================================================================
+// SIMPLE LINE NOTIFICATION API
+// ============================================================================
+
+/**
+ * Send a custom message to Line group
+ *
+ * This is the SIMPLE API for sending Line messages.
+ * Just call this function with your message text!
+ *
+ * @param {string} message - The message to send (can be multiline)
+ * @returns {Promise<boolean>} - True if sent successfully
+ *
+ * USAGE EXAMPLES:
+ *
+ * // Example 1: Simple message
+ * await sendLineNotification('Hello from app!');
+ *
+ * // Example 2: Multiline message
+ * await sendLineNotification(`
+ *     🔴 SESSION CLOSED / เซสชันปิด
+ *
+ *     The session is now closed.
+ *     Thank you for playing!
+ *
+ *     เซสชันปิดแล้ว
+ *     ขอบคุณที่มาเล่น!
+ * `);
+ *
+ * // Example 3: With session info
+ * await sendLineNotification(`
+ *     ✅ SESSION OPEN / เซสชันเปิด
+ *
+ *     📅 ${state.sessionDay}
+ *     🕐 ${state.sessionTime}
+ *
+ *     Registration is now open!
+ *     ลงทะเบียนเปิดแล้ว!
+ *
+ *     👉 ${APP_URL}
+ * `);
+ *
+ * // Example 4: With error handling
+ * const success = await sendLineNotification('Test message');
+ * if (success) {
+ *     console.log('Message sent!');
+ * }
+ */
+async function sendLineNotification(message) {
+    try {
+        console.log('📤 Sending Line notification:', message);
+
+        // Get Cloud Function reference
+        const sendMessage = functions.httpsCallable('sendLineMessage');
+
+        // Call the function with the message
+        const result = await sendMessage({ message });
+
+        console.log('✅ Line notification sent:', result.data);
+        return true;
+
+    } catch (error) {
+        console.error('❌ Error sending Line notification:', error);
+
+        // Show error to user
+        alert(
+            `❌ Failed to send Line notification / ไม่สามารถส่งข้อความไปยัง Line\n\n` +
+            `Error: ${error.message}`
+        );
+
+        return false;
+    }
+}
+
+/**
+ * Test Demo Line - Send a demo message
+ * Click "Test Demo Line" button in Settings to try this
+ */
+async function testDemoLine() {
+    try {
+        console.log('📤 Testing demo Line message...');
+
+        // Define your message here
+        const message = `🎯 DEMO MESSAGE / ข้อความทดสอบ
+
+This is a demo message from the Badminton app!
+นี่คือข้อความทดสอบจากแอปแบดมินตัน!
+
+📅 ${state.sessionDay}
+🕐 ${state.sessionTime}
+👥 ${state.players.length}/${state.maxPlayers} players
+
+You can customize this message easily!
+คุณสามารถปรับแต่งข้อความนี้ได้ง่าย!
+
+👉 ${APP_URL}`;
+
+        // Send the message using the simple API
+        const success = await sendLineNotification(message);
+
+        if (success) {
+            alert(
+                `✅ DEMO MESSAGE SENT! / ส่งข้อความสำเร็จ!\n\n` +
+                `Check your Line group for the demo message.\n` +
+                `ตรวจสอบกลุ่ม Line ของคุณสำหรับข้อความทดสอบ\n\n` +
+                `To add more messages:\n` +
+                `1. Find this function in app.js\n` +
+                `2. Change the message text\n` +
+                `3. Or copy the pattern to other places!`
+            );
+        }
+
+    } catch (error) {
+        console.error('❌ Error testing demo Line:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+// ============================================================================
+// USAGE EXAMPLES - Copy these patterns to add Line notifications anywhere!
+// ============================================================================
+
+/**
+ * EXAMPLE 1: Send notification when session is closed
+ * Add this to your clearSession() function:
+ *
+ * await sendLineNotification(`
+ *     🔴 SESSION CLOSED / เซสชันปิด
+ *
+ *     📅 ${state.sessionDay}
+ *
+ *     The session is now closed.
+ *     Thank you everyone for playing!
+ *
+ *     เซสชันปิดแล้ว
+ *     ขอบคุณทุกคนที่มาเล่น!
+ * `);
+ */
+
+/**
+ * EXAMPLE 2: Send notification when session is opened for registration
+ * Add this to your publishSession() function (already exists):
+ *
+ * await sendLineNotification(`
+ *     ✅ REGISTRATION OPEN / เปิดลงทะเบียน
+ *
+ *     📅 ${state.sessionDay}
+ *     🕐 ${state.sessionTime}
+ *     💰 ${state.paymentAmount} THB
+ *
+ *     Registration is now open!
+ *     ลงทะเบียนเปิดแล้ว!
+ *
+ *     👉 ${APP_URL}
+ * `);
+ */
+
+/**
+ * EXAMPLE 3: Send reminder 1 day before session
+ * (You would need to add a scheduled function or button for this)
+ *
+ * await sendLineNotification(`
+ *     ⏰ REMINDER / เตือนความจำ
+ *
+ *     Tomorrow's session:
+ *     เซสชันพรุ่งนี้:
+ *
+ *     📅 ${state.sessionDay}
+ *     🕐 ${state.sessionTime}
+ *     👥 ${state.players.length}/${state.maxPlayers} players
+ *
+ *     See you tomorrow!
+ *     พบกันพรุ่งนี้!
+ * `);
+ */
+
+/**
+ * EXAMPLE 4: Custom notification with button
+ * Add a button anywhere in your HTML:
+ *
+ * <button onclick="sendCustomNotification()">Send Custom Message</button>
+ *
+ * Then add this function:
+ *
+ * async function sendCustomNotification() {
+ *     const message = prompt('Enter your message:');
+ *     if (message) {
+ *         await sendLineNotification(message);
+ *     }
+ * }
+ */
+
+// ============================================================================
+
 /**
  * Send nudge notification to Line group
  * Remind players about available spots
