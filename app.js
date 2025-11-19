@@ -2732,7 +2732,7 @@ async function previewSession() {
         // List all players
         message += `👥 PLAYERS ON LIST (${totalPlayers}):\n\n`;
         state.players.forEach((player, index) => {
-            const paidStatus = player.paid ? '✅ Paid' : '❌ Will be charged';
+            const paidStatus = player.paid ? '✅' : '❌';
             message += `${index + 1}. ${player.name} ${paidStatus}\n`;
         });
 
@@ -2961,7 +2961,14 @@ async function changeSessionDetails() {
             // Calculate next occurrence of selected day
             const today = new Date();
             const todayDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-            const selectedDayOfWeek = dayChoice == 7 ? 0 : parseInt(dayChoice); // Convert 1-7 to 1-6,0 (Mon-Sun)
+
+            // Map our menu choice (1=Mon, 2=Tue, ..., 7=Sun) to JS day (0=Sun, 1=Mon, ...)
+            let selectedDayOfWeek;
+            if (dayChoice == 7) {
+                selectedDayOfWeek = 0; // Sunday
+            } else {
+                selectedDayOfWeek = parseInt(dayChoice); // Mon=1, Tue=2, ..., Sat=6
+            }
 
             let daysToAdd = selectedDayOfWeek - todayDayOfWeek;
             if (daysToAdd <= 0) {
@@ -2971,6 +2978,8 @@ async function changeSessionDetails() {
             const sessionDate = new Date(today);
             sessionDate.setDate(today.getDate() + daysToAdd);
             state.sessionDate = sessionDate.toLocaleDateString('en-GB');
+
+            console.log(`📅 Date calculation: Today=${todayDayOfWeek}, Selected=${selectedDayOfWeek}, DaysToAdd=${daysToAdd}, Result=${state.sessionDate}`);
         }
         // Day 8 (Not Set) keeps current date
 
