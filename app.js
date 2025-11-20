@@ -3178,7 +3178,7 @@ async function publishSession() {
         try {
             // Process wallet deductions for unpaid players
             let successful = 0;
-            let failed = [];
+            let removed = 0;
 
             for (const player of unpaidPlayers) {
                 if (player.userId) {
@@ -3214,7 +3214,10 @@ async function publishSession() {
                             successful++;
                             console.log(`✅ Deducted ${state.paymentAmount} THB from ${player.name}`);
                         } else {
-                            failed.push({name: player.name, balance: currentBalance});
+                            // REMOVE player from session - insufficient balance
+                            await playersRef().doc(player.id).delete();
+                            removed++;
+                            console.log(`❌ Removed ${player.name} from session - insufficient balance (had ${currentBalance} THB, needed ${state.paymentAmount} THB)`);
                         }
                     }
                 }
@@ -3225,20 +3228,9 @@ async function publishSession() {
             await saveSessionData();
             updateUI();
 
-            // Show result
-            let resultMessage = '✅ Session published!\n\n';
-            resultMessage += `Payments processed: ${successful}\n`;
-            if (failed.length > 0) {
-                resultMessage += `\n⚠️ Failed (insufficient balance):\n`;
-                failed.forEach(f => {
-                    resultMessage += `- ${f.name} (has ${f.balance} THB, needs ${state.paymentAmount} THB)\n`;
-                });
-                resultMessage += '\nThese players are still on the list but marked as unpaid.';
-            }
-            resultMessage += '\n\nUsers can now see and register for the session.\n\nเผยแพร่แล้ว!';
-
-            alert(resultMessage);
-            console.log('✅ Session published with payments processed');
+            // Show simple result (no mention of removed players)
+            alert(`✅ Session published!\n\nเผยแพร่แล้ว!\n\nPayments processed: ${successful}\n\nUsers can now see and register for the session.`);
+            console.log(`✅ Session published: ${successful} paid, ${removed} removed`);
 
             // Mark step 8 as completed
             markStepCompleted('Publish Session');
