@@ -1562,20 +1562,6 @@ async function sendExtraCourtMessage() {
 ⏳ Waiting for confirmation from the sports center.
 รอการยืนยันจากศูนย์กีฬา
 
-✅ If approved: We can accommodate ${state.maxPlayers + 6} players total!
-ถ้าได้รับอนุมัติ: เราสามารถรับผู้เล่นได้ทั้งหมด ${state.maxPlayers + 6} คน!
-
-👥 Current status / สถานะปัจจุบัน:
-   • Registered: ${activePlayers.length}/${state.maxPlayers}
-   • Waiting list: ${waitingList.length}
-
-💡 Don't hesitate to join the waiting list!
-อย่าลังเลที่จะลงทะเบียนในรายการรอ!
-
-You only pay if you get a spot. If the extra court is confirmed, waiting list players will automatically move up!
-
-คุณจ่ายเงินเฉพาะเมื่อได้ที่เล่น หากสนามเพิ่มได้รับการยืนยัน ผู้เล่นในรายการรอจะเลื่อนขึ้นโดยอัตโนมัติ!
-
 🔗 Register here / ลงทะเบียนที่นี่:
 ${window.location.origin}${window.location.pathname}`;
 
