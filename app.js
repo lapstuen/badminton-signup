@@ -2181,6 +2181,164 @@ function getISOWeekNumber(date) {
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
+/**
+ * Debug: View Raw Financial Data
+ * Shows what actually exists in Firestore for income/expenses/sessions
+ */
+async function debugViewRawData() {
+    console.log('🔍 DEBUG: Function started');
+    alert('🔍 Starting debug data fetch...\n\nThis may take a few seconds.');
+
+    try {
+        // Prompt for date range
+        const startDate = prompt('Start date (YYYY-MM-DD) / วันเริ่มต้น:', '2025-11-10');
+        if (!startDate) {
+            console.log('🔍 DEBUG: Cancelled by user (no start date)');
+            return;
+        }
+
+        const endDate = prompt('End date (YYYY-MM-DD) / วันสิ้นสุด:', '2025-11-16');
+        if (!endDate) {
+            console.log('🔍 DEBUG: Cancelled by user (no end date)');
+            return;
+        }
+
+        console.log(`🔍 DEBUG: Fetching data for ${startDate} to ${endDate}`);
+
+        // Query archived sessions
+        console.log('🔍 DEBUG: Querying sessions...');
+        const sessionsSnapshot = await sessionsRef
+            .where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
+            .where(firebase.firestore.FieldPath.documentId(), '<=', endDate + '\uf8ff')
+            .get();
+        console.log(`🔍 DEBUG: Found ${sessionsSnapshot.size} sessions`);
+
+        // Query income
+        console.log('🔍 DEBUG: Querying income...');
+        const incomeSnapshot = await incomeRef
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .orderBy('date', 'asc')
+            .get();
+        console.log(`🔍 DEBUG: Found ${incomeSnapshot.size} income records`);
+
+        // Query expenses
+        console.log('🔍 DEBUG: Querying expenses...');
+        const expensesSnapshot = await expensesRef
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .orderBy('date', 'asc')
+            .get();
+        console.log(`🔍 DEBUG: Found ${expensesSnapshot.size} expense records`);
+
+        // Build debug report
+        let report = `🔍 DEBUG: RAW DATA REPORT\n`;
+        report += `Period: ${startDate} to ${endDate}\n`;
+        report += `${'='.repeat(50)}\n\n`;
+
+        // Archived Sessions
+        report += `📅 ARCHIVED SESSIONS (${sessionsSnapshot.size}):\n\n`;
+        if (sessionsSnapshot.empty) {
+            report += `   ❌ No archived sessions found!\n`;
+            report += `   💡 Sessions must be CLOSED to create income/expense records.\n\n`;
+        } else {
+            sessionsSnapshot.forEach(doc => {
+                const data = doc.data();
+                report += `   Session: ${doc.id}\n`;
+                report += `   - Day: ${data.day}\n`;
+                report += `   - Time: ${data.time}\n`;
+                report += `   - Players: ${data.finalPlayerCount || 'N/A'}\n`;
+                report += `   - Income: ${data.finalIncome || 0} THB\n`;
+                report += `   - Expense: ${data.finalExpense || 0} THB\n`;
+                report += `   - Profit: ${data.finalProfit || 0} THB\n`;
+                report += `   - Closed: ${data.closedAt ? 'Yes' : 'No'}\n\n`;
+            });
+        }
+
+        // Income Records
+        report += `💰 INCOME RECORDS (${incomeSnapshot.size}):\n\n`;
+        if (incomeSnapshot.empty) {
+            report += `   ❌ No income records found!\n`;
+            report += `   💡 Income is created when you close a session.\n\n`;
+        } else {
+            let totalIncome = 0;
+            incomeSnapshot.forEach(doc => {
+                const data = doc.data();
+                totalIncome += data.amount || 0;
+                report += `   ${data.date}: ${data.amount} THB (${data.playerCount} players)\n`;
+            });
+            report += `\n   TOTAL INCOME: ${totalIncome} THB\n\n`;
+        }
+
+        // Expense Records
+        report += `💸 EXPENSE RECORDS (${expensesSnapshot.size}):\n\n`;
+        if (expensesSnapshot.empty) {
+            report += `   ❌ No expense records found!\n`;
+            report += `   💡 Expenses are created when you close a session.\n\n`;
+        } else {
+            let totalExpenses = 0;
+            let courtTotal = 0;
+            let shuttleTotal = 0;
+            let otherTotal = 0;
+
+            expensesSnapshot.forEach(doc => {
+                const data = doc.data();
+                const amount = data.amount || 0;
+                totalExpenses += amount;
+
+                if (data.type === 'court_rental') {
+                    courtTotal += amount;
+                    report += `   ${data.date}: Court ${amount} THB (${data.courts} courts)\n`;
+                } else if (data.type === 'shuttlecocks') {
+                    shuttleTotal += amount;
+                    report += `   ${data.date}: Shuttles ${amount} THB (${data.quantity} pcs)\n`;
+                } else {
+                    otherTotal += amount;
+                    report += `   ${data.date}: ${data.category || 'Other'} ${amount} THB\n`;
+                }
+            });
+
+            report += `\n   TOTAL EXPENSES: ${totalExpenses} THB\n`;
+            report += `   - Court: ${courtTotal} THB\n`;
+            report += `   - Shuttles: ${shuttleTotal} THB\n`;
+            report += `   - Other: ${otherTotal} THB\n\n`;
+        }
+
+        // Summary
+        report += `${'='.repeat(50)}\n`;
+        report += `📊 SUMMARY:\n\n`;
+
+        if (sessionsSnapshot.empty) {
+            report += `⚠️ NO DATA FOUND!\n\n`;
+            report += `Possible reasons:\n`;
+            report += `1. No sessions were played in this period\n`;
+            report += `2. Sessions were played but NOT CLOSED (via "Close Last Session")\n`;
+            report += `3. Date format doesn't match (should be DD/MM/YYYY in session)\n\n`;
+            report += `💡 To fix: Go to admin panel → Close Session → Close Last Session\n`;
+        } else {
+            const totalIncome = incomeSnapshot.size > 0 ?
+                incomeSnapshot.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0) : 0;
+            const totalExpenses = expensesSnapshot.size > 0 ?
+                expensesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0) : 0;
+
+            report += `Sessions found: ${sessionsSnapshot.size}\n`;
+            report += `Income records: ${incomeSnapshot.size}\n`;
+            report += `Expense records: ${expensesSnapshot.size}\n\n`;
+            report += `Total Income: ${totalIncome} THB\n`;
+            report += `Total Expenses: ${totalExpenses} THB\n`;
+            report += `Profit: ${totalIncome - totalExpenses} THB\n`;
+        }
+
+        // Display in alert (scrollable)
+        console.log(report);
+        alert(report);
+
+    } catch (error) {
+        console.error('❌ Debug error:', error);
+        alert(`❌ Error: ${error.message}\n\nCheck console for details.`);
+    }
+}
+
 // ============================================
 // LINE NOTIFICATIONS
 // ============================================
