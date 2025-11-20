@@ -3079,10 +3079,29 @@ async function previewSession() {
         // Get regular players for this day
         const regularPlayersForToday = await getRegularPlayersForDay(dayNumber);
 
-        // Count players
+        // Count players and check their balances
         const totalPlayers = state.players.length;
         const unpaidPlayers = state.players.filter(p => !p.paid);
-        const totalDeduction = unpaidPlayers.length * state.paymentAmount;
+
+        // Check which unpaid players will be charged vs removed
+        const playersToCharge = [];
+        const playersToRemove = [];
+
+        for (const player of unpaidPlayers) {
+            if (player.userId) {
+                const user = state.authorizedUsers.find(u => u.id === player.userId);
+                if (user) {
+                    const balance = user.balance || 0;
+                    if (balance >= state.paymentAmount) {
+                        playersToCharge.push({name: player.name, balance: balance});
+                    } else {
+                        playersToRemove.push({name: player.name, balance: balance});
+                    }
+                }
+            }
+        }
+
+        const totalDeduction = playersToCharge.length * state.paymentAmount;
 
         // Find regular players who are NOT on the list (potential low balance issue)
         const missingRegularPlayers = [];
@@ -3122,7 +3141,13 @@ async function previewSession() {
         message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
         message += `💰 SUMMARY:\n`;
         message += `- Total players: ${totalPlayers}\n`;
-        message += `- Will be charged: ${unpaidPlayers.length} players\n`;
+        message += `- ✅ Will be charged: ${playersToCharge.length} players\n`;
+        if (playersToRemove.length > 0) {
+            message += `- ❌ Will be REMOVED: ${playersToRemove.length} players (insufficient balance)\n`;
+            playersToRemove.forEach(p => {
+                message += `    • ${p.name} (has ${p.balance} THB, needs ${state.paymentAmount} THB)\n`;
+            });
+        }
         message += `- Total deduction: ${totalDeduction} THB\n`;
 
         // Show missing regular players (especially those with low balance)
