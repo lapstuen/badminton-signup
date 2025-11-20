@@ -1543,6 +1543,63 @@ async function testPasswordResetNotification() {
 }
 
 /**
+ * Send message about possible extra court
+ * Encourages players to join waiting list even if it seems full
+ */
+async function sendExtraCourtMessage() {
+    const activePlayers = state.players.slice(0, state.maxPlayers);
+    const waitingList = state.players.slice(state.maxPlayers);
+
+    const message = `🏸 EXTRA COURT UPDATE / อัพเดทสนามเพิ่ม
+
+📅 ${state.sessionDay}
+📆 ${state.sessionDate}
+🕐 ${state.sessionTime}
+
+🎾 We have requested an additional court!
+เราได้ขอสนามเพิ่มแล้ว!
+
+⏳ Waiting for confirmation from the sports center.
+รอการยืนยันจากศูนย์กีฬา
+
+✅ If approved: We can accommodate ${state.maxPlayers + 6} players total!
+ถ้าได้รับอนุมัติ: เราสามารถรับผู้เล่นได้ทั้งหมด ${state.maxPlayers + 6} คน!
+
+👥 Current status / สถานะปัจจุบัน:
+   • Registered: ${activePlayers.length}/${state.maxPlayers}
+   • Waiting list: ${waitingList.length}
+
+💡 Don't hesitate to join the waiting list!
+อย่าลังเลที่จะลงทะเบียนในรายการรอ!
+
+You only pay if you get a spot. If the extra court is confirmed, waiting list players will automatically move up!
+
+คุณจ่ายเงินเฉพาะเมื่อได้ที่เล่น หากสนามเพิ่มได้รับการยืนยัน ผู้เล่นในรายการรอจะเลื่อนขึ้นโดยอัตโนมัติ!
+
+🔗 Register here / ลงทะเบียนที่นี่:
+${window.location.origin}${window.location.pathname}`;
+
+    try {
+        const response = await fetch('https://sendlinegroupmessage-vnhukb4oga-as.a.run.app', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: message })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Extra court message sent:', result);
+        alert('✅ Message sent to Line group!\n\nข้อความถูกส่งไปยังกลุ่ม Line แล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending extra court message:', error);
+        alert(`❌ Failed to send:\n\n${error.message}`);
+    }
+}
+
+/**
  * Finalize session accounting - Register income and expenses
  */
 async function finalizeSessionAccounting() {
