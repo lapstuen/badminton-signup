@@ -21,7 +21,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-19 20:20 (Line: Simple API + Test Demo knapp)</p>
+            <p class="version-header">v2025-11-20 18:00 (Line: Player list in announcements + Test buttons)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -122,7 +122,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-20 15:30 (APP_URL fix + New Session collapsed)</p>
+                <p class="version">v2025-11-20 18:00 (Line: Player list in announcements + Test buttons)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -193,20 +193,17 @@
                         </div>
                     </details>
 
-                    <!-- Player Management -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">👥 Player Management</summary>
-                        <div class="admin-group-content">
-                            <button onclick="removePlayerFromSession()" style="background: #ef4444;">❌ Remove from Session / ลบออกจากเซสชัน</button>
-                        </div>
-                    </details>
-
                     <!-- User Management -->
                     <details class="admin-group">
                         <summary class="admin-group-title">👤 User Management</summary>
                         <div class="admin-group-content">
                             <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
                             <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
+                            <button onclick="removePlayerFromSession()" style="background: #ef4444;">❌ Remove from Session / ลบออกจากเซสชัน</button>
+
+                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
+                            <h4 style="margin: 10px 0 5px 0; color: #374151; font-size: 14px;">💳 Payment Status / สถานะการชำระเงิน</h4>
+                            <div id="paymentList"></div>
                         </div>
                     </details>
 
@@ -235,18 +232,40 @@
                     <details class="admin-group">
                         <summary class="admin-group-title">📲 Line Notifications</summary>
                         <div class="admin-group-content">
-                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">⚠️ Use sparingly to avoid hitting monthly quota</p>
-                            <button onclick="testLineMessage()" style="background: #22c55e; color: white; font-weight: bold;">🧪 Test Line / ทดสอบ Line</button>
-                            <!-- <button onclick="shareSessionToLine()" style="background: #00C300; color: white; font-weight: bold;">📤 Share to Line / แชร์ไปยัง Line</button> -->
-                            <!-- <button onclick="nudgePlayers()" style="background: #f97316; color: white; font-weight: bold;">📢 Nudge Players / Purr spillere</button> -->
-                        </div>
-                    </details>
+                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">⚠️ Use sparingly to avoid hitting monthly quota / ใช้อย่างประหยัด</p>
 
-                    <!-- Payment Status -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">💳 Payment Status</summary>
-                        <div class="admin-group-content">
-                            <div id="paymentList"></div>
+                            <h4 style="margin: 10px 0 8px 0; color: #374151; font-size: 13px; font-weight: bold;">🧪 Test Messages / ข้อความทดสอบ</h4>
+
+                            <button onclick="testLineConfig()" style="background: #8b5cf6; color: white;">
+                                1️⃣ Config Test / ทดสอบตั้งค่า
+                            </button>
+
+                            <button onclick="testDemoLine()" style="background: #10b981; color: white;">
+                                2️⃣ Demo Message / ข้อความตัวอย่าง
+                            </button>
+
+                            <button onclick="testLineMessage()" style="background: #22c55e; color: white;">
+                                3️⃣ Simple Test / ทดสอบง่าย
+                            </button>
+
+                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
+                            <h4 style="margin: 10px 0 8px 0; color: #374151; font-size: 13px; font-weight: bold;">📤 Notification Types / ประเภทการแจ้งเตือน</h4>
+
+                            <button onclick="testSessionAnnouncement()" style="background: #3b82f6; color: white;">
+                                📢 Session Announcement / ประกาศเซสชัน
+                            </button>
+
+                            <button onclick="testCancellationNotification()" style="background: #ef4444; color: white;">
+                                ⚠️ Cancellation / ยกเลิก
+                            </button>
+
+                            <button onclick="testNudgeNotification()" style="background: #f97316; color: white;">
+                                🔔 Nudge/Reminder / เตือนความจำ
+                            </button>
+
+                            <button onclick="testPasswordResetNotification()" style="background: #ec4899; color: white;">
+                                🔐 Password Reset / รีเซ็ตรหัสผ่าน
+                            </button>
                         </div>
                     </details>
 

@@ -702,6 +702,10 @@ async function shareSessionToLine() {
         const waitingList = state.players.slice(state.maxPlayers);
         const availableSpots = state.maxPlayers - activePlayers.length;
 
+        // Extract player names
+        const playerNames = activePlayers.map(p => p.name);
+        const waitingListNames = waitingList.map(p => p.name);
+
         // Get Cloud Function reference
         const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
 
@@ -715,7 +719,9 @@ async function shareSessionToLine() {
             availableSpots: availableSpots,
             waitingListCount: waitingList.length,
             paymentAmount: state.paymentAmount,
-            appUrl: window.location.href
+            appUrl: window.location.href,
+            playerNames: playerNames,           // NEW: Add player names
+            waitingListNames: waitingListNames  // NEW: Add waiting list names
         };
 
         console.log('📤 Sharing session to Line...', notificationData);
@@ -1403,6 +1409,155 @@ async function testLineMessage() {
     } catch (error) {
         console.error('❌ Error sending test message:', error);
         alert(`❌ Failed to send test:\n\n${error.message}`);
+    }
+}
+
+/**
+ * TEST: Session Announcement
+ * Sends session announcement without validation checks
+ * Uses mock data if no real players exist
+ */
+async function testSessionAnnouncement() {
+    try {
+        // Use current state data (may be incomplete, but that's OK for testing)
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+        const availableSpots = state.maxPlayers - activePlayers.length;
+
+        // Extract player names - use mock data if empty for testing
+        let playerNames = activePlayers.map(p => p.name);
+        let waitingListNames = waitingList.map(p => p.name);
+
+        // If no players, use mock data for testing
+        if (playerNames.length === 0) {
+            playerNames = ['John (test)', 'Sarah (test)', 'Michael (test)', 'Lisa (test)', 'Tom (test)'];
+            console.log('⚠️ No real players found, using mock data for testing');
+        }
+
+        const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
+
+        const notificationData = {
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionDate: state.sessionDate || '01/01/2025',
+            sessionTime: state.sessionTime || '18:00 - 20:00',
+            currentPlayers: playerNames.length,  // Use actual player count
+            maxPlayers: state.maxPlayers,
+            availableSpots: state.maxPlayers - playerNames.length,  // Calculate based on mock data
+            waitingListCount: waitingListNames.length,
+            paymentAmount: state.paymentAmount,
+            appUrl: window.location.href,
+            playerNames: playerNames,
+            waitingListNames: waitingListNames
+        };
+
+        console.log('📤 TEST: Sending session announcement...', notificationData);
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Session announcement sent:', result.data);
+        alert('✅ Session announcement sent!\n\nประกาศเซสชันส่งไปแล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending session announcement:', error);
+        alert(`❌ Failed to send:\n\n${error.message}`);
+    }
+}
+
+/**
+ * TEST: Cancellation Notification
+ * Sends cancellation notification with mock data
+ */
+async function testCancellationNotification() {
+    try {
+        // Use mock data for testing
+        const mockPlayerName = state.loggedInUser?.name || 'Test Player';
+        const hasWaitingList = state.players.length > state.maxPlayers;
+
+        const sendNotification = functions.httpsCallable('sendCancellationNotification');
+
+        const notificationData = {
+            playerName: mockPlayerName,
+            currentPlayers: state.players.length,
+            maxPlayers: state.maxPlayers,
+            hasWaitingList: hasWaitingList,
+            sessionDate: state.sessionDate || '01/01/2025',
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionTime: state.sessionTime || '18:00 - 20:00',
+            appUrl: window.location.href
+        };
+
+        console.log('📤 TEST: Sending cancellation notification...', notificationData);
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Cancellation notification sent:', result.data);
+        alert('✅ Cancellation notification sent!\n\nข้อความยกเลิกส่งไปแล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending cancellation notification:', error);
+        alert(`❌ Failed to send:\n\n${error.message}`);
+    }
+}
+
+/**
+ * TEST: Nudge Notification
+ * Sends nudge/reminder without validation checks
+ */
+async function testNudgeNotification() {
+    try {
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const availableSpots = state.maxPlayers - activePlayers.length;
+
+        const sendNotification = functions.httpsCallable('sendNudgeNotification');
+
+        const notificationData = {
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionDate: state.sessionDate || '01/01/2025',
+            sessionTime: state.sessionTime || '18:00 - 20:00',
+            currentPlayers: activePlayers.length,
+            maxPlayers: state.maxPlayers,
+            availableSpots: availableSpots > 0 ? availableSpots : 1, // Mock at least 1 for testing
+            paymentAmount: state.paymentAmount,
+            appUrl: window.location.href
+        };
+
+        console.log('📤 TEST: Sending nudge notification...', notificationData);
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Nudge notification sent:', result.data);
+        alert('✅ Nudge notification sent!\n\nข้อความเตือนส่งไปแล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending nudge notification:', error);
+        alert(`❌ Failed to send:\n\n${error.message}`);
+    }
+}
+
+/**
+ * TEST: Password Reset Notification
+ * Sends password reset notification with mock data
+ */
+async function testPasswordResetNotification() {
+    try {
+        const mockUserName = state.loggedInUser?.name || 'Test User';
+
+        const sendNotification = functions.httpsCallable('sendPasswordResetNotification');
+
+        const notificationData = {
+            userName: mockUserName,
+            timestamp: new Date().toLocaleString('en-GB', {
+                timeZone: 'Asia/Bangkok',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })
+        };
+
+        console.log('📤 TEST: Sending password reset notification...', notificationData);
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Password reset notification sent:', result.data);
+        alert('✅ Password reset notification sent!\n\nข้อความรีเซ็ตรหัสผ่านส่งไปแล้ว!');
+    } catch (error) {
+        console.error('❌ Error sending password reset notification:', error);
+        alert(`❌ Failed to send:\n\n${error.message}`);
     }
 }
 

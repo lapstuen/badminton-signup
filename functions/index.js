@@ -80,7 +80,9 @@ exports.sendSessionAnnouncement = onCall({
             availableSpots,
             waitingListCount,
             paymentAmount,
-            appUrl
+            appUrl,
+            playerNames,
+            waitingListNames
         } = request.data;
 
         // Build notification message
@@ -93,7 +95,9 @@ exports.sendSessionAnnouncement = onCall({
             availableSpots,
             waitingListCount,
             paymentAmount,
-            appUrl
+            appUrl,
+            playerNames,
+            waitingListNames
         );
 
         console.log('📤 Sending session announcement to Line');
@@ -238,7 +242,9 @@ function buildSessionAnnouncementMessage(
     availableSpots,
     waitingListCount,
     paymentAmount,
-    appUrl
+    appUrl,
+    playerNames = [],
+    waitingListNames = []
 ) {
     let message = `🏸 BADMINTON SESSION PUBLISHED! / เซสชันเผยแพร่แล้ว!
 
@@ -247,16 +253,39 @@ function buildSessionAnnouncementMessage(
 
 👥 Players: ${currentPlayers}/${maxPlayers}`;
 
+    // Add registered players list
+    if (playerNames && playerNames.length > 0) {
+        message += `
+
+📋 Registered / ลงทะเบียนแล้ว:`;
+        playerNames.forEach((name, index) => {
+            message += `\n${index + 1}. ${name}`;
+        });
+    }
+
+    // Add waiting list if exists
+    if (waitingListNames && waitingListNames.length > 0) {
+        message += `
+
+⏳ Waiting List / รายชื่อสำรอง:`;
+        waitingListNames.forEach((name, index) => {
+            message += `\n${index + 1}. ${name}`;
+        });
+    }
+
+    // Add availability status
     if (availableSpots > 0) {
         message += `
+
 ✅ ${availableSpots} spot${availableSpots > 1 ? 's' : ''} available!
 ✅ มี ${availableSpots} ที่ว่าง!`;
     } else if (waitingListCount > 0) {
         message += `
-⏳ Full - ${waitingListCount} on waiting list
-⏳ เต็มแล้ว - ${waitingListCount} คนในรายชื่อสำรอง`;
+
+⚠️ Session is full! / เต็มแล้ว!`;
     } else {
         message += `
+
 ✅ Session is full! / เต็มแล้ว!`;
     }
 
