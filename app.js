@@ -1563,8 +1563,8 @@ async function sendExtraCourtMessage() {
 ${window.location.origin}${window.location.pathname}`;
 
     try {
-        // Use Firebase Cloud Function
-        const sendNotification = functions.httpsCallable('sendLineGroupMessage');
+        // Use Firebase Cloud Function - sendLineMessage (not sendLineGroupMessage!)
+        const sendNotification = functions.httpsCallable('sendLineMessage');
         const result = await sendNotification({ message: message });
 
         console.log('✅ Extra court message sent:', result);
