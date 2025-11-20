@@ -1955,6 +1955,236 @@ async function viewAccountingReport() {
     }
 }
 
+// ============================================
+// WEEKLY BALANCE REPORT
+// ============================================
+
+/**
+ * Generate Weekly Financial Report
+ * Calculates income, expenses, and profit for a date range
+ * Updates running balance and stores weekly summary
+ */
+async function generateWeeklyReport() {
+    try {
+        // Prompt for week selection
+        const useLastWeek = confirm(
+            'Generate report for LAST WEEK (Monday-Sunday)?\n\n' +
+            'สร้างรายงานสำหรับสัปดาห์ที่แล้ว (จันทร์-อาทิตย์)?\n\n' +
+            'Click OK for last week, or CANCEL to enter custom dates.\n' +
+            'กด OK สำหรับสัปดาห์ที่แล้ว หรือ ยกเลิกเพื่อใส่วันที่'
+        );
+
+        let startDate, endDate;
+
+        if (useLastWeek) {
+            // Calculate last week (Monday-Sunday)
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const daysToLastMonday = dayOfWeek === 0 ? 6 : dayOfWeek + 6; // Go back to last Monday
+            const lastMonday = new Date(today);
+            lastMonday.setDate(today.getDate() - daysToLastMonday);
+
+            const lastSunday = new Date(lastMonday);
+            lastSunday.setDate(lastMonday.getDate() + 6);
+
+            startDate = lastMonday.toISOString().split('T')[0];
+            endDate = lastSunday.toISOString().split('T')[0];
+        } else {
+            // Custom date range
+            startDate = prompt('Start date (YYYY-MM-DD) / วันเริ่มต้น:');
+            if (!startDate) return;
+
+            endDate = prompt('End date (YYYY-MM-DD) / วันสิ้นสุด:');
+            if (!endDate) return;
+        }
+
+        console.log(`📊 Generating weekly report: ${startDate} to ${endDate}`);
+
+        // Query income for date range
+        const incomeSnapshot = await incomeRef
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .orderBy('date', 'asc')
+            .get();
+
+        // Query expenses for date range
+        const expensesSnapshot = await expensesRef
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .orderBy('date', 'asc')
+            .get();
+
+        // Aggregate income
+        let totalIncome = 0;
+        let totalPlayers = 0;
+        const incomeSessions = [];
+
+        incomeSnapshot.forEach(doc => {
+            const data = doc.data();
+            totalIncome += data.amount || 0;
+            totalPlayers += data.playerCount || 0;
+            incomeSessions.push({
+                date: data.date,
+                amount: data.amount,
+                playerCount: data.playerCount,
+                sessionId: data.sessionId
+            });
+        });
+
+        // Aggregate expenses
+        let totalExpenses = 0;
+        let courtCost = 0;
+        let shuttlecockCost = 0;
+        let otherExpenses = 0;
+        const expenseBreakdown = {
+            court_rental: [],
+            shuttlecocks: [],
+            other: []
+        };
+
+        expensesSnapshot.forEach(doc => {
+            const data = doc.data();
+            const amount = data.amount || 0;
+            totalExpenses += amount;
+
+            if (data.type === 'court_rental') {
+                courtCost += amount;
+                expenseBreakdown.court_rental.push({
+                    date: data.date,
+                    amount: amount,
+                    courts: data.courts || 0,
+                    costPerCourt: data.costPerCourt || 440
+                });
+            } else if (data.type === 'shuttlecocks') {
+                shuttlecockCost += amount;
+                expenseBreakdown.shuttlecocks.push({
+                    date: data.date,
+                    amount: amount,
+                    quantity: data.quantity || 0,
+                    costPerItem: data.costPerItem || 90
+                });
+            } else {
+                otherExpenses += amount;
+                expenseBreakdown.other.push({
+                    date: data.date,
+                    amount: amount,
+                    category: data.category || 'Other',
+                    notes: data.notes || ''
+                });
+            }
+        });
+
+        // Calculate profit
+        const grossProfit = totalIncome - totalExpenses;
+        const sessionCount = incomeSessions.length;
+
+        // Get current balance
+        const summaryDoc = await weeklyBalanceRef.doc('summary').get();
+        const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
+        const newBalance = currentBalance + grossProfit;
+
+        // Calculate week number (ISO 8601)
+        const startDateObj = new Date(startDate);
+        const weekNumber = getISOWeekNumber(startDateObj);
+        const year = startDateObj.getFullYear();
+        const weekId = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+
+        // Build report data
+        const reportData = {
+            weekNumber: weekNumber,
+            year: year,
+            startDate: startDate,
+            endDate: endDate,
+
+            // Income
+            totalIncome: totalIncome,
+            totalPlayers: totalPlayers,
+            sessionCount: sessionCount,
+            incomeSessions: incomeSessions,
+
+            // Expenses
+            totalExpenses: totalExpenses,
+            courtCost: courtCost,
+            shuttlecockCost: shuttlecockCost,
+            otherExpenses: otherExpenses,
+            expenseBreakdown: expenseBreakdown,
+
+            // Summary
+            grossProfit: grossProfit,
+            profitPerSession: sessionCount > 0 ? (grossProfit / sessionCount) : 0,
+            profitPerPlayer: totalPlayers > 0 ? (grossProfit / totalPlayers) : 0,
+
+            // Balance
+            balanceBefore: currentBalance,
+            balanceAfter: newBalance,
+
+            // Metadata
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Confirm before saving
+        const confirmMessage =
+            `📊 WEEKLY REPORT SUMMARY\n\n` +
+            `Week: ${weekId}\n` +
+            `Period: ${startDate} to ${endDate}\n\n` +
+            `💰 INCOME: ${totalIncome} THB\n` +
+            `   Sessions: ${sessionCount}\n` +
+            `   Players: ${totalPlayers}\n\n` +
+            `💸 EXPENSES: ${totalExpenses} THB\n` +
+            `   Court: ${courtCost} THB\n` +
+            `   Shuttles: ${shuttlecockCost} THB\n` +
+            `   Other: ${otherExpenses} THB\n\n` +
+            `📈 PROFIT: ${grossProfit} THB\n\n` +
+            `💰 BALANCE UPDATE:\n` +
+            `   Before: ${currentBalance} THB\n` +
+            `   After: ${newBalance} THB\n\n` +
+            `Save this report?\n` +
+            `บันทึกรายงานนี้?`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Save weekly report
+        await weeklyBalanceRef.doc(weekId).set(reportData);
+
+        // Update summary
+        await weeklyBalanceRef.doc('summary').set({
+            currentBalance: newBalance,
+            lastProcessedDate: endDate,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        console.log(`✅ Weekly report saved: ${weekId}`);
+        alert(
+            `✅ Weekly report generated!\n\n` +
+            `Week: ${weekId}\n` +
+            `Profit: ${grossProfit} THB\n` +
+            `New Balance: ${newBalance} THB\n\n` +
+            `รายงานสร้างเรียบร้อย!`
+        );
+
+    } catch (error) {
+        console.error('❌ Error generating weekly report:', error);
+        alert(`❌ Error: ${error.message}\n\nNote: Ensure Firestore indexes exist for date queries.`);
+    }
+}
+
+/**
+ * Helper: Get ISO 8601 week number
+ */
+function getISOWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+// ============================================
+// LINE NOTIFICATIONS
+// ============================================
+
 /**
  * Send cancellation notification to Line
  * Smart logic: only mention available spot if no waiting list

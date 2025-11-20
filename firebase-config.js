@@ -27,5 +27,6 @@ const transactionsRef = db.collection('transactions');
 const incomeRef = db.collection('income');
 const expensesRef = db.collection('expenses');
 const passwordResetsRef = db.collection('passwordResets');
+const weeklyBalanceRef = db.collection('weeklyBalance');
 
 console.log('🔥 Firebase initialized successfully!');
