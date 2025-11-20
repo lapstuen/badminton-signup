@@ -1547,9 +1547,6 @@ async function testPasswordResetNotification() {
  * Encourages players to join waiting list even if it seems full
  */
 async function sendExtraCourtMessage() {
-    const activePlayers = state.players.slice(0, state.maxPlayers);
-    const waitingList = state.players.slice(state.maxPlayers);
-
     const message = `🏸 EXTRA COURT UPDATE / อัพเดทสนามเพิ่ม
 
 📅 ${state.sessionDay}
@@ -1566,17 +1563,10 @@ async function sendExtraCourtMessage() {
 ${window.location.origin}${window.location.pathname}`;
 
     try {
-        const response = await fetch('https://sendlinegroupmessage-vnhukb4oga-as.a.run.app', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: message })
-        });
+        // Use Firebase Cloud Function
+        const sendNotification = functions.httpsCallable('sendLineGroupMessage');
+        const result = await sendNotification({ message: message });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
         console.log('✅ Extra court message sent:', result);
         alert('✅ Message sent to Line group!\n\nข้อความถูกส่งไปยังกลุ่ม Line แล้ว!');
     } catch (error) {
