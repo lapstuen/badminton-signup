@@ -525,16 +525,21 @@ async function handleSignup(e) {
         return;
     }
 
-    // Check and deduct balance
-    const success = await updateUserBalance(
-        authorizedUser.id,
-        authorizedUser.name,
-        -state.paymentAmount,
-        `Registration for ${state.sessionDay} ${state.sessionDate}`
-    );
-
-    if (!success) {
-        // Balance insufficient - don't register
+    // Check balance (but don't deduct yet - payment happens at publish time)
+    const currentBalance = authorizedUser.balance || 0;
+    if (currentBalance < state.paymentAmount) {
+        alert(
+            `⚠️ Insufficient wallet balance!\n\n` +
+            `Your balance: ${currentBalance} THB\n` +
+            `Required: ${state.paymentAmount} THB\n` +
+            `Shortfall: ${state.paymentAmount - currentBalance} THB\n\n` +
+            `Please contact admin to top up your wallet.\n\n` +
+            `ยอดเงินไม่เพียงพอ!\n\n` +
+            `ยอดของคุณ: ${currentBalance} บาท\n` +
+            `ต้องการ: ${state.paymentAmount} บาท\n` +
+            `ขาด: ${state.paymentAmount - currentBalance} บาท\n\n` +
+            `กรุณาติดต่อผู้ดูแลเพื่อเติมเงิน`
+        );
         return;
     }
 
@@ -542,7 +547,8 @@ async function handleSignup(e) {
         // Add player to Firestore
         const playerData = {
             name,
-            paid: true, // Auto-set to paid since wallet deducted payment
+            userId: authorizedUser.id,  // Store userId for payment at publish time
+            paid: false,  // Will be set to true when admin publishes session
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             position: state.players.length + 1
         };
@@ -632,16 +638,20 @@ async function handleGuestRegistration() {
         }
     }
 
-    // Check and deduct balance from host
-    const success = await updateUserBalance(
-        hostUserId,
-        hostName,
-        -state.paymentAmount,
-        `Guest registration: ${trimmedGuestName} for ${state.sessionDay} ${state.sessionDate}`
-    );
-
-    if (!success) {
-        // Insufficient balance
+    // Check balance from host (but don't deduct yet - payment happens at publish time)
+    const currentBalance = state.loggedInUser.balance || 0;
+    if (currentBalance < state.paymentAmount) {
+        alert(
+            `⚠️ Insufficient wallet balance to register guest!\n\n` +
+            `Your balance: ${currentBalance} THB\n` +
+            `Required: ${state.paymentAmount} THB\n` +
+            `Shortfall: ${state.paymentAmount - currentBalance} THB\n\n` +
+            `Please contact admin to top up your wallet.\n\n` +
+            `ยอดเงินไม่เพียงพอสำหรับลงทะเบียนแขก!\n\n` +
+            `ยอดของคุณ: ${currentBalance} บาท\n` +
+            `ต้องการ: ${state.paymentAmount} บาท\n` +
+            `ขาด: ${state.paymentAmount - currentBalance} บาท`
+        );
         return;
     }
 
@@ -649,7 +659,8 @@ async function handleGuestRegistration() {
         // Add guest to Firestore
         const guestData = {
             name: fullGuestName,
-            paid: true, // Auto-set to paid since wallet deducted payment
+            userId: hostUserId,  // Store host's userId for payment at publish time
+            paid: false,  // Will be set to true when admin publishes session
             isGuest: true, // Flag to identify guests
             guestOf: hostUserId, // Link to host user
             guestOfName: hostName, // Host's name for easy reference
@@ -664,17 +675,8 @@ async function handleGuestRegistration() {
         console.log('✅ Guest registered:', fullGuestName);
     } catch (error) {
         console.error('Error registering guest:', error);
-
-        // Refund the payment if registration failed
-        await updateUserBalance(
-            hostUserId,
-            hostName,
-            state.paymentAmount,
-            `Refund: Failed guest registration for ${trimmedGuestName}`,
-            true // silent
-        );
-
-        alert('Error registering guest. Payment refunded. / เกิดข้อผิดพลาด เงินถูกคืนแล้ว');
+        // No refund needed since payment hasn't been deducted yet
+        alert('Error registering guest. Please try again.\n\nเกิดข้อผิดพลาดในการลงทะเบียนแขก กรุณาลองใหม่อีกครั้ง');
     }
 }
 
@@ -2122,6 +2124,11 @@ async function cancelRegistration() {
  * and need to pay themselves instead of waiting for publish
  */
 async function markAsPaid() {
+    // DISABLED: All payments are now processed at publish time
+    alert('⚠️ Payment function disabled.\n\nAll payments will be processed when admin publishes the session.\n\nฟังก์ชันชำระเงินถูกปิดใช้งาน\n\nการชำระเงินจะดำเนินการเมื่อผู้ดูแลเผยแพร่เซสชัน');
+    return;
+
+    // OLD CODE BELOW (disabled)
     // Check if user is logged in
     if (!state.loggedInUser) {
         alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
@@ -2745,15 +2752,8 @@ function updateUI() {
             badge.className = 'paid-badge';
             badge.textContent = 'Paid ✓';
             statusDiv.appendChild(badge);
-        } else if (state.loggedInUser && player.name === state.loggedInUser.name && !player.isGuest) {
-            // Show "Pay Now" button for current user if not paid (and not a guest)
-            const payButton = document.createElement('button');
-            payButton.className = 'pay-now-btn';
-            payButton.textContent = '💰 Pay Now';
-            payButton.title = 'Pay from your wallet / ชำระจากกระเป๋าเงิน';
-            payButton.onclick = markAsPaid;
-            statusDiv.appendChild(payButton);
         }
+        // REMOVED: "Pay Now" button - all payments processed at publish time
 
         if (player.clickedPaymentLink) {
             const clickBadge = document.createElement('span');
