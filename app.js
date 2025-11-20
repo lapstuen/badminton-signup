@@ -2339,6 +2339,105 @@ async function debugViewRawData() {
     }
 }
 
+/**
+ * Calculate Next Week's Recommended Price
+ * Shows what price per player is needed to reach 0 balance
+ * Based on fixed assumptions: 3 sessions/week, 12 players each, 6 shuttlecocks each
+ */
+async function calculateNextWeekPrice() {
+    console.log('💰 Calculating next week price recommendation...');
+
+    try {
+        // Fixed values for next week
+        const SESSIONS_PER_WEEK = 3;  // Monday, Wednesday, Friday
+        const PLAYERS_PER_SESSION = 12;
+        const TOTAL_PLAYERS = SESSIONS_PER_WEEK * PLAYERS_PER_SESSION; // 36
+        const SHUTTLECOCKS_PER_SESSION = 6;
+        const COURTS_PER_SESSION = 2;
+        const HOURS_PER_COURT = 2;
+
+        // Get current prices from state (or use defaults)
+        const shuttlecockPrice = 90; // THB per shuttlecock
+        const courtPricePerHour = 220; // THB per hour per court
+
+        // Calculate expenses per session
+        const courtCostPerSession = COURTS_PER_SESSION * HOURS_PER_COURT * courtPricePerHour; // 2 × 2 × 220 = 880
+        const shuttleCostPerSession = SHUTTLECOCKS_PER_SESSION * shuttlecockPrice; // 6 × 90 = 540
+        const totalCostPerSession = courtCostPerSession + shuttleCostPerSession; // 1,420 THB
+
+        // Calculate total weekly expenses
+        const weeklyExpenses = totalCostPerSession * SESSIONS_PER_WEEK; // 1,420 × 3 = 4,260 THB
+
+        // Breakeven price (balance = 0)
+        const breakevenPrice = weeklyExpenses / TOTAL_PLAYERS; // 4,260 ÷ 36 = 118.33 THB
+
+        // Get current balance from weeklyBalance/summary
+        const summaryDoc = await weeklyBalanceRef.doc('summary').get();
+        const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
+
+        // Calculate adjusted price to reach 0 balance
+        const adjustedNeededIncome = weeklyExpenses - currentBalance;
+        const adjustedPrice = adjustedNeededIncome / TOTAL_PLAYERS;
+
+        // Calculate what the result would be
+        const projectedIncome = adjustedPrice * TOTAL_PLAYERS;
+        const projectedProfit = projectedIncome - weeklyExpenses;
+        const projectedNewBalance = currentBalance + projectedProfit;
+
+        // Build report
+        let report = `💰 NEXT WEEK PRICE CALCULATOR\n`;
+        report += `${'='.repeat(50)}\n\n`;
+
+        report += `📊 CURRENT SITUATION:\n`;
+        report += `   Current Balance: ${currentBalance.toFixed(2)} THB\n\n`;
+
+        report += `📅 NEXT WEEK ASSUMPTIONS:\n`;
+        report += `   Sessions: ${SESSIONS_PER_WEEK} (Mon, Wed, Fri)\n`;
+        report += `   Players per session: ${PLAYERS_PER_SESSION}\n`;
+        report += `   Total players: ${TOTAL_PLAYERS}\n\n`;
+
+        report += `💸 ESTIMATED EXPENSES:\n`;
+        report += `   Per session:\n`;
+        report += `   - Courts: ${COURTS_PER_SESSION} courts × ${HOURS_PER_COURT} hours × ${courtPricePerHour} THB = ${courtCostPerSession} THB\n`;
+        report += `   - Shuttlecocks: ${SHUTTLECOCKS_PER_SESSION} × ${shuttlecockPrice} THB = ${shuttleCostPerSession} THB\n`;
+        report += `   - Total per session: ${totalCostPerSession} THB\n\n`;
+        report += `   Weekly total: ${totalCostPerSession} × ${SESSIONS_PER_WEEK} = ${weeklyExpenses} THB\n\n`;
+
+        report += `🎯 PRICE RECOMMENDATIONS:\n\n`;
+
+        report += `   Breakeven price (balance stays at ${currentBalance} THB):\n`;
+        report += `   💚 ${breakevenPrice.toFixed(2)} THB per player\n\n`;
+
+        report += `   Adjusted price (to reach 0 balance):\n`;
+        report += `   💙 ${adjustedPrice.toFixed(2)} THB per player\n\n`;
+
+        report += `📈 PROJECTION (if using adjusted price):\n`;
+        report += `   Income: ${adjustedPrice.toFixed(2)} × ${TOTAL_PLAYERS} = ${projectedIncome.toFixed(2)} THB\n`;
+        report += `   Expenses: ${weeklyExpenses.toFixed(2)} THB\n`;
+        report += `   Profit: ${projectedProfit.toFixed(2)} THB\n`;
+        report += `   New Balance: ${currentBalance.toFixed(2)} + ${projectedProfit.toFixed(2)} = ${projectedNewBalance.toFixed(2)} THB\n\n`;
+
+        report += `${'='.repeat(50)}\n`;
+        report += `💡 NOTE: This is a calculation only.\n`;
+        report += `No data has been updated.\n`;
+
+        console.log(report);
+        alert(report);
+
+        return {
+            currentBalance,
+            weeklyExpenses,
+            breakevenPrice,
+            adjustedPrice,
+            projectedNewBalance
+        };
+
+    } catch (error) {
+        console.error('❌ Price calculation error:', error);
+        alert(`❌ Error calculating price: ${error.message}\n\nCheck console for details.`);
+    }
+}
+
 // ============================================
 // LINE NOTIFICATIONS
 // ============================================
