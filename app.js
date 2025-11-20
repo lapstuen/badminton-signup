@@ -528,18 +528,7 @@ async function handleSignup(e) {
     // Check balance (but don't deduct yet - payment happens at publish time)
     const currentBalance = authorizedUser.balance || 0;
     if (currentBalance < state.paymentAmount) {
-        alert(
-            `⚠️ Insufficient wallet balance!\n\n` +
-            `Your balance: ${currentBalance} THB\n` +
-            `Required: ${state.paymentAmount} THB\n` +
-            `Shortfall: ${state.paymentAmount - currentBalance} THB\n\n` +
-            `Please contact admin to top up your wallet.\n\n` +
-            `ยอดเงินไม่เพียงพอ!\n\n` +
-            `ยอดของคุณ: ${currentBalance} บาท\n` +
-            `ต้องการ: ${state.paymentAmount} บาท\n` +
-            `ขาด: ${state.paymentAmount - currentBalance} บาท\n\n` +
-            `กรุณาติดต่อผู้ดูแลเพื่อเติมเงิน`
-        );
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${state.paymentAmount} THB`);
         return;
     }
 
@@ -641,17 +630,7 @@ async function handleGuestRegistration() {
     // Check balance from host (but don't deduct yet - payment happens at publish time)
     const currentBalance = state.loggedInUser.balance || 0;
     if (currentBalance < state.paymentAmount) {
-        alert(
-            `⚠️ Insufficient wallet balance to register guest!\n\n` +
-            `Your balance: ${currentBalance} THB\n` +
-            `Required: ${state.paymentAmount} THB\n` +
-            `Shortfall: ${state.paymentAmount - currentBalance} THB\n\n` +
-            `Please contact admin to top up your wallet.\n\n` +
-            `ยอดเงินไม่เพียงพอสำหรับลงทะเบียนแขก!\n\n` +
-            `ยอดของคุณ: ${currentBalance} บาท\n` +
-            `ต้องการ: ${state.paymentAmount} บาท\n` +
-            `ขาด: ${state.paymentAmount - currentBalance} บาท`
-        );
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${state.paymentAmount} THB`);
         return;
     }
 
