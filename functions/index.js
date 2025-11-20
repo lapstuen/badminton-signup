@@ -249,7 +249,9 @@ function buildSessionAnnouncementMessage(
     let message = `🏸 BADMINTON SESSION PUBLISHED! / เซสชันเผยแพร่แล้ว!
 
 📅 ${sessionDay}
+📆 ${sessionDate}
 🕐 ${sessionTime}
+💰 ${paymentAmount} THB per player
 
 👥 Players: ${currentPlayers}/${maxPlayers}`;
 
