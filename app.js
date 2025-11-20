@@ -2529,6 +2529,14 @@ async function cancelRegistration() {
     }
 
     try {
+        // Check if there are waiting list players (position > maxPlayers)
+        const waitingListPlayers = state.players.filter(p => p.position > state.maxPlayers);
+        const hasWaitingList = waitingListPlayers.length > 0;
+
+        // Sort waiting list by position to get first person
+        const nextPlayer = hasWaitingList ?
+            waitingListPlayers.sort((a, b) => a.position - b.position)[0] : null;
+
         // Refund the payment amount for main player
         await updateUserBalance(
             userId,
@@ -2558,6 +2566,26 @@ async function cancelRegistration() {
 
                 console.log(`✅ Guest cancelled: ${guest.name}`);
             }
+        }
+
+        // If there's a waiting list player moving up, charge them
+        if (nextPlayer && nextPlayer.userId) {
+            console.log(`💰 Charging waiting list player moving up: ${nextPlayer.name}`);
+
+            // Deduct payment from player moving up from waiting list
+            await updateUserBalance(
+                nextPlayer.userId,
+                nextPlayer.name,
+                -state.paymentAmount, // Negative = deduct
+                `Payment for moving up from waiting list ${state.sessionDate}`
+            );
+
+            // Update their paid status
+            await playersRef().doc(nextPlayer.id).update({
+                paid: true
+            });
+
+            console.log(`✅ Charged ${state.paymentAmount} THB to ${nextPlayer.name} (moved up from waiting list)`);
         }
 
         // Send Line notification (async, don't wait)
