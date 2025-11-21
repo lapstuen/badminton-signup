@@ -525,7 +525,7 @@ async function handleSignup(e) {
         return;
     }
 
-    // Check balance (but don't deduct yet - payment happens at publish time)
+    // Check balance and deduct payment IMMEDIATELY (for all players, including waiting list)
     const currentBalance = authorizedUser.balance || 0;
     if (currentBalance < state.paymentAmount) {
         alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${state.paymentAmount} THB`);
@@ -533,11 +533,27 @@ async function handleSignup(e) {
     }
 
     try {
+        // Deduct payment BEFORE adding to Firestore
+        const isWaitingList = state.players.length >= state.maxPlayers;
+        const paymentSuccess = await updateUserBalance(
+            authorizedUser.id,
+            name,
+            -state.paymentAmount, // Negative = deduct
+            isWaitingList
+                ? `Payment for joining waiting list ${state.sessionDate}`
+                : `Payment for session ${state.sessionDate}`
+        );
+
+        if (!paymentSuccess) {
+            // updateUserBalance already showed error message
+            return;
+        }
+
         // Add player to Firestore
         const playerData = {
             name,
-            userId: authorizedUser.id,  // Store userId for payment at publish time
-            paid: false,  // Will be set to true when admin publishes session
+            userId: authorizedUser.id,
+            paid: true,  // Already paid at registration
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             position: state.players.length + 1
         };
@@ -572,7 +588,16 @@ async function handleSignup(e) {
         console.log('✅ Player registered:', name);
     } catch (error) {
         console.error('Error registering player:', error);
-        alert('Error registering. Please try again.');
+
+        // IMPORTANT: Refund payment since Firestore add failed
+        await updateUserBalance(
+            authorizedUser.id,
+            name,
+            state.paymentAmount, // Positive = refund
+            `Refund for failed registration ${state.sessionDate}`
+        );
+
+        alert('Error registering. Payment refunded. Please try again.\n\nเกิดข้อผิดพลาด คืนเงินแล้ว กรุณาลองใหม่อีกครั้ง');
     }
 }
 
@@ -627,7 +652,7 @@ async function handleGuestRegistration() {
         }
     }
 
-    // Check balance from host (but don't deduct yet - payment happens at publish time)
+    // Check balance from host and deduct payment IMMEDIATELY
     const currentBalance = state.loggedInUser.balance || 0;
     if (currentBalance < state.paymentAmount) {
         alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${state.paymentAmount} THB`);
@@ -635,11 +660,27 @@ async function handleGuestRegistration() {
     }
 
     try {
+        // Deduct payment from host BEFORE adding guest to Firestore
+        const isWaitingList = state.players.length >= state.maxPlayers;
+        const paymentSuccess = await updateUserBalance(
+            hostUserId,
+            hostName,
+            -state.paymentAmount, // Negative = deduct
+            isWaitingList
+                ? `Payment for guest (${trimmedGuestName}) on waiting list ${state.sessionDate}`
+                : `Payment for guest (${trimmedGuestName}) ${state.sessionDate}`
+        );
+
+        if (!paymentSuccess) {
+            // updateUserBalance already showed error message
+            return;
+        }
+
         // Add guest to Firestore
         const guestData = {
             name: fullGuestName,
-            userId: hostUserId,  // Store host's userId for payment at publish time
-            paid: false,  // Will be set to true when admin publishes session
+            userId: hostUserId,
+            paid: true,  // Already paid at registration
             isGuest: true, // Flag to identify guests
             guestOf: hostUserId, // Link to host user
             guestOfName: hostName, // Host's name for easy reference
@@ -654,8 +695,16 @@ async function handleGuestRegistration() {
         console.log('✅ Guest registered:', fullGuestName);
     } catch (error) {
         console.error('Error registering guest:', error);
-        // No refund needed since payment hasn't been deducted yet
-        alert('Error registering guest. Please try again.\n\nเกิดข้อผิดพลาดในการลงทะเบียนแขก กรุณาลองใหม่อีกครั้ง');
+
+        // IMPORTANT: Refund payment since Firestore add failed
+        await updateUserBalance(
+            hostUserId,
+            hostName,
+            state.paymentAmount, // Positive = refund
+            `Refund for failed guest registration (${trimmedGuestName})`
+        );
+
+        alert('Error registering guest. Payment refunded. Please try again.\n\nเกิดข้อผิดพลาด คืนเงินแล้ว กรุณาลองใหม่อีกครั้ง');
     }
 }
 
@@ -2601,24 +2650,9 @@ async function cancelRegistration() {
             }
         }
 
-        // If there's a waiting list player moving up, charge them
-        if (nextPlayer && nextPlayer.userId) {
-            console.log(`💰 Charging waiting list player moving up: ${nextPlayer.name}`);
-
-            // Deduct payment from player moving up from waiting list
-            await updateUserBalance(
-                nextPlayer.userId,
-                nextPlayer.name,
-                -state.paymentAmount, // Negative = deduct
-                `Payment for moving up from waiting list ${state.sessionDate}`
-            );
-
-            // Update their paid status
-            await playersRef().doc(nextPlayer.id).update({
-                paid: true
-            });
-
-            console.log(`✅ Charged ${state.paymentAmount} THB to ${nextPlayer.name} (moved up from waiting list)`);
+        // Note: Waiting list player already paid at registration, no need to charge again
+        if (nextPlayer) {
+            console.log(`✅ Player moving up from waiting list: ${nextPlayer.name} (already paid at registration)`);
         }
 
         // Send Line notification (async, don't wait)
@@ -3740,11 +3774,16 @@ async function publishSession() {
     const unpaidPlayers = state.players.filter(p => !p.paid);
 
     let confirmMessage = 'Publish this session?\n\nเผยแพร่เซสชัน?\n\n';
+    confirmMessage += `Current players: ${state.players.length}\n`;
+    confirmMessage += `All players have already paid at registration.\n\n`;
+    confirmMessage += `ผู้เล่นปัจจุบัน: ${state.players.length}\n`;
+    confirmMessage += `ผู้เล่นทุกคนจ่ายเงินแล้วตอนลงทะเบียน`;
 
+    // Legacy support: handle any unpaid players (should be 0 with new system)
     if (unpaidPlayers.length > 0) {
-        confirmMessage += `This will deduct ${state.paymentAmount} THB from ${unpaidPlayers.length} player(s) who haven't paid yet:\n`;
-        confirmMessage += unpaidPlayers.map(p => p.name).join(', ') + '\n\n';
-        confirmMessage += `จะหักเงิน ${state.paymentAmount} บาทจากผู้เล่น ${unpaidPlayers.length} คนที่ยังไม่ได้จ่าย`;
+        confirmMessage += `\n\n⚠️ Found ${unpaidPlayers.length} unpaid player(s) (legacy):\n`;
+        confirmMessage += unpaidPlayers.map(p => p.name).join(', ') + '\n';
+        confirmMessage += `Will deduct ${state.paymentAmount} THB from them.`;
     }
 
     if (confirm(confirmMessage)) {
