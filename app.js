@@ -1273,10 +1273,9 @@ async function copyAndCloseSession() {
         // STEP 4: REGISTER INCOME & EXPENSES
         // ============================================
 
-        // Register income (use ISO date format for weekly report queries)
+        // Register income (ISO date format: YYYY-MM-DD)
         await incomeRef.add({
-            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+            date: archivedSessionId, // ISO format (YYYY-MM-DD)
             sessionId: archivedSessionId, // Link to archived session
             amount: income,
             paymentPerPlayer: state.paymentAmount,
@@ -1287,10 +1286,9 @@ async function copyAndCloseSession() {
 
         console.log('✅ Income registered:', income);
 
-        // Register court rental expense (use ISO date format for weekly report queries)
+        // Register court rental expense (ISO date format: YYYY-MM-DD)
         await expensesRef.add({
-            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+            date: archivedSessionId, // ISO format (YYYY-MM-DD)
             type: 'court_rental',
             sessionId: archivedSessionId,
             amount: courtCost,
@@ -1302,11 +1300,10 @@ async function copyAndCloseSession() {
 
         console.log('✅ Court expense registered:', courtCost);
 
-        // Register shuttlecock expense (if any) (use ISO date format for weekly report queries)
+        // Register shuttlecock expense (if any) (ISO date format: YYYY-MM-DD)
         if (state.shuttlecocksUsed > 0) {
             await expensesRef.add({
-                date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-                displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+                date: archivedSessionId, // ISO format (YYYY-MM-DD)
                 type: 'shuttlecocks',
                 sessionId: archivedSessionId,
                 amount: shuttlecockCost,
@@ -1785,10 +1782,9 @@ async function finalizeSessionAccounting() {
         // STEP 2: REGISTER INCOME & EXPENSES
         // ============================================
 
-        // Register income (use ISO date format for weekly report queries)
+        // Register income (ISO date format: YYYY-MM-DD)
         await incomeRef.add({
-            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+            date: archivedSessionId, // ISO format (YYYY-MM-DD)
             sessionId: archivedSessionId, // Link to archived session
             amount: income,
             paymentPerPlayer: state.paymentAmount,
@@ -1799,10 +1795,9 @@ async function finalizeSessionAccounting() {
 
         console.log('✅ Income registered:', income);
 
-        // Register court rental expense (use ISO date format for weekly report queries)
+        // Register court rental expense (ISO date format: YYYY-MM-DD)
         await expensesRef.add({
-            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+            date: archivedSessionId, // ISO format (YYYY-MM-DD)
             type: 'court_rental',
             sessionId: archivedSessionId,
             amount: courtCost,
@@ -1814,11 +1809,10 @@ async function finalizeSessionAccounting() {
 
         console.log('✅ Court expense registered:', courtCost);
 
-        // Register shuttlecock expense (if any) (use ISO date format for weekly report queries)
+        // Register shuttlecock expense (if any) (ISO date format: YYYY-MM-DD)
         if (state.shuttlecocksUsed > 0) {
             await expensesRef.add({
-                date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
-                displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
+                date: archivedSessionId, // ISO format (YYYY-MM-DD)
                 type: 'shuttlecocks',
                 sessionId: archivedSessionId,
                 amount: shuttlecockCost,
