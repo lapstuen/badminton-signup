@@ -694,3 +694,156 @@ You can ignore this message.
         );
     }
 });
+
+/**
+ * Send weekly report to Line group
+ * Shows income, expenses, profit, balance, and recommended price for next week
+ */
+exports.sendWeeklyReport = onCall({
+    secrets: [lineToken, lineGroupId]
+}, async (request) => {
+    try {
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        if (!accessToken) {
+            throw new HttpsError('failed-precondition', 'Line Access Token not configured');
+        }
+
+        if (!groupId) {
+            throw new HttpsError('failed-precondition', 'Line Group ID not configured');
+        }
+
+        // Extract data from request
+        const {
+            weekId,
+            startDate,
+            endDate,
+            sessionCount,
+            totalPlayers,
+            totalIncome,
+            totalExpenses,
+            courtCost,
+            shuttlecockCost,
+            grossProfit,
+            newBalance,
+            recommendedPrice,
+            basePrice,
+            priceAdjustmentPerPlayer
+        } = request.data;
+
+        // Build report message
+        const message = buildWeeklyReportMessage(
+            weekId,
+            startDate,
+            endDate,
+            sessionCount,
+            totalPlayers,
+            totalIncome,
+            totalExpenses,
+            courtCost,
+            shuttlecockCost,
+            grossProfit,
+            newBalance,
+            recommendedPrice,
+            basePrice,
+            priceAdjustmentPerPlayer
+        );
+
+        console.log('📊 Sending weekly report to Line');
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [
+                    {
+                        type: 'text',
+                        text: message
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Weekly report sent successfully:', response.data);
+
+        return {
+            success: true,
+            message: 'Weekly report sent to Line group'
+        };
+
+    } catch (error) {
+        console.error('❌ Error sending weekly report:', error.message);
+
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+
+        throw new HttpsError(
+            'internal',
+            'Failed to send weekly report: ' + error.message
+        );
+    }
+});
+
+/**
+ * Build formatted weekly report message
+ */
+function buildWeeklyReportMessage(
+    weekId,
+    startDate,
+    endDate,
+    sessionCount,
+    totalPlayers,
+    totalIncome,
+    totalExpenses,
+    courtCost,
+    shuttlecockCost,
+    grossProfit,
+    newBalance,
+    recommendedPrice,
+    basePrice,
+    priceAdjustmentPerPlayer
+) {
+    const profitSign = grossProfit >= 0 ? '+' : '';
+    const balanceSign = newBalance >= 0 ? '+' : '';
+    const adjustmentSign = priceAdjustmentPerPlayer >= 0 ? '-' : '+';
+
+    const message = `📊 WEEKLY REPORT / รายงานประจำสัปดาห์
+
+📅 Week ${weekId}
+📆 ${startDate} to ${endDate}
+
+🏸 SESSIONS / เซสชัน
+• Sessions: ${sessionCount}
+• Total players: ${totalPlayers}
+
+💰 INCOME / รายได้
+• Total: ${totalIncome} THB
+
+💸 EXPENSES / ค่าใช้จ่าย
+• Courts: ${courtCost} THB
+• Shuttlecocks: ${shuttlecockCost} THB
+• Total: ${totalExpenses} THB
+
+📈 PROFIT / กำไร
+• Gross profit: ${profitSign}${grossProfit} THB
+• Running balance: ${balanceSign}${newBalance} THB
+
+💵 NEXT WEEK PRICE / ราคาสัปดาห์หน้า
+• Base price: ${basePrice} THB
+• Balance adjustment: ${adjustmentSign}${Math.abs(priceAdjustmentPerPlayer)} THB
+• Recommended price: ${recommendedPrice} THB
+
+(Balance distributed over 4 weeks / กระจายยอดคงเหลือ 4 สัปดาห์)`;
+
+    return message;
+}
