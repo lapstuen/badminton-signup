@@ -1229,6 +1229,47 @@ async function copyAndCloseSession() {
         console.log(`✅ ${playersCopied} players copied to archived session`);
 
         // ============================================
+        // STEP 3.5: REFUND WAITING LIST AUTOMATICALLY
+        // ============================================
+        let waitingListRefunded = 0;
+        let waitingListErrors = [];
+
+        if (waitingList.length > 0) {
+            console.log(`💰 Auto-refunding ${waitingList.length} waiting list player(s)...`);
+
+            for (const player of waitingList) {
+                try {
+                    // Refund the payment (they already paid at registration)
+                    const success = await updateUserBalance(
+                        player.userId,
+                        player.name,
+                        state.paymentAmount,
+                        `Auto-refund - Waiting list ${state.sessionDate}`,
+                        true // silent mode
+                    );
+
+                    if (success) {
+                        waitingListRefunded++;
+                        console.log(`✅ Refunded ${state.paymentAmount} THB to ${player.name} (waiting list)`);
+                    } else {
+                        waitingListErrors.push(player.name);
+                        console.error(`❌ Failed to refund ${player.name}`);
+                    }
+                } catch (error) {
+                    console.error(`❌ Error refunding ${player.name}:`, error);
+                    waitingListErrors.push(player.name);
+                }
+            }
+
+            if (waitingListRefunded > 0) {
+                console.log(`✅ Total refunded: ${waitingListRefunded}/${waitingList.length} waiting list players`);
+            }
+            if (waitingListErrors.length > 0) {
+                console.error(`⚠️ Refund errors for: ${waitingListErrors.join(', ')}`);
+            }
+        }
+
+        // ============================================
         // STEP 4: REGISTER INCOME & EXPENSES
         // ============================================
 
@@ -1297,6 +1338,18 @@ async function copyAndCloseSession() {
             expenseText += `รวม / Total: ${totalExpense} THB\n`;
         }
 
+        // Build waiting list refund info
+        let refundInfo = '';
+        if (waitingList.length > 0) {
+            refundInfo = `\n💸 คืนเงินรายชื่อสำรอง / Waiting List Refunded:\n`;
+            refundInfo += `✅ ${waitingListRefunded}/${waitingList.length} players\n`;
+            refundInfo += `💰 Total refunded: ${waitingListRefunded * state.paymentAmount} THB\n`;
+            if (waitingListErrors.length > 0) {
+                refundInfo += `⚠️ Errors: ${waitingListErrors.join(', ')}\n`;
+            }
+            refundInfo += `\n`;
+        }
+
         // Success message with clipboard info
         let successMsg = `✅ เสร็จสมบูรณ์! / Complete!\n\n` +
             `📋 คัดลอกไปยัง Clipboard แล้ว!\n` +
@@ -1304,8 +1357,11 @@ async function copyAndCloseSession() {
             `━━━━━━━━━━━━━━━━━━━━\n\n` +
             `📦 เซสชันถูกบันทึกที่ / Session archived to:\n` +
             `sessions/${archivedSessionId}\n\n` +
-            `👥 ผู้เล่น / Players copied: ${playersCopied}\n\n` +
-            `💰 รายรับ / Income: ${income} THB\n` +
+            `👥 ผู้เล่นที่เล่น / Active Players: ${activePlayers.length}\n` +
+            `📋 รวมทั้งหมด / Total Archived: ${playersCopied}\n` +
+            refundInfo +
+            `\n💰 รายรับ / Income: ${income} THB\n` +
+            `   (${activePlayers.length} players × ${state.paymentAmount} THB)\n\n` +
             expenseText + `\n` +
             `💵 กำไร/ขาดทุน / Profit: ${income - totalExpense} THB\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n\n` +
