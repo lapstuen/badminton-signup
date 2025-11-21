@@ -2105,28 +2105,19 @@ async function viewAccountingReport() {
 async function generateWeeklyReport() {
     try {
         // Prompt for week selection
-        const useLastWeek = confirm(
-            'Generate report for LAST WEEK (Monday-Sunday)?\n\n' +
-            'สร้างรายงานสำหรับสัปดาห์ที่แล้ว (จันทร์-อาทิตย์)?\n\n' +
-            'Click OK for last week, or CANCEL to enter custom dates.\n' +
-            'กด OK สำหรับสัปดาห์ที่แล้ว หรือ ยกเลิกเพื่อใส่วันที่'
+        const useThisWeek = confirm(
+            'Generate report for THIS WEEK (Nov 17-23)?\n\n' +
+            'สร้างรายงานสำหรับสัปดาห์นี้ (17-23 พ.ย.)?\n\n' +
+            'Click OK for this week, or CANCEL to enter custom dates.\n' +
+            'กด OK สำหรับสัปดาห์นี้ หรือ ยกเลิกเพื่อใส่วันที่'
         );
 
         let startDate, endDate;
 
-        if (useLastWeek) {
-            // Calculate last week (Monday-Sunday)
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-            const daysToLastMonday = dayOfWeek === 0 ? 6 : dayOfWeek + 6; // Go back to last Monday
-            const lastMonday = new Date(today);
-            lastMonday.setDate(today.getDate() - daysToLastMonday);
-
-            const lastSunday = new Date(lastMonday);
-            lastSunday.setDate(lastMonday.getDate() + 6);
-
-            startDate = lastMonday.toISOString().split('T')[0];
-            endDate = lastSunday.toISOString().split('T')[0];
+        if (useThisWeek) {
+            // Hardcoded: This week (Monday Nov 17 - Sunday Nov 23, 2025)
+            startDate = '2025-11-17';
+            endDate = '2025-11-23';
         } else {
             // Custom date range
             startDate = prompt('Start date (YYYY-MM-DD) / วันเริ่มต้น:');
