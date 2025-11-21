@@ -2366,20 +2366,265 @@ async function generateWeeklyReport() {
         }, { merge: true });
 
         console.log(`✅ Weekly report saved: ${weekId}`);
-        alert(
-            `✅ Weekly report generated!\n\n` +
-            `Week: ${weekId}\n` +
-            `Profit: ${grossProfit} THB\n` +
-            `New Balance: ${newBalance} THB\n\n` +
-            `💵 NEXT WEEK PRICE:\n` +
-            `⭐ ${recommendedPrice} THB/player\n` +
-            `(Base ${basePrice} THB ${priceAdjustmentPerPlayer >= 0 ? '+' : ''}${priceAdjustmentPerPlayer} THB adjustment)\n\n` +
-            `รายงานสร้างเรียบร้อย!`
-        );
+
+        // Build detailed report text
+        const reportText =
+            `📊 WEEKLY REPORT / รายงานประจำสัปดาห์\n\n` +
+            `📅 Week ${weekId}\n` +
+            `📆 ${startDate} to ${endDate}\n\n` +
+            `🏸 SESSIONS / เซสชัน\n` +
+            `• Sessions: ${sessionCount}\n` +
+            `• Total players: ${totalPlayers}\n\n` +
+            `💰 INCOME / รายได้\n` +
+            `• Total: ${totalIncome} THB\n\n` +
+            `💸 EXPENSES / ค่าใช้จ่าย\n` +
+            `• Courts: ${courtCost} THB\n` +
+            `• Shuttlecocks: ${shuttlecockCost} THB\n` +
+            `• Other: ${otherExpenses} THB\n` +
+            `• Total: ${totalExpenses} THB\n\n` +
+            `📈 PROFIT / กำไร\n` +
+            `• Gross profit: ${grossProfit >= 0 ? '+' : ''}${grossProfit} THB\n` +
+            `• Balance before: ${currentBalance} THB\n` +
+            `• Balance after: ${newBalance >= 0 ? '+' : ''}${newBalance} THB\n\n` +
+            `💵 NEXT WEEK PRICE / ราคาสัปดาห์หน้า\n` +
+            `• Base price: ${basePrice} THB\n` +
+            `• Balance adjustment: ${priceAdjustmentPerPlayer >= 0 ? '-' : '+'}${Math.abs(priceAdjustmentPerPlayer)} THB\n` +
+            `• ⭐ Recommended price: ${recommendedPrice} THB\n\n` +
+            `(Balance distributed over 4 weeks / กระจายยอดคงเหลือ 4 สัปดาห์)`;
+
+        // Show report in a modal with copy and send buttons
+        showWeeklyReportModal(reportText, {
+            weekId,
+            startDate,
+            endDate,
+            sessionCount,
+            totalPlayers,
+            totalIncome,
+            totalExpenses,
+            courtCost,
+            shuttlecockCost,
+            grossProfit,
+            newBalance,
+            recommendedPrice,
+            basePrice,
+            priceAdjustmentPerPlayer
+        });
 
     } catch (error) {
         console.error('❌ Error generating weekly report:', error);
         alert(`❌ Error: ${error.message}\n\nNote: Ensure Firestore indexes exist for date queries.`);
+    }
+}
+
+/**
+ * Show weekly report in a modal with copy and send buttons
+ */
+function showWeeklyReportModal(reportText, reportData) {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    `;
+
+    // Header
+    const header = document.createElement('h2');
+    header.textContent = '✅ Weekly Report Generated / รายงานสร้างเรียบร้อย';
+    header.style.cssText = `
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        color: #10b981;
+        text-align: center;
+    `;
+
+    // Text area (scrollable)
+    const textarea = document.createElement('textarea');
+    textarea.value = reportText;
+    textarea.readOnly = true;
+    textarea.style.cssText = `
+        width: 100%;
+        height: 400px;
+        padding: 15px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        resize: none;
+        margin-bottom: 15px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    `;
+
+    // Button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    `;
+
+    // Copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 Copy / คัดลอก';
+    copyBtn.style.cssText = `
+        padding: 12px 24px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: 600;
+    `;
+    copyBtn.onclick = () => {
+        textarea.select();
+        document.execCommand('copy');
+        copyBtn.textContent = '✅ Copied! / คัดลอกแล้ว!';
+        setTimeout(() => {
+            copyBtn.textContent = '📋 Copy / คัดลอก';
+        }, 2000);
+    };
+
+    // Send to Line button
+    const sendBtn = document.createElement('button');
+    sendBtn.textContent = '📤 Send to Line';
+    sendBtn.style.cssText = `
+        padding: 12px 24px;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: 600;
+    `;
+    sendBtn.onclick = async () => {
+        sendBtn.disabled = true;
+        sendBtn.textContent = '⏳ Sending... / กำลังส่ง...';
+        try {
+            await sendWeeklyReportToLine(reportData);
+            sendBtn.textContent = '✅ Sent! / ส่งแล้ว!';
+            sendBtn.style.background = '#6b7280';
+        } catch (error) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = '📤 Send to Line';
+        }
+    };
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕ Close / ปิด';
+    closeBtn.style.cssText = `
+        padding: 12px 24px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: 600;
+    `;
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+
+    // Assemble modal
+    buttonContainer.appendChild(copyBtn);
+    buttonContainer.appendChild(sendBtn);
+    buttonContainer.appendChild(closeBtn);
+
+    modal.appendChild(header);
+    modal.appendChild(textarea);
+    modal.appendChild(buttonContainer);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    };
+}
+
+/**
+ * Send weekly report to Line group
+ */
+async function sendWeeklyReportToLine(data) {
+    try {
+        const {
+            weekId,
+            startDate,
+            endDate,
+            sessionCount,
+            totalPlayers,
+            totalIncome,
+            totalExpenses,
+            courtCost,
+            shuttlecockCost,
+            grossProfit,
+            newBalance,
+            recommendedPrice,
+            basePrice,
+            priceAdjustmentPerPlayer
+        } = data;
+
+        // Get Cloud Function reference
+        const sendNotification = functions.httpsCallable('sendWeeklyReport');
+
+        // Prepare notification data
+        const notificationData = {
+            weekId,
+            startDate,
+            endDate,
+            sessionCount,
+            totalPlayers,
+            totalIncome,
+            totalExpenses,
+            courtCost,
+            shuttlecockCost,
+            grossProfit,
+            newBalance,
+            recommendedPrice,
+            basePrice,
+            priceAdjustmentPerPlayer
+        };
+
+        console.log('📤 Sending weekly report to Line...', notificationData);
+
+        // Call Cloud Function
+        const result = await sendNotification(notificationData);
+
+        console.log('✅ Line notification sent:', result.data);
+        alert('✅ Report sent to Line group!\n\nรายงานส่งไปยังกลุ่ม Line แล้ว!');
+
+    } catch (error) {
+        console.error('❌ Error sending to Line:', error);
+        alert(`❌ Failed to send to Line:\n${error.message}\n\nไม่สามารถส่งไปยัง Line ได้`);
     }
 }
 
