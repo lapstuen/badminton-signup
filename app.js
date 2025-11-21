@@ -2258,6 +2258,37 @@ async function generateWeeklyReport() {
         const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
         const newBalance = currentBalance + grossProfit;
 
+        // ============================================
+        // CALCULATE NEXT WEEK RECOMMENDED PRICE
+        // ============================================
+        const WEEKLY_COURTS = 12;
+        const COURT_PRICE = 220;
+        const WEEKLY_SHUTTLECOCKS = 18;
+        const SHUTTLECOCK_PRICE = 90;
+        const PLAYERS_PER_WEEK = 36; // 3 sessions × 12 players
+        const DISTRIBUTION_WEEKS = 4; // Distribute balance over 4 weeks
+
+        const weeklyCost = (WEEKLY_COURTS * COURT_PRICE) + (WEEKLY_SHUTTLECOCKS * SHUTTLECOCK_PRICE);
+        const basePrice = Math.round(weeklyCost / PLAYERS_PER_WEEK); // 118 THB
+
+        // Calculate price adjustment based on balance
+        const balanceToDistribute = newBalance / DISTRIBUTION_WEEKS;
+        const priceAdjustmentPerPlayer = Math.round(balanceToDistribute / PLAYERS_PER_WEEK);
+        const recommendedPrice = basePrice - priceAdjustmentPerPlayer;
+
+        const priceCalculation = {
+            weeklyCost: weeklyCost,
+            basePrice: basePrice,
+            currentBalance: newBalance,
+            balanceToDistribute: balanceToDistribute,
+            weeksToDistribute: DISTRIBUTION_WEEKS,
+            playersPerWeek: PLAYERS_PER_WEEK,
+            priceAdjustment: priceAdjustmentPerPlayer,
+            recommendedPrice: recommendedPrice
+        };
+
+        console.log('💰 Price calculation:', priceCalculation);
+
         // Build report data
         const reportData = {
             weekNumber: weekNumber,
@@ -2287,6 +2318,10 @@ async function generateWeeklyReport() {
             balanceBefore: currentBalance,
             balanceAfter: newBalance,
 
+            // Next Week Pricing
+            nextWeekRecommendedPrice: recommendedPrice,
+            priceCalculation: priceCalculation,
+
             // Metadata
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -2307,6 +2342,12 @@ async function generateWeeklyReport() {
             `💰 BALANCE UPDATE:\n` +
             `   Before: ${currentBalance} THB\n` +
             `   After: ${newBalance} THB\n\n` +
+            `💵 NEXT WEEK PRICING:\n` +
+            `   Base price: ${basePrice} THB/player\n` +
+            `   Balance to distribute: ${Math.round(balanceToDistribute)} THB\n` +
+            `   Over ${DISTRIBUTION_WEEKS} weeks among ${PLAYERS_PER_WEEK} players\n` +
+            `   Adjustment: ${priceAdjustmentPerPlayer >= 0 ? '+' : ''}${priceAdjustmentPerPlayer} THB/player\n\n` +
+            `   ⭐ RECOMMENDED PRICE: ${recommendedPrice} THB/player\n\n` +
             `Save this report?\n` +
             `บันทึกรายงานนี้?`;
 
@@ -2330,6 +2371,9 @@ async function generateWeeklyReport() {
             `Week: ${weekId}\n` +
             `Profit: ${grossProfit} THB\n` +
             `New Balance: ${newBalance} THB\n\n` +
+            `💵 NEXT WEEK PRICE:\n` +
+            `⭐ ${recommendedPrice} THB/player\n` +
+            `(Base ${basePrice} THB ${priceAdjustmentPerPlayer >= 0 ? '+' : ''}${priceAdjustmentPerPlayer} THB adjustment)\n\n` +
             `รายงานสร้างเรียบร้อย!`
         );
 
