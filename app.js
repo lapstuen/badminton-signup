@@ -2218,6 +2218,46 @@ async function generateWeeklyReport() {
         const year = startDateObj.getFullYear();
         const weekId = `${year}-W${String(weekNumber).padStart(2, '0')}`;
 
+        // ============================================
+        // CHECK IF REPORT ALREADY EXISTS
+        // ============================================
+        const existingReportDoc = await weeklyBalanceRef.doc(weekId).get();
+
+        if (existingReportDoc.exists) {
+            const existingData = existingReportDoc.data();
+            const oldProfit = existingData.grossProfit || 0;
+
+            const overwrite = confirm(
+                `⚠️ REPORT ALREADY EXISTS FOR ${weekId}\n\n` +
+                `Previous profit: ${oldProfit} THB\n` +
+                `Previous balance update: ${oldProfit} THB\n\n` +
+                `If you continue, the old report will be REPLACED\n` +
+                `and the balance will be recalculated.\n\n` +
+                `Do you want to OVERWRITE and regenerate?\n\n` +
+                `รายงานมีอยู่แล้ว คุณต้องการสร้างใหม่?\n\n` +
+                `⚠️ This will reverse the old profit from balance first!`
+            );
+
+            if (!overwrite) {
+                console.log('User cancelled - report already exists');
+                return;
+            }
+
+            // Reverse the old profit from current balance before recalculating
+            const summaryDoc = await weeklyBalanceRef.doc('summary').get();
+            const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
+            const adjustedBalance = currentBalance - oldProfit;
+
+            console.log(`🔄 Reversing old profit: ${currentBalance} - ${oldProfit} = ${adjustedBalance}`);
+
+            // Update summary with reversed balance
+            await weeklyBalanceRef.doc('summary').update({
+                currentBalance: adjustedBalance
+            });
+
+            console.log(`✅ Old report will be overwritten, balance adjusted`);
+        }
+
         // Build report data
         const reportData = {
             weekNumber: weekNumber,
