@@ -2207,11 +2207,6 @@ async function generateWeeklyReport() {
         const grossProfit = totalIncome - totalExpenses;
         const sessionCount = incomeSessions.length;
 
-        // Get current balance
-        const summaryDoc = await weeklyBalanceRef.doc('summary').get();
-        const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
-        const newBalance = currentBalance + grossProfit;
-
         // Calculate week number (ISO 8601)
         const startDateObj = new Date(startDate);
         const weekNumber = getISOWeekNumber(startDateObj);
@@ -2257,6 +2252,11 @@ async function generateWeeklyReport() {
 
             console.log(`✅ Old report will be overwritten, balance adjusted`);
         }
+
+        // Get current balance AFTER potential reversal
+        const summaryDoc = await weeklyBalanceRef.doc('summary').get();
+        const currentBalance = summaryDoc.exists ? (summaryDoc.data().currentBalance || 0) : 0;
+        const newBalance = currentBalance + grossProfit;
 
         // Build report data
         const reportData = {
