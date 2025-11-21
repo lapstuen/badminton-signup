@@ -1273,9 +1273,10 @@ async function copyAndCloseSession() {
         // STEP 4: REGISTER INCOME & EXPENSES
         // ============================================
 
-        // Register income
+        // Register income (use ISO date format for weekly report queries)
         await incomeRef.add({
-            date: state.sessionDate,
+            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
             sessionId: archivedSessionId, // Link to archived session
             amount: income,
             paymentPerPlayer: state.paymentAmount,
@@ -1286,9 +1287,10 @@ async function copyAndCloseSession() {
 
         console.log('✅ Income registered:', income);
 
-        // Register court rental expense
+        // Register court rental expense (use ISO date format for weekly report queries)
         await expensesRef.add({
-            date: state.sessionDate,
+            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
             type: 'court_rental',
             sessionId: archivedSessionId,
             amount: courtCost,
@@ -1300,10 +1302,11 @@ async function copyAndCloseSession() {
 
         console.log('✅ Court expense registered:', courtCost);
 
-        // Register shuttlecock expense (if any)
+        // Register shuttlecock expense (if any) (use ISO date format for weekly report queries)
         if (state.shuttlecocksUsed > 0) {
             await expensesRef.add({
-                date: state.sessionDate,
+                date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+                displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
                 type: 'shuttlecocks',
                 sessionId: archivedSessionId,
                 amount: shuttlecockCost,
@@ -1782,9 +1785,10 @@ async function finalizeSessionAccounting() {
         // STEP 2: REGISTER INCOME & EXPENSES
         // ============================================
 
-        // Register income
+        // Register income (use ISO date format for weekly report queries)
         await incomeRef.add({
-            date: state.sessionDate,
+            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
             sessionId: archivedSessionId, // Link to archived session
             amount: income,
             paymentPerPlayer: state.paymentAmount,
@@ -1795,9 +1799,10 @@ async function finalizeSessionAccounting() {
 
         console.log('✅ Income registered:', income);
 
-        // Register court rental expense
+        // Register court rental expense (use ISO date format for weekly report queries)
         await expensesRef.add({
-            date: state.sessionDate,
+            date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+            displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
             type: 'court_rental',
             sessionId: archivedSessionId,
             amount: courtCost,
@@ -1809,10 +1814,11 @@ async function finalizeSessionAccounting() {
 
         console.log('✅ Court expense registered:', courtCost);
 
-        // Register shuttlecock expense (if any)
+        // Register shuttlecock expense (if any) (use ISO date format for weekly report queries)
         if (state.shuttlecocksUsed > 0) {
             await expensesRef.add({
-                date: state.sessionDate,
+                date: archivedSessionId, // ISO format (YYYY-MM-DD) for date range queries
+                displayDate: state.sessionDate, // Keep display format (DD/MM/YYYY)
                 type: 'shuttlecocks',
                 sessionId: archivedSessionId,
                 amount: shuttlecockCost,
