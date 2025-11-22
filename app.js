@@ -5227,13 +5227,16 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
     // Build user list with registered users at the top
     list.innerHTML = '';
+    console.log('🎨 Building UI - Clearing list and rebuilding...');
 
     // Add registered users first (at the top)
     if (registeredUsers.length > 0) {
+        console.log(`✅ Creating GREEN section with ${registeredUsers.length} registered users`);
         const headerRegistered = document.createElement('div');
         headerRegistered.style.cssText = 'padding: 10px; background: #dcfce7; border-radius: 8px; margin-bottom: 10px; font-weight: bold; color: #166534;';
         headerRegistered.textContent = `✅ On ${dayNameShort}'s List (${registeredUsers.length}) / อยู่ในรายชื่อ${dayNameShort}`;
         list.appendChild(headerRegistered);
+        console.log(`   Added header: "✅ On ${dayNameShort}'s List (${registeredUsers.length})"`);
 
         registeredUsers.forEach(user => {
             const balance = user.balance || 0;
@@ -5265,11 +5268,13 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
             `;
 
             list.appendChild(item);
+            console.log(`   ✅ Added ${user.name} to GREEN section (registered)`);
         });
     }
 
     // Add unregistered users
     if (unregisteredUsers.length > 0) {
+        console.log(`⬜ Creating GRAY section with ${unregisteredUsers.length} unregistered users`);
         const headerUnregistered = document.createElement('div');
         headerUnregistered.style.cssText = 'padding: 10px; background: #f3f4f6; border-radius: 8px; margin-bottom: 10px; margin-top: 15px; font-weight: bold; color: #374151;';
         headerUnregistered.textContent = `⬜ Not Registered (${unregisteredUsers.length}) / ยังไม่ได้ลงทะเบียน`;
