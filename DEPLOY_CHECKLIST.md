@@ -1,270 +1,144 @@
-# Deployment Checklist - Line Notifications Update
+# 🚀 DEPLOYMENT CHECKLIST
 
-## Quick Deployment Guide
+**⚠️ CRITICAL: Claude MUST read and follow this checklist EVERY TIME before git push!**
 
-Follow these steps to deploy the Line notifications feature:
+## ❗ Version Update (MANDATORY - Every Deploy)
 
-### Step 1: Line Bot Setup (One-time)
+**Problem:** Half of our deploys fail because version numbers are not updated consistently.
 
-- [ ] Go to [Line Developers Console](https://developers.line.biz/)
-- [ ] Create Messaging API channel (or use existing)
-- [ ] Get **Channel Access Token** (Long-lived)
-- [ ] Add bot to your Line group
-- [ ] Get **Group ID** (starts with 'C')
+**Solution:** ALWAYS update all 3 locations!
 
-**Notes:**
-- Save Channel Access Token somewhere safe
-- Group ID can be found in webhook logs or via API
+### Option A: Automatic Script (RECOMMENDED)
+```bash
+./update-version.sh "v2025-11-22 12:00" "Description of changes"
+```
 
-### Step 2: Configure Firebase Secrets
+This automatically updates:
+1. ✅ Header version in index.html
+2. ✅ Footer version in index.html
+3. ✅ Cache-busting in script tags (app.js?v=... and firebase-config.js?v=...)
+
+### Option B: Manual Update (ERROR-PRONE - Only if script fails)
+
+**MUST update ALL THREE locations:**
+
+1. **Header version** (index.html line ~29):
+   ```html
+   <p class="version-header">v2025-11-22 12:00 (Description)</p>
+   ```
+
+2. **Footer version** (index.html line ~130):
+   ```html
+   <p class="version">v2025-11-22 12:00 (Description)</p>
+   ```
+
+3. **Cache-busting** (index.html line ~400-403):
+   ```html
+   <script src="firebase-config.js?v=20251122-1200"></script>
+   <script src="app.js?v=20251122-1200"></script>
+   ```
+
+   **⚠️ Format:** `v2025-11-22 12:00` → `20251122-1200` (remove "v", spaces, colons)
+
+## Pre-Push Verification Checklist
+
+- [ ] All three version locations updated?
+- [ ] Cache-busting version matches timestamp?
+- [ ] Changes tested on localhost?
+- [ ] Git status clean (no unexpected files)?
+- [ ] Backup created for major changes?
+
+## Deploy Commands
 
 ```bash
-# Install Firebase CLI if not already installed
-npm install -g firebase-tools
-
-# Login to Firebase
-firebase login
-
-# Navigate to project directory
-cd /Users/geirlapstuen/Swift/lineapp
-
-# Set Line credentials
-firebase functions:secrets:set LINE_TOKEN
-# Paste your Line Channel Access Token when prompted
-
-firebase functions:secrets:set LINE_GROUP_ID
-# Paste your Line Group ID when prompted
-```
-
-**Verification:**
-```bash
-firebase functions:secrets:access LINE_TOKEN
-firebase functions:secrets:access LINE_GROUP_ID
-```
-
-### Step 3: Install Dependencies
-
-```bash
-cd functions
-npm install
-```
-
-Expected packages:
-- firebase-functions
-- firebase-admin
-- axios
-
-### Step 4: Deploy Cloud Functions
-
-```bash
-# From project root directory
-firebase deploy --only functions
-```
-
-**Expected output:**
-```
-✔  functions[sendSessionAnnouncement(...)] Successful create operation.
-✔  functions[sendCancellationNotification(...)] Successful create operation.
-```
-
-**Deployment time:** ~2-3 minutes
-
-### Step 5: Deploy Frontend to GitHub Pages
-
-```bash
-# Add all changes
+# 1. Stage changes
 git add .
 
-# Commit changes
-git commit -m "Add Line notification features v2025-11-07"
+# 2. Commit with proper message format
+git commit -m "Brief description of changes
 
-# Push to GitHub
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# 3. Push to GitHub (auto-deploys to GitHub Pages)
 git push origin main
-```
 
-**Note:** GitHub Pages auto-deploys from main branch
-
-### Step 6: Test Notifications
-
-#### Test 1: Session Announcement
-
-1. Open app: https://lapstuen.github.io/badminton-signup/index.html
-2. Login as admin
-3. Click "New Session" (if needed)
-4. Click "Edit Session" and set details
-5. Click "Manage Today's Players" and add players
-6. Click "✅ Publish Session"
-7. Click "📤 Share to Line"
-8. **Verify:** Check Line group for announcement message
-
-#### Test 2: Cancellation (No Waiting List)
-
-1. Register a user for the session
-2. That user cancels registration
-3. **Verify:** Line message says "SLOT AVAILABLE!" with signup link
-
-#### Test 3: Cancellation (With Waiting List)
-
-1. Fill session to max (e.g., 12/12)
-2. Add 2 more players (creates waiting list: 14/12)
-3. Active player cancels
-4. **Verify:** Line message does NOT say "SLOT AVAILABLE!" (no link)
-
-### Step 7: Monitor Logs
-
-```bash
-# View Cloud Functions logs
-firebase functions:log
-
-# Or specific function
-firebase functions:log --only sendSessionAnnouncement
-firebase functions:log --only sendCancellationNotification
-```
-
-**What to look for:**
-- ✅ "Session announcement sent successfully"
-- ✅ "Cancellation notification sent successfully"
-- ❌ Any error messages
-
-## Troubleshooting Quick Fixes
-
-### "Line Access Token not configured"
-
-```bash
-firebase functions:secrets:set LINE_TOKEN
-# Enter correct token
+# 4. If Cloud Functions changed
 firebase deploy --only functions
 ```
 
-### "Failed to send Line notification"
+## Post-Deploy Verification
 
-**Check:**
-1. Bot is added to Line group
-2. Group ID is correct (starts with 'C')
-3. Access token is valid (check Line Console)
+1. ✅ Check https://lapstuen.github.io/badminton-signup/
+2. ✅ Verify version number visible in header (may take 1-2 minutes)
+3. ✅ Hard refresh (Cmd+Shift+R) to clear cache
+4. ✅ Test on iPhone/mobile if possible
 
-**Fix:**
-```bash
-# Update secrets
-firebase functions:secrets:set LINE_TOKEN
-firebase functions:secrets:set LINE_GROUP_ID
+## Common Mistakes to AVOID
 
-# Redeploy
-firebase deploy --only functions
-```
+❌ **Forgetting to update cache-busting version** (most common!)
+❌ Updating only 1 or 2 of the 3 version locations
+❌ Using wrong date format in cache-busting
+❌ Not testing on localhost first
+❌ Pushing without verifying git diff
 
-### Functions not updating
+## Browser Cache Issues
 
-```bash
-# Force redeploy
-firebase deploy --only functions --force
-```
+**Problem:** Users don't see new version even after deploy
 
-### GitHub Pages not updating
+**Why:** Browsers cache JavaScript aggressively
 
-```bash
-# Force push
-git push origin main --force
+**Solutions:**
+- **Chrome:** Worst for caching - Use Incognito or Developer Tools → Application → Clear Storage
+- **Safari:** Better - "Empty Caches" in Develop menu
+- **Firefox:** Better - "Disable Cache" in DevTools Network tab
 
-# Or clear cache
-# Wait 5-10 minutes for GitHub Pages to rebuild
-```
+**Our solution:** Cache-busting with `?v=timestamp` forces reload on version change
 
-## Rollback Plan
-
-If something goes wrong:
-
-### Rollback Cloud Functions
+## Emergency Rollback
 
 ```bash
-# View deployment history
-firebase functions:list
+# View recent commits
+git log --oneline -5
 
-# Rollback to previous version
-firebase rollback --only functions
-```
-
-### Rollback Frontend
-
-```bash
-# Revert git commit
+# Revert last commit
 git revert HEAD
+git push origin main
 
-# Push to GitHub
+# Or revert to specific commit
+git revert <commit-hash>
 git push origin main
 ```
 
-### Disable Notifications Temporarily
+## Quick Reference
 
-In `app.js` line 494, comment out:
+### Version Number Format
+- **Display version:** `v2025-11-22 12:00` (shown to users)
+- **Cache-busting:** `20251122-1200` (in script src)
 
-```javascript
-// sendLineCancellationNotification(userName);
-```
-
-Then deploy:
-```bash
-git add app.js
-git commit -m "Temporarily disable Line notifications"
-git push origin main
-```
-
-## Post-Deployment Verification
-
-- [ ] Test session announcement works
-- [ ] Test cancellation notification (no waiting list)
-- [ ] Test cancellation notification (with waiting list)
-- [ ] Check Firebase Functions logs (no errors)
-- [ ] Verify Line messages appear in group
-- [ ] Check Firebase billing (should be minimal)
-- [ ] Update team about new features
-
-## Files Modified
-
-### Frontend
-- `index.html` - Added "Share to Line" button, version update
-- `app.js` - Added `shareSessionToLine()`, updated notification logic
-- `style.css` - No changes (uses existing modal styles)
-
-### Backend
-- `functions/index.js` - Added `sendSessionAnnouncement`, updated `sendCancellationNotification`
-
-### Documentation
-- `LINE_NOTIFICATIONS_SETUP.md` - Complete setup guide
-- `CHANGELOG.md` - Version history and features
-- `DEPLOY_CHECKLIST.md` - This file
-
-## Cost Estimate
-
-**Firebase Cloud Functions (Blaze Plan):**
-- Estimated usage: ~120 invocations/month
-- Free tier: 2,000,000 invocations/month
-- **Cost: $0/month** (within free tier)
-
-**Line Messaging API:**
-- Estimated usage: ~120 messages/month
-- Free tier: 500 messages/month
-- **Cost: $0/month** (within free tier)
-
-**Total estimated cost: $0/month**
-
-## Support Resources
-
-- **Line API Docs:** https://developers.line.biz/en/docs/messaging-api/
-- **Firebase Functions:** https://firebase.google.com/docs/functions
-- **Project Repo:** https://github.com/lapstuen/badminton-signup
-- **Live App:** https://lapstuen.github.io/badminton-signup/
-
-## Need Help?
-
-1. Check `LINE_NOTIFICATIONS_SETUP.md` for detailed setup
-2. Check `CHANGELOG.md` for feature details
-3. Check Firebase Functions logs for errors
-4. Check Line Developers Console for API issues
-5. Test with simple messages first before complex scenarios
+### File Locations
+- **Header:** index.html line ~29 (in `<header>`)
+- **Footer:** index.html line ~130 (in `<footer>`)
+- **Script tags:** index.html line ~400-403 (before `</body>`)
 
 ---
 
-**Deployment Date:** 2025-11-07
-**Version:** v2025-11-07 17:00 (Line Notifications)
-**Status:** Ready for deployment ✅
+## 📋 Quick Deployment Template
+
+**Use this for every deploy:**
+
+1. Run: `./update-version.sh "v2025-11-22 HH:MM" "What changed"`
+2. Verify: `git diff index.html` (check all 3 locations updated)
+3. Stage: `git add .`
+4. Commit: `git commit -m "Update version to vXXXX + description"`
+5. Push: `git push origin main`
+6. Wait 1-2 minutes for GitHub Pages
+7. Test: Hard refresh in browser
+8. Verify: Check version in header
+
+---
+
+**Remember: EVERY deploy MUST update version number in ALL 3 PLACES. No exceptions!**
+
+**Last Updated:** 2025-11-22

@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## ⚠️ CRITICAL: DEPLOYMENT RULES (READ BEFORE EVERY PUSH!)
+
+**NEVER push to GitHub without updating version number in ALL 3 PLACES:**
+
+1. Header version (index.html line ~29)
+2. Footer version (index.html line ~130)
+3. Cache-busting in script tags (index.html line ~400-403)
+
+**ALWAYS use the automatic script:**
+```bash
+./update-version.sh "v2025-11-22 HH:MM" "Description of changes"
+```
+
+**Or manually verify ALL THREE locations are updated before git push.**
+
+**See DEPLOY_CHECKLIST.md for complete deployment process.**
+
+---
+
 ## Repository Overview
 
 This is a web-based badminton session registration system with real-time Firebase synchronization. The app allows players to register for badminton sessions, track payments, and manage authorized users. It's designed as a Progressive Web App (PWA) with bilingual support (English/Thai/Norwegian).
