@@ -4305,9 +4305,6 @@ async function clearSession() {
             // Players will be automatically updated via real-time listener
             // No need to reload - admin stays logged in
 
-            // Reset auto-load flag so regular players will be loaded on next "Manage Today's Players"
-            hasAutoLoadedRegularPlayers = false;
-
             console.log('✅ Session cleared and set to DRAFT mode');
             alert('✅ Session cleared!\n\nSession is now in DRAFT mode (not visible to users).\n\nNEXT: Click "Edit Session" to set day/time!');
 
@@ -4675,9 +4672,6 @@ async function changeSessionDetails() {
             console.log(`💾 SAVING to Firestore: date=${state.sessionDate}, day=${state.sessionDay}, time=${time}`);
             await saveSessionData();
             updateUI();
-
-            // Reset auto-load flag so regular players for NEW day will be loaded
-            hasAutoLoadedRegularPlayers = false;
 
             alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nDate: ${state.sessionDate}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
             console.log(`✅ Session updated: ${state.sessionDay} ${state.sessionDate} ${time}`);
@@ -5148,9 +5142,6 @@ function closeUserSelection() {
 // MANAGE TODAY'S PLAYERS
 // ============================================
 
-// Track if we've already auto-loaded regular players for this session
-let hasAutoLoadedRegularPlayers = false;
-
 async function manageTodaysPlayers(skipAutoLoad = false) {
     // Close other admin sections first
     closeAllAdminSections();
@@ -5188,65 +5179,9 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         currentPlayers.push({ id: doc.id, ...doc.data() });
     });
 
-    // Auto-add regular players ONLY on first open (not when refreshing after add/remove)
-    let addedCount = 0;
-    let skippedLowBalance = [];
-    if (!skipAutoLoad && !hasAutoLoadedRegularPlayers) {
-        for (const playerName of regularPlayersForToday) {
-            const alreadyInSession = currentPlayers.some(p => p.name === playerName);
-
-            if (!alreadyInSession) {
-                // Find user
-                const user = state.authorizedUsers.find(u => u.name === playerName);
-
-                if (user) {
-                    // CHECK BALANCE FIRST (same as manual add)
-                    const userBalance = user.balance || 0;
-
-                    if (userBalance < state.paymentAmount) {
-                        // Skip this player due to insufficient balance
-                        skippedLowBalance.push({name: playerName, balance: userBalance});
-                        console.log(`⚠️ Skipped ${playerName} - insufficient balance (${userBalance} THB)`);
-                        continue; // Skip to next player
-                    }
-
-                    // Use 'id' field (not 'userId') from authorized users
-                    const userId = user.id || user.userId;
-
-                    if (userId) {
-                        // Add to session (without wallet deduction yet)
-                        await playersRef().add({
-                            name: playerName,
-                            paid: false,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                            position: currentPlayers.length + addedCount + 1,
-                            userId: userId,
-                            isRegularPlayer: true
-                        });
-                        addedCount++;
-                    }
-                }
-            }
-        }
-        hasAutoLoadedRegularPlayers = true; // Mark as loaded
-
-        // Wait a moment for Firestore to update before showing UI
-        if (addedCount > 0) {
-            await new Promise(resolve => setTimeout(resolve, 800));
-        }
-
-        // Show warning if any players were skipped due to low balance
-        if (skippedLowBalance.length > 0) {
-            let message = `⚠️ Warning: Low Balance / คำเตือน: ยอดเงินต่ำ\n\n`;
-            message += `The following regular players were NOT added due to insufficient balance:\n`;
-            message += `ผู้เล่นประจำต่อไปนี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ:\n\n`;
-            skippedLowBalance.forEach(p => {
-                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
-            });
-            message += `\nPlease top up their wallets!\nกรุณาเติมเงินให้พวกเขา!`;
-            alert(message);
-        }
-    }
+    // NOTE: We do NOT auto-add regular players anymore!
+    // Admin must manually click on players to add them.
+    // Regular players list is just shown as suggestion (highlighted).
 
     // Sort users alphabetically
     const sortedUsers = state.authorizedUsers
