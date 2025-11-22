@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-22 17:15 (Fix all Line notification URLs to use PRODUCTION_URL)</p>
+            <p class="version-header">v2025-11-22 17:20 (Move Register Guest button to bottom below Payment Info)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -92,16 +92,6 @@
                 </form>
             </div>
 
-            <!-- Guest Registration Button (separate from registration form, visible when logged in) -->
-            <div id="guestRegistrationBtn" style="display: none; margin: 15px 0; padding: 0 20px;">
-                <button type="button" onclick="handleGuestRegistration()" class="btn btn-secondary" style="background: #8b5cf6; color: white; width: 100%; padding: 12px;">
-                    Register Guest 👤<br>ลงทะเบียนแขก
-                </button>
-                <p style="font-size: 12px; color: #888; text-align: center; margin-top: 5px;">
-                    Bring a friend/family member<br>พาเพื่อนหรือครอบครัว
-                </p>
-            </div>
-
             <div class="success-message" id="successMessage" style="display: none;">
                 <h2 style="margin-top: 0;">You are registered!<br>คุณลงทะเบียนแล้ว!</h2>
                 <div class="payment-info">
@@ -125,7 +115,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-22 17:15 (Fix all Line notification URLs to use PRODUCTION_URL)</p>
+                <p class="version">v2025-11-22 17:20 (Move Register Guest button to bottom below Payment Info)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -157,6 +147,16 @@
                     💰 วิธีการชำระเงิน / Payment Info<br>
                     <span style="font-size: 13px; opacity: 0.9;">ดูบัญชีธนาคารและ QR Code</span>
                 </a>
+
+                <!-- Guest Registration Button (moved to bottom, less prominent) -->
+                <div id="guestRegistrationBtn" style="display: none; margin-top: 15px;">
+                    <button type="button" onclick="handleGuestRegistration()" class="btn btn-secondary" style="background: #8b5cf6; color: white; width: 100%; padding: 12px; border-radius: 8px;">
+                        Register Guest 👤<br>ลงทะเบียนแขก
+                    </button>
+                    <p style="font-size: 12px; color: #888; text-align: center; margin-top: 5px;">
+                        Bring a friend/family member<br>พาเพื่อนหรือครอบครัว
+                    </p>
+                </div>
             </div>
         </main>
 
@@ -411,9 +411,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251122-1715"></script>
+    <script src="firebase-config.js?v=20251122-1720"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251122-1715"></script>
+    <script src="app.js?v=20251122-1720"></script>
 </body>
 </html>
