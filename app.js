@@ -7,6 +7,9 @@ const APP_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
     : 'https://lapstuen.github.io/badminton-signup/';
 
+// Production URL - ALWAYS use this for Line messages (even when testing locally)
+const PRODUCTION_URL = 'https://lapstuen.github.io/badminton-signup/';
+
 // Current session ID - FIXED to "current" (does not auto-change daily)
 // Admin must manually start "New Session" to create a new session
 let currentSessionId = 'current';
@@ -930,7 +933,7 @@ This is a demo message from the Badminton app!
 You can customize this message easily!
 คุณสามารถปรับแต่งข้อความนี้ได้ง่าย!
 
-👉 ${APP_URL}`;
+👉 ${PRODUCTION_URL}`;
 
         // Send the message using the simple API
         const success = await sendLineNotification(message);
@@ -1684,7 +1687,7 @@ async function sendExtraCourtMessage() {
 รอการยืนยันจากศูนย์กีฬา
 
 🔗 Register here / ลงทะเบียนที่นี่:
-${APP_URL}`;
+${PRODUCTION_URL}`;
 
     try {
         // Use Firebase Cloud Function - sendLineMessage (not sendLineGroupMessage!)
