@@ -3975,6 +3975,7 @@ const adminGroupButtons = {
         { label: 'Extra', onclick: 'sendExtraCourtMessage()', bg: '#10b981', color: 'white', bold: true }
     ],
     settings: [
+        { label: 'New', onclick: 'clearSession()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
         { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' }
     ]
