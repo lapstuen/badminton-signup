@@ -4340,9 +4340,18 @@ async function previewSession() {
         // Get regular players for this day
         const regularPlayersForToday = await getRegularPlayersForDay(dayNumber);
 
+        // IMPORTANT: Get FRESH player data from Firestore (not from state which might be stale)
+        const playersSnapshot = await playersRef().get();
+        const currentPlayers = [];
+        playersSnapshot.forEach(doc => {
+            currentPlayers.push({ id: doc.id, ...doc.data() });
+        });
+        // Sort by position
+        currentPlayers.sort((a, b) => a.position - b.position);
+
         // Count players and check their balances
-        const totalPlayers = state.players.length;
-        const unpaidPlayers = state.players.filter(p => !p.paid);
+        const totalPlayers = currentPlayers.length;
+        const unpaidPlayers = currentPlayers.filter(p => !p.paid);
 
         // Check which unpaid players will be charged vs removed
         const playersToCharge = [];
@@ -4367,7 +4376,7 @@ async function previewSession() {
         // Find regular players who are NOT on the list (potential low balance issue)
         const missingRegularPlayers = [];
         for (const playerName of regularPlayersForToday) {
-            const isOnList = state.players.some(p => p.name === playerName);
+            const isOnList = currentPlayers.some(p => p.name === playerName);
             if (!isOnList) {
                 // Check their balance
                 const user = state.authorizedUsers.find(u => u.name === playerName);
@@ -4393,7 +4402,7 @@ async function previewSession() {
 
         // List all players
         message += `👥 PLAYERS (${totalPlayers}):\n\n`;
-        state.players.forEach((player, index) => {
+        currentPlayers.forEach((player, index) => {
             const paidStatus = player.paid ? '✅' : '❌';
             message += `${index + 1}. ${player.name} ${paidStatus}\n`;
         });
