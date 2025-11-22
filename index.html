@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="stylesheet" href="style.css?v=20251121-1940">
+    <link rel="stylesheet" href="style.css?v=20251122-0800">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
 </head>
@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-21 19:40 (Weekly report: Scrollable modal with copy)</p>
+            <p class="version-header">v2025-11-22 08:00 (Compact admin UI with status-based groups)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -127,7 +127,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-21 19:40 (Weekly report: Scrollable modal with copy)</p>
+                <p class="version">v2025-11-22 08:00 (Compact admin UI with status-based groups)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -165,123 +165,52 @@
         <button class="admin-btn" onclick="toggleAdmin()">👤</button>
         
         <div class="admin-panel" id="adminPanel" style="display: none;">
-            <div class="admin-header">
-                <h2>Admin Panel / ผู้ดูแล</h2>
+            <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h2 style="margin: 0;">Admin v2025-11-22</h2>
+                    <div id="adminStatusIndicator" style="padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; display: none;">
+                        <span id="statusText">⚙️</span>
+                    </div>
+                </div>
                 <button class="close-btn" onclick="toggleAdmin()">✕</button>
             </div>
             <div class="admin-controls">
                 <input type="password" id="adminPassword" placeholder="Admin password / รหัสผ่าน">
                 <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
                 <div id="adminActions" style="display: none;">
-                    <!-- New Session -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">🆕 NEW SESSION</summary>
-                        <div class="admin-group-content">
-                            <button onclick="clearSession()" style="background: #ef4444; color: white;">New Session / เริ่มใหม่</button>
-                            <button onclick="changeSessionDetails()" style="background: #f59e0b;">Edit Session / แก้ไขรายละเอียด</button>
-                            <button onclick="changePaymentAmount()" style="background: #f59e0b;">Change Payment Amount / เปลี่ยนราคา</button>
-                            <button onclick="changeMaxPlayers()" style="background: #f59e0b;">Change Max Players / เปลี่ยนจำนวนผู้เล่น</button>
-                            <button onclick="manageRegularPlayers()" style="background: #f59e0b;">⚙️ Manage Regular Players / จัดการผู้เล่นประจำ</button>
-                            <button onclick="manageTodaysPlayers()" style="background: #8b5cf6;">👥 Manage Today's Players / จัดการผู้เล่นวันนี้</button>
-                            <button onclick="previewSession()" style="background: #3b82f6; color: white;">📋 Preview Session / ตรวจสอบเซสชัน</button>
-                            <button onclick="publishSession()" style="background: #10b981; color: white; font-weight: bold;">✅ Publish Session / เผยแพร่เซสชัน</button>
-                        </div>
-                    </details>
 
-                    <!-- Close Session -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">🏁 CLOSE SESSION</summary>
-                        <div class="admin-group-content">
-                            <button onclick="refundWaitingList()" style="background: #f59e0b;">↩️ Refund Waiting List / คืนเงินรายชื่อสำรอง</button>
-                            <button onclick="registerShuttlecocks()" style="background: #ec4899;">🏸 Register Shuttlecocks / ลงทะเบียนลูกแบด</button>
-                            <button onclick="closeLastSession()" style="background: #6366f1; color: white; font-weight: bold;">🏁 Close Last Session / Avslutt forrige seanse</button>
-                        </div>
-                    </details>
+                    <!-- COMPACT GROUP BUTTONS (horizontal) -->
+                    <div class="admin-group-tabs" style="display: flex; gap: 5px; margin-bottom: 10px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;">
+                        <button class="group-tab" data-group="setup" onclick="selectAdminGroup('setup')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            🆕 Setup
+                        </button>
+                        <button class="group-tab" data-group="close" onclick="selectAdminGroup('close')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            🏁 Close
+                        </button>
+                        <button class="group-tab" data-group="users" onclick="selectAdminGroup('users')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            👤 Users
+                        </button>
+                        <button class="group-tab" data-group="money" onclick="selectAdminGroup('money')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            💰 Money
+                        </button>
+                        <button class="group-tab" data-group="line" onclick="selectAdminGroup('line')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            📲 Line
+                        </button>
+                        <button class="group-tab" data-group="settings" onclick="selectAdminGroup('settings')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
+                            ⚙️ Set
+                        </button>
+                    </div>
 
-                    <!-- User Management -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">👤 User Management</summary>
-                        <div class="admin-group-content">
-                            <button onclick="manageAuthorizedUsers()">Manage Users / จัดการผู้ใช้</button>
-                            <button onclick="manageWallets()" style="background: #10b981;">💰 Manage Wallets / จัดการเงิน</button>
-                            <button onclick="removePlayerFromSession()" style="background: #ef4444;">❌ Remove from Session / ลบออกจากเซสชัน</button>
+                    <!-- COMPACT ACTION BUTTONS (horizontal, shown based on selected group) -->
+                    <div id="adminActionButtons" style="display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; flex-wrap: wrap;">
+                        <!-- Buttons will be injected here by JavaScript -->
+                    </div>
 
-                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
-                            <h4 style="margin: 10px 0 5px 0; color: #374151; font-size: 14px;">💳 Payment Status / สถานะการชำระเงิน</h4>
-                            <div id="paymentList"></div>
-                        </div>
-                    </details>
-
-                    <!-- Financial / Accounting -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">💰 Financial / Accounting</summary>
-                        <div class="admin-group-content">
-                            <button onclick="viewTransactions()" style="background: #3b82f6;">📜 View Transactions / ดูรายการ</button>
-                            <button onclick="viewAccountingReport()" style="background: #8b5cf6; font-weight: bold;">📊 Accounting Report / รายงานบัญชี</button>
-                            <button onclick="generateWeeklyReport()" style="background: #10b981; font-weight: bold;">📊 Weekly Balance Report / รายงานยอดรวมรายสัปดาห์</button>
-                            <button onclick="debugViewRawData()" style="background: #f59e0b;">🔍 Debug: View Raw Data / ดูข้อมูลดิบ</button>
-                            <button onclick="addManualExpense()" style="background: #ef4444;">💸 Add Expense / เพิ่มค่าใช้จ่าย</button>
-                        </div>
-                    </details>
-
-                    <!-- Settings -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">⚙️ Settings</summary>
-                        <div class="admin-group-content">
-                            <button id="maintenanceModeBtn" onclick="toggleMaintenanceMode()" style="background: #ef4444; font-weight: bold;">🔧 Enable Maintenance Mode / เปิดโหมดซ่อมบำรุง</button>
-                            <button onclick="testLineConfig()" style="background: #8b5cf6;">🧪 Test Line Config / ทดสอบ Line</button>
-                            <button onclick="testDemoLine()" style="background: #10b981;">📤 Test Demo Line / ทดสอบส่งข้อความ</button>
-                            <button onclick="exportList()">Export List / ส่งออกรายชื่อ</button>
-                        </div>
-                    </details>
-
-                    <!-- Line Notifications -->
-                    <details class="admin-group">
-                        <summary class="admin-group-title">📲 Line Notifications</summary>
-                        <div class="admin-group-content">
-                            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">⚠️ Use sparingly to avoid hitting monthly quota / ใช้อย่างประหยัด</p>
-
-                            <h4 style="margin: 10px 0 8px 0; color: #374151; font-size: 13px; font-weight: bold;">🧪 Test Messages / ข้อความทดสอบ</h4>
-
-                            <button onclick="testLineConfig()" style="background: #8b5cf6; color: white;">
-                                1️⃣ Config Test / ทดสอบตั้งค่า
-                            </button>
-
-                            <button onclick="testDemoLine()" style="background: #10b981; color: white;">
-                                2️⃣ Demo Message / ข้อความตัวอย่าง
-                            </button>
-
-                            <button onclick="testLineMessage()" style="background: #22c55e; color: white;">
-                                3️⃣ Simple Test / ทดสอบง่าย
-                            </button>
-
-                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
-                            <h4 style="margin: 10px 0 8px 0; color: #374151; font-size: 13px; font-weight: bold;">📤 Notification Types / ประเภทการแจ้งเตือน</h4>
-
-                            <button onclick="testSessionAnnouncement()" style="background: #3b82f6; color: white;">
-                                📢 Session Announcement / ประกาศเซสชัน
-                            </button>
-
-                            <button onclick="testCancellationNotification()" style="background: #ef4444; color: white;">
-                                ⚠️ Cancellation / ยกเลิก
-                            </button>
-
-                            <button onclick="testNudgeNotification()" style="background: #f97316; color: white;">
-                                🔔 Nudge/Reminder / เตือนความจำ
-                            </button>
-
-                            <button onclick="testPasswordResetNotification()" style="background: #ec4899; color: white;">
-                                🔐 Password Reset / รีเซ็ตรหัสผ่าน
-                            </button>
-
-                            <button onclick="sendExtraCourtMessage()" style="background: #10b981; color: white; font-weight: bold;">
-                                🏸+ Extra Court Possible / อาจมีสนามเพิ่ม
-                            </button>
-                        </div>
-                    </details>
-
-                    <!-- Logout -->
-                    <button onclick="logoutUser()" style="background: #6b7280; margin-top: 20px; width: 100%;">🚪 Logout / ออกจากระบบ</button>
+                    <!-- PAYMENT LIST (shown when Users group is selected) -->
+                    <div id="paymentStatusSection" style="display: none; margin-top: 20px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px 0; color: #374151; font-size: 14px;">💳 Payment Status</h4>
+                        <div id="paymentList"></div>
+                    </div>
                 </div>
             </div>
             <div class="authorized-users-management" id="authorizedUsersSection" style="display: none;">
@@ -289,10 +218,37 @@
                 <button onclick="addAuthorizedUser()" class="btn-add-user">+ Add User / เพิ่มผู้ใช้</button>
                 <div id="authorizedUsersList"></div>
             </div>
-            <div class="transactions-section" id="transactionsSection" style="display: none;">
-                <h3>Transaction History / ประวัติการทำรายการ</h3>
+        </div>
+    </div>
+
+    <!-- Admin Transaction History Modal -->
+    <div class="modal" id="adminTransactionModal" style="display: none;" onclick="closeAdminTransactions()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Transaction History / ประวัติการทำรายการ</h2>
+                <button class="close-btn" onclick="closeAdminTransactions()">✕</button>
+            </div>
+            <div class="modal-body">
                 <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
                 <div id="transactionsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Report Modal -->
+    <div class="modal" id="debugReportModal" style="display: none;" onclick="closeDebugReport()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>🔍 Debug Report</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="copyDebugReport()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        📋 Copy
+                    </button>
+                    <button class="close-btn" onclick="closeDebugReport()">✕</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <pre id="debugReportContent" style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; margin: 0;"></pre>
             </div>
         </div>
     </div>
@@ -441,9 +397,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251121-1940"></script>
+    <script src="firebase-config.js?v=20251122-0800"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251121-1940"></script>
+    <script src="app.js?v=20251122-0800"></script>
 </body>
 </html>

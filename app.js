@@ -23,6 +23,7 @@ let state = {
     published: true, // Session visibility (false = draft mode)
     maintenanceMode: false, // Maintenance mode (blocks all user actions)
     shuttlecocksUsed: 0, // Number of shuttlecocks used in session (for cost tracking)
+    closed: false, // Session archived/closed status
     isAdmin: false,
     authorizedUsers: [],
     loggedInUser: null, // Now includes: { name, balance, userId, role }
@@ -187,12 +188,14 @@ async function loadSessionData() {
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false; // Default false
             state.shuttlecocksUsed = data.shuttlecocksUsed !== undefined ? data.shuttlecocksUsed : 0; // Default 0 for old sessions
+            state.closed = data.closed !== undefined ? data.closed : false; // Default false - session not archived
             console.log('📥 Session data loaded from Firestore:', {
                 day: state.sessionDay,
                 time: state.sessionTime,
                 published: state.published,
                 maintenanceMode: state.maintenanceMode,
-                shuttlecocksUsed: state.shuttlecocksUsed
+                shuttlecocksUsed: state.shuttlecocksUsed,
+                closed: state.closed
             });
         } else {
             // Create new session
@@ -2787,14 +2790,42 @@ async function debugViewRawData() {
             report += `Profit: ${totalIncome - totalExpenses} THB\n`;
         }
 
-        // Display in alert (scrollable)
+        // Display in modal with copy button
         console.log(report);
-        alert(report);
+
+        const modal = document.getElementById('debugReportModal');
+        const content = document.getElementById('debugReportContent');
+
+        content.textContent = report;
+        modal.style.display = 'block';
 
     } catch (error) {
         console.error('❌ Debug error:', error);
         alert(`❌ Error: ${error.message}\n\nCheck console for details.`);
     }
+}
+
+/**
+ * Copy debug report to clipboard
+ */
+async function copyDebugReport() {
+    const content = document.getElementById('debugReportContent');
+    const text = content.textContent;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        alert('✅ Report copied to clipboard!\n\nคัดลอกรายงานแล้ว!');
+    } catch (error) {
+        console.error('Error copying to clipboard:', error);
+        alert('❌ Failed to copy. Please try selecting and copying manually.');
+    }
+}
+
+/**
+ * Close debug report modal
+ */
+function closeDebugReport() {
+    document.getElementById('debugReportModal').style.display = 'none';
 }
 
 /**
@@ -3601,6 +3632,40 @@ function updateUI() {
         }
     }
 
+    // HIDE session details and players for ALL users when session is ARCHIVED
+    const sessionDetailsEl = document.querySelector('.session-details');
+    const playersListContainerEl = document.querySelector('.players-list');
+
+    if (state.closed) {
+        // Session is ARCHIVED - hide everything for ALL users (including admin)
+        if (sessionDetailsEl) sessionDetailsEl.style.display = 'none';
+        if (playersListContainerEl) playersListContainerEl.style.display = 'none';
+
+        // Hide registration form and guest button
+        if (registrationFormEl) registrationFormEl.style.display = 'none';
+        const guestBtnEl = document.getElementById('guestRegistrationBtn');
+        if (guestBtnEl) guestBtnEl.style.display = 'none';
+
+        // Show "Next session not ready" message instead of "You are registered"
+        const successMessage = document.getElementById('successMessage');
+        if (successMessage && state.loggedInUser) {
+            successMessage.style.display = 'block';
+            successMessage.innerHTML = `
+                <h2 style="margin-top: 0; color: #f59e0b;">⏳ Next session is not ready yet</h2>
+                <h2 style="margin-top: 0; color: #f59e0b;">เซสชันถัดไปยังไม่พร้อม</h2>
+                <p style="color: #666; margin-top: 15px;">The previous session has been closed. Please wait for the admin to create a new session.</p>
+                <p style="color: #666;">เซสชันก่อนหน้าถูกปิดแล้ว กรุณารอแอดมินสร้างเซสชันใหม่</p>
+            `;
+        }
+
+        console.log('🔒 Session is ARCHIVED - showing "not ready" message');
+        return; // Stop updateUI early - no need to update hidden elements
+    } else {
+        // Show session details and players list (normal flow)
+        if (sessionDetailsEl) sessionDetailsEl.style.display = 'block';
+        if (playersListContainerEl && state.loggedInUser) playersListContainerEl.style.display = 'block';
+    }
+
     // Update session info
     document.getElementById('sessionDay').textContent = state.sessionDay;
     document.getElementById('sessionTime').textContent = state.sessionTime;
@@ -3736,42 +3801,269 @@ function updateUI() {
  * Update visibility/styling of admin buttons based on published status
  * Prevents dangerous actions when session is published
  */
+// ============================================
+// ADMIN STATUS & GROUP MANAGEMENT
+// ============================================
+
+let currentAdminGroup = null; // Track selected group
+
+/**
+ * Get current app status based on state
+ * @returns {string} 'maintenance' | 'closed' | 'open' | 'archived'
+ */
+function getAppStatus() {
+    console.log('🔍 getAppStatus check:', {
+        maintenanceMode: state.maintenanceMode,
+        published: state.published,
+        closed: state.closed,
+        isSessionLoaded: state.isSessionLoaded
+    });
+
+    if (state.maintenanceMode) return 'maintenance';
+    if (state.closed) return 'archived'; // Session is archived/finished
+    if (!state.published) return 'closed'; // Session not published yet
+    return 'open';
+}
+
+/**
+ * Update status indicator in admin panel
+ */
+function updateAdminStatusIndicator() {
+    const indicator = document.getElementById('adminStatusIndicator');
+    const statusText = document.getElementById('statusText');
+
+    if (!indicator || !statusText) {
+        console.error('❌ Status indicator elements not found!');
+        return;
+    }
+
+    // Show indicator when admin panel is open
+    indicator.style.display = 'block';
+
+    const status = getAppStatus();
+    console.log('📊 Current app status:', status, '(maintenance:', state.maintenanceMode, 'published:', state.published, 'closed:', state.closed, ')');
+
+    switch (status) {
+        case 'maintenance':
+            indicator.style.background = '#fee2e2';
+            indicator.style.border = '2px solid #ef4444';
+            indicator.style.color = '#991b1b';
+            statusText.textContent = '🔧 MAINT';
+            break;
+        case 'archived':
+            indicator.style.background = '#e0e7ff';
+            indicator.style.border = '2px solid #6366f1';
+            indicator.style.color = '#3730a3';
+            statusText.textContent = '📦 ARCHIVED';
+            break;
+        case 'closed':
+            indicator.style.background = '#fef3c7';
+            indicator.style.border = '2px solid #f59e0b';
+            indicator.style.color = '#92400e';
+            statusText.textContent = '❌ CLOSED';
+            break;
+        case 'open':
+            indicator.style.background = '#d1fae5';
+            indicator.style.border = '2px solid #10b981';
+            indicator.style.color = '#065f46';
+            statusText.textContent = '✅ OPEN';
+            break;
+    }
+}
+
+/**
+ * Get which groups should be visible based on app status
+ * @param {string} status - 'maintenance' | 'archived' | 'closed' | 'open'
+ * @returns {string[]} Array of group names
+ */
+function getVisibleGroups(status) {
+    switch (status) {
+        case 'maintenance':
+            return ['users', 'settings'];
+        case 'archived':
+            return ['money', 'settings']; // Archived: Only view reports and settings (no modifications)
+        case 'closed':
+            return ['setup', 'users', 'money', 'settings'];
+        case 'open':
+            return ['setup', 'close', 'users', 'money', 'line', 'settings'];
+        default:
+            return [];
+    }
+}
+
+/**
+ * Update which group tabs are visible based on status
+ */
+function updateAdminGroupTabs() {
+    const status = getAppStatus();
+    const visibleGroups = getVisibleGroups(status);
+
+    console.log('🔄 Updating group tabs for status:', status, 'Visible groups:', visibleGroups);
+
+    const tabs = document.querySelectorAll('.group-tab');
+    console.log('📌 Found', tabs.length, 'group tabs');
+
+    tabs.forEach(tab => {
+        const group = tab.getAttribute('data-group');
+        if (visibleGroups.includes(group)) {
+            tab.style.display = 'inline-block';
+        } else {
+            tab.style.display = 'none';
+        }
+    });
+
+    // Auto-select first visible group if current group is now hidden
+    if (!visibleGroups.includes(currentAdminGroup)) {
+        console.log('🎯 Auto-selecting first visible group:', visibleGroups[0]);
+        selectAdminGroup(visibleGroups[0]);
+    }
+}
+
+/**
+ * Define all action buttons for each group
+ */
+const adminGroupButtons = {
+    setup: [
+        { label: 'New', onclick: 'clearSession()', bg: '#ef4444', color: 'white' },
+        { label: 'Edit', onclick: 'changeSessionDetails()', bg: '#f59e0b' },
+        { label: 'Pay Amt', onclick: 'changePaymentAmount()', bg: '#f59e0b' },
+        { label: 'Max Pl', onclick: 'changeMaxPlayers()', bg: '#f59e0b' },
+        { label: 'Regular', onclick: 'manageRegularPlayers()', bg: '#f59e0b' },
+        { label: 'Today', onclick: 'manageTodaysPlayers()', bg: '#8b5cf6', color: 'white' },
+        { label: 'Preview', onclick: 'previewSession()', bg: '#3b82f6', color: 'white' },
+        { label: 'Publish', onclick: 'publishSession()', bg: '#10b981', color: 'white', bold: true }
+    ],
+    close: [
+        { label: 'Refund', onclick: 'refundWaitingList()', bg: '#f59e0b' },
+        { label: 'Shuttle', onclick: 'registerShuttlecocks()', bg: '#ec4899', color: 'white' },
+        { label: 'Close', onclick: 'closeLastSession()', bg: '#6366f1', color: 'white', bold: true }
+    ],
+    users: [
+        { label: 'Users', onclick: 'manageAuthorizedUsers()', bg: '#3b82f6', color: 'white' },
+        { label: 'Wallets', onclick: 'manageWallets()', bg: '#10b981', color: 'white' },
+        { label: 'Payment', onclick: 'togglePaymentStatus()', bg: '#8b5cf6', color: 'white' },
+        { label: 'Remove', onclick: 'removePlayerFromSession()', bg: '#ef4444', color: 'white' }
+    ],
+    money: [
+        { label: 'Trans', onclick: 'viewTransactions()', bg: '#3b82f6', color: 'white' },
+        { label: 'Report', onclick: 'viewAccountingReport()', bg: '#8b5cf6', color: 'white', bold: true },
+        { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#10b981', color: 'white', bold: true },
+        { label: 'Debug', onclick: 'debugViewRawData()', bg: '#f59e0b' },
+        { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
+    ],
+    line: [
+        { label: 'Config', onclick: 'testLineConfig()', bg: '#8b5cf6', color: 'white' },
+        { label: 'Demo', onclick: 'testDemoLine()', bg: '#10b981', color: 'white' },
+        { label: 'Test', onclick: 'testLineMessage()', bg: '#22c55e', color: 'white' },
+        { label: 'Announce', onclick: 'testSessionAnnouncement()', bg: '#3b82f6', color: 'white' },
+        { label: 'Cancel', onclick: 'testCancellationNotification()', bg: '#ef4444', color: 'white' },
+        { label: 'Nudge', onclick: 'testNudgeNotification()', bg: '#f97316', color: 'white' },
+        { label: 'Reset', onclick: 'testPasswordResetNotification()', bg: '#ec4899', color: 'white' },
+        { label: 'Extra', onclick: 'sendExtraCourtMessage()', bg: '#10b981', color: 'white', bold: true }
+    ],
+    settings: [
+        { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
+        { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' }
+    ]
+};
+
+/**
+ * Select and display buttons for a group
+ * @param {string} groupName - Name of group to select
+ */
+function selectAdminGroup(groupName) {
+    currentAdminGroup = groupName;
+
+    // Update tab styling
+    const tabs = document.querySelectorAll('.group-tab');
+    tabs.forEach(tab => {
+        const isSelected = tab.getAttribute('data-group') === groupName;
+        if (isSelected) {
+            tab.style.background = '#10b981';
+            tab.style.color = 'white';
+            tab.style.borderColor = '#10b981';
+            tab.style.fontWeight = 'bold';
+        } else {
+            tab.style.background = '#f3f4f6';
+            tab.style.color = '#374151';
+            tab.style.borderColor = '#e5e7eb';
+            tab.style.fontWeight = 'normal';
+        }
+    });
+
+    // Render buttons for selected group
+    renderAdminActionButtons(groupName);
+}
+
+/**
+ * Render action buttons for the selected group
+ * @param {string} groupName - Name of group
+ */
+function renderAdminActionButtons(groupName) {
+    const container = document.getElementById('adminActionButtons');
+    if (!container) return;
+
+    const buttons = adminGroupButtons[groupName] || [];
+
+    container.innerHTML = buttons.map(btn => {
+        const style = `
+            width: auto !important;
+            flex: 0 0 auto;
+            padding: 10px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            background: ${btn.bg || '#f3f4f6'};
+            color: ${btn.color || '#374151'};
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: ${btn.bold ? 'bold' : 'normal'};
+        `;
+        return `<button onclick="${btn.onclick}" style="${style}">${btn.label}</button>`;
+    }).join('');
+
+    // Hide payment status when switching groups
+    const paymentSection = document.getElementById('paymentStatusSection');
+    if (paymentSection) {
+        paymentSection.style.display = 'none';
+    }
+}
+
+/**
+ * Toggle payment status visibility (called by Payment button in Users group)
+ */
+function togglePaymentStatus() {
+    const paymentSection = document.getElementById('paymentStatusSection');
+    if (paymentSection) {
+        if (paymentSection.style.display === 'none') {
+            paymentSection.style.display = 'block';
+            updatePaymentList(); // Refresh payment list
+        } else {
+            paymentSection.style.display = 'none';
+        }
+    }
+}
+
 function updateAdminButtonVisibility() {
     const adminActions = document.getElementById('adminActions');
     if (!adminActions || adminActions.style.display === 'none') {
         return; // Admin panel not open
     }
 
-    // Find all admin buttons
-    const buttons = adminActions.querySelectorAll('button');
+    // Update status indicator
+    updateAdminStatusIndicator();
 
-    buttons.forEach(button => {
-        const onclick = button.getAttribute('onclick');
+    // Update which group tabs are visible
+    updateAdminGroupTabs();
 
-        if (state.published) {
-            // Session is published - hide ONLY Edit Session (dangerous)
-            if (onclick === 'changeSessionDetails()') {
-                button.style.display = 'none';
-            } else if (onclick === 'changePaymentAmount()') {
-                // Keep payment amount button visible (useful for corrections)
-                button.style.display = 'block';
-                button.style.background = '#f59e0b'; // Orange warning color
-            } else if (onclick === 'clearSession()') {
-                // Make New Session button RED and more prominent
-                button.style.background = '#ef4444'; // Red
-                button.style.fontWeight = 'bold';
-            }
-        } else {
-            // Session is draft - show all buttons normally with orange warning color
-            if (onclick === 'changePaymentAmount()' || onclick === 'changeSessionDetails()') {
-                button.style.display = 'block';
-                button.style.background = '#f59e0b'; // Orange warning color
-            } else if (onclick === 'clearSession()') {
-                button.style.background = '#f3f4f6'; // Normal gray
-                button.style.fontWeight = 'normal';
-            }
+    // If no group selected yet, select first visible group
+    if (!currentAdminGroup) {
+        const status = getAppStatus();
+        const visibleGroups = getVisibleGroups(status);
+        if (visibleGroups.length > 0) {
+            selectAdminGroup(visibleGroups[0]);
         }
-    });
+    }
 }
 
 function toggleAdmin() {
@@ -5283,17 +5575,25 @@ async function removePlayerFromSession() {
 }
 
 async function viewTransactions() {
-    const section = document.getElementById('transactionsSection');
+    const modal = document.getElementById('adminTransactionModal');
+    const list = document.getElementById('transactionsList');
 
-    // Close other sections first
-    document.getElementById('authorizedUsersSection').style.display = 'none';
+    modal.style.display = 'block';
 
-    if (section.style.display === 'none' || !section.style.display) {
-        section.style.display = 'block';
-        await loadTransactions();
-    } else {
-        section.style.display = 'none';
-    }
+    // Show loading indicator
+    list.innerHTML = '<div style="text-align: center; padding: 50px; color: #666;"><div style="font-size: 40px; margin-bottom: 20px;">⏳</div>Loading transactions...<br>กำลังโหลด...</div>';
+
+    console.log('⏳ Loading transactions...');
+    const startTime = Date.now();
+
+    await loadTransactions();
+
+    const endTime = Date.now();
+    console.log(`✅ Transactions loaded in ${endTime - startTime}ms`);
+}
+
+function closeAdminTransactions() {
+    document.getElementById('adminTransactionModal').style.display = 'none';
 }
 
 // Reset all balances and clear transaction history (admin utility)
