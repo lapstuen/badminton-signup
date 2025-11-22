@@ -771,7 +771,7 @@ async function shareSessionToLine() {
             availableSpots: availableSpots,
             waitingListCount: waitingList.length,
             paymentAmount: state.paymentAmount,
-            appUrl: window.location.href,
+            appUrl: PRODUCTION_URL,  // Always use production URL for Line messages
             playerNames: playerNames,           // NEW: Add player names
             waitingListNames: waitingListNames  // NEW: Add waiting list names
         };
@@ -1553,7 +1553,7 @@ async function testSessionAnnouncement() {
             availableSpots: state.maxPlayers - playerNames.length,  // Calculate based on mock data
             waitingListCount: waitingListNames.length,
             paymentAmount: state.paymentAmount,
-            appUrl: window.location.href,
+            appUrl: PRODUCTION_URL,  // Always use production URL for Line messages
             playerNames: playerNames,
             waitingListNames: waitingListNames
         };
@@ -1589,7 +1589,7 @@ async function testCancellationNotification() {
             sessionDate: state.sessionDate || '01/01/2025',
             sessionDay: state.sessionDay || 'Monday / วันจันทร์',
             sessionTime: state.sessionTime || '18:00 - 20:00',
-            appUrl: window.location.href
+            appUrl: PRODUCTION_URL  // Always use production URL for Line messages
         };
 
         console.log('📤 TEST: Sending cancellation notification...', notificationData);
