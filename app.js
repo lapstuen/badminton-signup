@@ -5202,8 +5202,8 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
     const unregisteredUsers = [];
 
     sortedUsers.forEach(user => {
-        // Check if user is already registered for today's session
-        const isRegisteredToday = state.players.some(p => p.name === user.name);
+        // Check if user is already registered for today's session (use FRESH data from Firestore)
+        const isRegisteredToday = currentPlayers.some(p => p.name === user.name);
         // Check if user is configured as regular player for this day
         const isRegularPlayer = regularPlayersForToday.includes(user.name);
 
