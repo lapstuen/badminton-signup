@@ -5191,9 +5191,89 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
     console.log('🔍 manageTodaysPlayers - Current players in session:', currentPlayers.map(p => p.name));
     console.log('🔍 manageTodaysPlayers - Total players:', currentPlayers.length);
 
-    // NOTE: We do NOT auto-add regular players anymore!
-    // Admin must manually click on players to add them.
-    // Regular players list is just shown as suggestion (highlighted).
+    // Auto-add regular players ONLY on first open (not when refreshing after manual add/remove)
+    let addedCount = 0;
+    let skippedLowBalance = [];
+
+    if (!skipAutoLoad) {
+        console.log('🤖 AUTO-LOAD: Checking regular players for this day...');
+        console.log('🤖 Regular players for today:', regularPlayersForToday);
+
+        for (const playerName of regularPlayersForToday) {
+            const alreadyInSession = currentPlayers.some(p => p.name === playerName);
+
+            if (!alreadyInSession) {
+                // Find user
+                const user = state.authorizedUsers.find(u => u.name === playerName);
+
+                if (user) {
+                    // CHECK BALANCE FIRST
+                    const userBalance = user.balance || 0;
+
+                    if (userBalance < state.paymentAmount) {
+                        // Skip this player due to insufficient balance
+                        skippedLowBalance.push({name: playerName, balance: userBalance});
+                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB)`);
+                        continue; // Skip to next player
+                    }
+
+                    const userId = user.id || user.userId;
+
+                    if (userId) {
+                        console.log(`➕ AUTO-ADDING ${playerName} (balance: ${userBalance} THB)`);
+
+                        // Add to session (without wallet deduction - happens on publish)
+                        await playersRef().add({
+                            name: playerName,
+                            paid: false,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            position: currentPlayers.length + addedCount + 1,
+                            userId: userId,
+                            isRegularPlayer: true
+                        });
+                        addedCount++;
+                        console.log(`✅ Added ${playerName} to session`);
+                    }
+                } else {
+                    console.log(`⚠️ User ${playerName} not found in authorized users`);
+                }
+            } else {
+                console.log(`✓ ${playerName} already in session, skipping`);
+            }
+        }
+
+        // Wait for Firestore to commit before refreshing
+        if (addedCount > 0) {
+            console.log(`⏳ Waiting for Firestore to commit ${addedCount} players...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Show warning if any players were skipped due to low balance
+        if (skippedLowBalance.length > 0) {
+            let message = `⚠️ Warning: Low Balance / คำเตือน: ยอดเงินต่ำ\n\n`;
+            message += `The following regular players were NOT added due to insufficient balance:\n`;
+            message += `ผู้เล่นประจำต่อไปนี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ:\n\n`;
+            skippedLowBalance.forEach(p => {
+                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
+            });
+            message += `\nPlease top up their wallets!\nกรุณาเติมเงินให้พวกเขา!`;
+            alert(message);
+        }
+
+        console.log(`🤖 AUTO-LOAD COMPLETE: Added ${addedCount} players, Skipped ${skippedLowBalance.length} (low balance)`);
+
+        // Refresh player data after auto-load
+        if (addedCount > 0) {
+            const refreshSnapshot = await playersRef().get();
+            currentPlayers.length = 0; // Clear array
+            refreshSnapshot.forEach(doc => {
+                currentPlayers.push({ id: doc.id, ...doc.data() });
+            });
+            console.log('🔄 Refreshed player list after auto-load:', currentPlayers.map(p => p.name));
+        }
+    } else {
+        console.log('⏭️ Skipping auto-load (skipAutoLoad = true)');
+    }
 
     // Sort users alphabetically
     const sortedUsers = state.authorizedUsers
