@@ -3356,10 +3356,14 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
     const name = nameParam || document.getElementById('loginName').value.trim();
     const password = passwordParam || document.getElementById('loginPassword').value;
 
+    console.log('🔍 Login attempt:', { name, passwordLength: password.length });
+
     // Check if user is authorized
     const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
 
     if (authorizedUser) {
+        console.log('✅ User found:', { name, role: authorizedUser.role, passwordLength: password.length });
+
         // Show maintenance warning for non-admin users
         if (state.maintenanceMode && authorizedUser.role !== 'admin' && authorizedUser.role !== 'moderator') {
             alert('System is under maintenance. You can login but cannot register or cancel.\nระบบกำลังปรับปรุง คุณสามารถเข้าสู่ระบบได้ แต่ไม่สามารถลงทะเบียนหรือยกเลิกได้');
@@ -3379,6 +3383,8 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
                     return v.toString(16);
                 });
 
+            console.log('🔑 Generated UUID, attempting to save to Firestore...');
+
             // Update user's password in database to UUID
             try {
                 await usersRef.doc(authorizedUser.id).update({
@@ -3386,11 +3392,15 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
                 });
                 console.log('✅ UUID password saved for', name);
             } catch (error) {
-                console.error('Error saving UUID password:', error);
-                alert('Error setting up secure password. Please try again.');
+                console.error('❌ Error saving UUID password:', error);
+                alert('Error setting up secure password. Please try again.\n\nError: ' + error.message);
                 return;
             }
+        } else {
+            console.log('✅ Using existing long password (>= 5 chars)');
         }
+
+        console.log('💾 Saving to localStorage and state...');
 
         // Save login info with permanent password (UUID or existing long password)
         state.loggedInUser = {
@@ -3402,10 +3412,13 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
+        console.log('🔄 Calling updateUI()...');
         document.getElementById('loginForm').reset();
         updateUI();
+        console.log('✅ Login complete!');
         // No alert - just go straight to the app
     } else {
+        console.log('❌ User not found or wrong password');
         alert('Invalid name or password / ชื่อหรือรหัสผ่านไม่ถูกต้อง');
     }
 }
