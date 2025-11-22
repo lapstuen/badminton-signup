@@ -522,8 +522,16 @@ async function handleSignup(e) {
         return;
     }
 
+    // Get FRESH player data from Firestore (not from state which might be stale)
+    const playersSnapshot = await playersRef().get();
+    const currentPlayerCount = playersSnapshot.size;
+    const currentPlayers = [];
+    playersSnapshot.forEach(doc => {
+        currentPlayers.push({ id: doc.id, ...doc.data() });
+    });
+
     // Check if already registered (by name)
-    if (state.players.find(p => p.name === name)) {
+    if (currentPlayers.find(p => p.name === name)) {
         alert('This name is already registered / ชื่อนี้ลงทะเบียนแล้ว');
         return;
     }
@@ -537,7 +545,7 @@ async function handleSignup(e) {
 
     try {
         // Deduct payment BEFORE adding to Firestore
-        const isWaitingList = state.players.length >= state.maxPlayers;
+        const isWaitingList = currentPlayerCount >= state.maxPlayers;
         const paymentSuccess = await updateUserBalance(
             authorizedUser.id,
             name,
@@ -558,7 +566,7 @@ async function handleSignup(e) {
             userId: authorizedUser.id,
             paid: true,  // Already paid at registration
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            position: state.players.length + 1
+            position: currentPlayerCount + 1
         };
 
         await playersRef().add(playerData);
@@ -641,14 +649,22 @@ async function handleGuestRegistration() {
     const trimmedGuestName = guestName.trim();
     const fullGuestName = `${hostName} friend: ${trimmedGuestName}`;
 
+    // Get FRESH player data from Firestore (not from state which might be stale)
+    const playersSnapshot = await playersRef().get();
+    const currentPlayerCount = playersSnapshot.size;
+    const currentPlayers = [];
+    playersSnapshot.forEach(doc => {
+        currentPlayers.push({ id: doc.id, ...doc.data() });
+    });
+
     // Check if guest name already exists
-    if (state.players.find(p => p.name === fullGuestName)) {
+    if (currentPlayers.find(p => p.name === fullGuestName)) {
         alert('This guest is already registered / แขกคนนี้ลงทะเบียนแล้ว');
         return;
     }
 
     // Check if there's space available
-    if (state.players.length >= state.maxPlayers) {
+    if (currentPlayerCount >= state.maxPlayers) {
         // Ask if user wants to join waiting list
         if (!confirm(`Session is full (${state.maxPlayers}/${state.maxPlayers})\n\nJoin waiting list? / เซสชันเต็มแล้ว เข้าสู่รายการรอ?`)) {
             return;
@@ -664,7 +680,7 @@ async function handleGuestRegistration() {
 
     try {
         // Deduct payment from host BEFORE adding guest to Firestore
-        const isWaitingList = state.players.length >= state.maxPlayers;
+        const isWaitingList = currentPlayerCount >= state.maxPlayers;
         const paymentSuccess = await updateUserBalance(
             hostUserId,
             hostName,
@@ -688,7 +704,7 @@ async function handleGuestRegistration() {
             guestOf: hostUserId, // Link to host user
             guestOfName: hostName, // Host's name for easy reference
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            position: state.players.length + 1
+            position: currentPlayerCount + 1
         };
 
         await playersRef().add(guestData);
@@ -4459,12 +4475,19 @@ function closePreviewSession() {
 }
 
 async function publishSession() {
-    const unpaidPlayers = state.players.filter(p => !p.paid);
+    // Get FRESH player data from Firestore (not from state which might be stale)
+    const playersSnapshot = await playersRef().get();
+    const currentPlayers = [];
+    playersSnapshot.forEach(doc => {
+        currentPlayers.push({ id: doc.id, ...doc.data() });
+    });
+
+    const unpaidPlayers = currentPlayers.filter(p => !p.paid);
 
     let confirmMessage = 'Publish this session?\n\nเผยแพร่เซสชัน?\n\n';
-    confirmMessage += `Current players: ${state.players.length}\n`;
+    confirmMessage += `Current players: ${currentPlayers.length}\n`;
     confirmMessage += `All players have already paid at registration.\n\n`;
-    confirmMessage += `ผู้เล่นปัจจุบัน: ${state.players.length}\n`;
+    confirmMessage += `ผู้เล่นปัจจุบัน: ${currentPlayers.length}\n`;
     confirmMessage += `ผู้เล่นทุกคนจ่ายเงินแล้วตอนลงทะเบียน`;
 
     // Legacy support: handle any unpaid players (should be 0 with new system)
@@ -5476,15 +5499,20 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
             if (choice === '1') {
                 // Add to THIS session only
                 const userId = user.id || user.userId;
+
+                // Get FRESH count from Firestore (not state.players which might be stale)
+                const currentCount = (await playersRef().get()).size;
+
                 console.log(`➕ ADDING ${user.name} to Firestore...`);
                 console.log(`   Session ID: ${currentSessionId}`);
-                console.log(`   Position: ${state.players.length + 1}`);
+                console.log(`   Current player count (from Firestore): ${currentCount}`);
+                console.log(`   New position: ${currentCount + 1}`);
 
                 const docRef = await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    position: state.players.length + 1,
+                    position: currentCount + 1,
                     userId: userId,
                     isRegularPlayer: false
                 });
@@ -5509,16 +5537,21 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
 
                 // Add to this session
                 const userId = user.id || user.userId;
+
+                // Get FRESH count from Firestore (not state.players which might be stale)
+                const currentCount = (await playersRef().get()).size;
+
                 console.log(`➕ ADDING ${user.name} to Firestore AND config...`);
                 console.log(`   Session ID: ${currentSessionId}`);
-                console.log(`   Position: ${state.players.length + 1}`);
+                console.log(`   Current player count (from Firestore): ${currentCount}`);
+                console.log(`   New position: ${currentCount + 1}`);
                 console.log(`   Config day: ${dayKey}`);
 
                 const docRef = await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    position: state.players.length + 1,
+                    position: currentCount + 1,
                     userId: userId,
                     isRegularPlayer: true
                 });
@@ -5549,14 +5582,24 @@ function closeManagedPlayers() {
  * Refunds wallet if player had paid
  */
 async function removePlayerFromSession() {
-    if (state.players.length === 0) {
+    // Get FRESH player data from Firestore (not from state which might be stale)
+    const playersSnapshot = await playersRef().get();
+    const currentPlayers = [];
+    playersSnapshot.forEach(doc => {
+        currentPlayers.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Sort by position
+    currentPlayers.sort((a, b) => a.position - b.position);
+
+    if (currentPlayers.length === 0) {
         alert('No players registered / ไม่มีผู้เล่นที่ลงทะเบียน');
         return;
     }
 
     // Build player list for selection
     let playerList = 'Select player number to remove / เลือกหมายเลขผู้เล่นที่จะลบ:\n\n';
-    state.players.forEach((player, index) => {
+    currentPlayers.forEach((player, index) => {
         const position = index + 1;
         const paidStatus = player.paid ? '✓ Paid' : '✗ Unpaid';
         const guestMarker = player.isGuest ? '👤 Guest' : '';
@@ -5569,12 +5612,12 @@ async function removePlayerFromSession() {
 
     const playerIndex = parseInt(selection) - 1;
 
-    if (isNaN(playerIndex) || playerIndex < 0 || playerIndex >= state.players.length) {
+    if (isNaN(playerIndex) || playerIndex < 0 || playerIndex >= currentPlayers.length) {
         alert('Invalid player number / หมายเลขผู้เล่นไม่ถูกต้อง');
         return;
     }
 
-    const playerToRemove = state.players[playerIndex];
+    const playerToRemove = currentPlayers[playerIndex];
     const playerName = playerToRemove.name;
     const wasPaid = playerToRemove.paid;
     const isGuest = playerToRemove.isGuest;
