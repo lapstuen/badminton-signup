@@ -4660,8 +4660,8 @@ async function changeSessionDetails() {
             console.log(`🔍 Day 8 selected, keeping current date: ${state.sessionDate}`);
         }
 
-        // If day 8 (Not Set), automatically set time to 00:00 - 00:00
-        const defaultTime = (dayChoice == 8) ? '00:00 - 00:00' : state.sessionTime;
+        // Default time: 10:00 - 12:00 (most common)
+        const defaultTime = (dayChoice == 8) ? '10:00 - 12:00' : state.sessionTime;
 
         const timePrompt = 'Enter time / ใส่เวลา (e.g., 10:00 - 12:00):';
         const time = prompt(timePrompt, defaultTime);
