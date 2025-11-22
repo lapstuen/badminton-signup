@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 Badminton / แบดมินตัน</h1>
-            <p class="version-header">v2025-11-22 10:50 (Automatic version update with fixed script)</p>
+            <p class="version-header">v2025-11-22 11:00 (Remove Publish button from main screen - admin only)</p>
 
             <!-- Logged In User Info (moved here) -->
             <div class="logged-in-info" id="loggedInInfo" style="display: none;">
@@ -54,12 +54,10 @@
                 <p style="margin: 10px 0 0 0; color: #991b1b;">The system is under maintenance. Please wait.<br>ระบบกำลังปรับปรุง กรุณารอสักครู่</p>
             </div>
 
-            <!-- Draft Mode Banner (only visible to admin/moderator) -->
+            <!-- Draft Mode Banner (visible to all users when session is in draft mode) -->
             <div id="draftBanner" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
-                <h3 style="margin: 0 0 10px 0; color: #92400e;">📝 DRAFT MODE / โหมดร่าง</h3>
-                <button onclick="publishSession()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
-                    ✅ Publish Session / เผยแพร่เซสชัน
-                </button>
+                <h3 style="margin: 0; color: #92400e;">📝 DRAFT MODE / โหมดร่าง</h3>
+                <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">Session is being prepared by admin / แอดมินกำลังเตรียมเซสชัน</p>
             </div>
 
             <!-- User Login Section -->
@@ -127,7 +125,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-11-22 10:50 (Automatic version update with fixed script)</p>
+                <p class="version">v2025-11-22 11:00 (Remove Publish button from main screen - admin only)</p>
 
                 <div class="bottom-buttons">
                     <!-- Transaction History Button -->
@@ -397,9 +395,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251122-1050"></script>
+    <script src="firebase-config.js?v=20251122-1100"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251122-1050"></script>
+    <script src="app.js?v=20251122-1100"></script>
 </body>
 </html>
