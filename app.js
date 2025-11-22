@@ -1684,7 +1684,7 @@ async function sendExtraCourtMessage() {
 รอการยืนยันจากศูนย์กีฬา
 
 🔗 Register here / ลงทะเบียนที่นี่:
-${window.location.origin}${window.location.pathname}`;
+${APP_URL}`;
 
     try {
         // Use Firebase Cloud Function - sendLineMessage (not sendLineGroupMessage!)
