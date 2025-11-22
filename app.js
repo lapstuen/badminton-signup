@@ -4474,6 +4474,40 @@ function closePreviewSession() {
     document.getElementById('previewSessionModal').style.display = 'none';
 }
 
+/**
+ * Show red warning modal for low balance alerts
+ * More visible than standard alert() to prevent accidental dismissal
+ */
+function showLowBalanceWarning(players) {
+    const modal = document.getElementById('lowBalanceWarningModal');
+    const content = document.getElementById('lowBalanceWarningContent');
+
+    let message = `<p style="font-size: 18px; margin-bottom: 15px; font-weight: bold;">❌ SOME REGULAR PLAYERS WERE NOT ADDED</p>`;
+    message += `<p style="font-size: 18px; margin-bottom: 20px; font-weight: bold;">❌ ผู้เล่นประจำบางคนไม่ถูกเพิ่ม</p>`;
+    message += `<p style="margin-bottom: 10px;">The following regular players have <strong>INSUFFICIENT BALANCE</strong>:</p>`;
+    message += `<p style="margin-bottom: 20px;">ผู้เล่นประจำต่อไปนี้มี<strong>ยอดเงินไม่เพียงพอ</strong>:</p>`;
+    message += `<div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #dc2626; margin-bottom: 20px;">`;
+
+    players.forEach(p => {
+        message += `<p style="margin: 8px 0; font-size: 16px;">`;
+        message += `<strong>${p.name}</strong>: `;
+        message += `<span style="color: #dc2626; font-weight: bold;">${p.balance} THB</span> `;
+        message += `(needs ${state.paymentAmount} THB)`;
+        message += `</p>`;
+    });
+
+    message += `</div>`;
+    message += `<p style="font-size: 16px; font-weight: bold; margin-top: 20px;">⚠️ Please top up their wallets before they can join!</p>`;
+    message += `<p style="font-size: 16px; font-weight: bold;">⚠️ กรุณาเติมเงินให้พวกเขาก่อนที่จะเข้าร่วมได้!</p>`;
+
+    content.innerHTML = message;
+    modal.style.display = 'block';
+}
+
+function closeLowBalanceWarning() {
+    document.getElementById('lowBalanceWarningModal').style.display = 'none';
+}
+
 async function publishSession() {
     // Get FRESH player data from Firestore (not from state which might be stale)
     const playersSnapshot = await playersRef().get();
@@ -5271,16 +5305,9 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // Show warning if any players were skipped due to low balance
+        // Show RED WARNING if any players were skipped due to low balance
         if (skippedLowBalance.length > 0) {
-            let message = `⚠️ Warning: Low Balance / คำเตือน: ยอดเงินต่ำ\n\n`;
-            message += `The following regular players were NOT added due to insufficient balance:\n`;
-            message += `ผู้เล่นประจำต่อไปนี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ:\n\n`;
-            skippedLowBalance.forEach(p => {
-                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
-            });
-            message += `\nPlease top up their wallets!\nกรุณาเติมเงินให้พวกเขา!`;
-            alert(message);
+            showLowBalanceWarning(skippedLowBalance);
         }
 
         console.log(`🤖 AUTO-LOAD COMPLETE: Added ${addedCount} players, Skipped ${skippedLowBalance.length} (low balance)`);
