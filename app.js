@@ -18,7 +18,7 @@ let state = {
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
     sessionDay: 'Not Set / ไม่ได้กำหนด', // Default to day 8 (blank)
-    sessionTime: '00:00 - 00:00', // Default blank time
+    sessionTime: '10:00 - 12:00', // Default time (most common)
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
     maintenanceMode: false, // Maintenance mode (blocks all user actions)
@@ -4289,7 +4289,7 @@ async function clearSession() {
             // Update session date and UNPUBLISH - Set to day 8 (Not Set)
             state.sessionDate = new Date().toLocaleDateString('en-GB');
             state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
-            state.sessionTime = '00:00 - 00:00'; // Blank time
+            state.sessionTime = '10:00 - 12:00'; // Default time (most common)
             state.maxPlayers = 12; // Keep default 12 (show 0 / 12)
             state.published = false; // Set to draft mode
             state.closed = false; // Mark as open (not closed)
