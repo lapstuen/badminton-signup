@@ -5188,6 +5188,9 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         currentPlayers.push({ id: doc.id, ...doc.data() });
     });
 
+    console.log('🔍 manageTodaysPlayers - Current players in session:', currentPlayers.map(p => p.name));
+    console.log('🔍 manageTodaysPlayers - Total players:', currentPlayers.length);
+
     // NOTE: We do NOT auto-add regular players anymore!
     // Admin must manually click on players to add them.
     // Regular players list is just shown as suggestion (highlighted).
@@ -5207,6 +5210,10 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         // Check if user is configured as regular player for this day
         const isRegularPlayer = regularPlayersForToday.includes(user.name);
 
+        if (isRegisteredToday) {
+            console.log(`✅ ${user.name} is REGISTERED for today`);
+        }
+
         // Show as "selected" if they are registered for today
         if (isRegisteredToday) {
             registeredUsers.push({...user, isRegisteredToday, isRegularPlayer, dayNumber});
@@ -5214,6 +5221,9 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
             unregisteredUsers.push({...user, isRegisteredToday, isRegularPlayer, dayNumber});
         }
     });
+
+    console.log('🔍 Registered users:', registeredUsers.length);
+    console.log('🔍 Unregistered users:', unregisteredUsers.length);
 
     // Build user list with registered users at the top
     list.innerHTML = '';
