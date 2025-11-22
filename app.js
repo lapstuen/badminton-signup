@@ -5391,7 +5391,11 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
             if (choice === '1') {
                 // Add to THIS session only
                 const userId = user.id || user.userId;
-                await playersRef().add({
+                console.log(`➕ ADDING ${user.name} to Firestore...`);
+                console.log(`   Session ID: ${currentSessionId}`);
+                console.log(`   Position: ${state.players.length + 1}`);
+
+                const docRef = await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -5399,7 +5403,8 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                     userId: userId,
                     isRegularPlayer: false
                 });
-                console.log(`✅ Added ${user.name} to this ${dayName} session only`);
+
+                console.log(`✅ Added ${user.name} to this ${dayName} session only (doc ID: ${docRef.id})`);
                 await manageTodaysPlayers(true); // Skip auto-load when refreshing
             } else if (choice === '2') {
                 // Add to regular players config AND this session
@@ -5419,7 +5424,12 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
 
                 // Add to this session
                 const userId = user.id || user.userId;
-                await playersRef().add({
+                console.log(`➕ ADDING ${user.name} to Firestore AND config...`);
+                console.log(`   Session ID: ${currentSessionId}`);
+                console.log(`   Position: ${state.players.length + 1}`);
+                console.log(`   Config day: ${dayKey}`);
+
+                const docRef = await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -5428,7 +5438,7 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                     isRegularPlayer: true
                 });
 
-                console.log(`✅ Added ${user.name} to ALL ${dayName}s`);
+                console.log(`✅ Added ${user.name} to ALL ${dayName}s (doc ID: ${docRef.id})`);
                 await manageTodaysPlayers(true); // Skip auto-load when refreshing
             }
         }
