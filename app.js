@@ -3957,7 +3957,6 @@ const adminGroupButtons = {
         { label: 'Edit', onclick: 'changeSessionDetails()', bg: '#f59e0b' },
         { label: 'Pay Amt', onclick: 'changePaymentAmount()', bg: '#f59e0b' },
         { label: 'Max Pl', onclick: 'changeMaxPlayers()', bg: '#f59e0b' },
-        { label: 'Regular', onclick: 'manageRegularPlayers()', bg: '#f59e0b' },
         { label: 'Today', onclick: 'manageTodaysPlayers()', bg: '#8b5cf6', color: 'white' },
         { label: 'Preview', onclick: 'previewSession()', bg: '#3b82f6', color: 'white' },
         { label: 'Publish', onclick: 'publishSession()', bg: '#10b981', color: 'white', bold: true }
@@ -3969,14 +3968,13 @@ const adminGroupButtons = {
     ],
     users: [
         { label: 'Users', onclick: 'manageAuthorizedUsers()', bg: '#3b82f6', color: 'white' },
+        { label: 'Regular', onclick: 'manageRegularPlayers()', bg: '#f59e0b' },
         { label: 'Wallets', onclick: 'manageWallets()', bg: '#10b981', color: 'white' },
-        { label: 'Payment', onclick: 'togglePaymentStatus()', bg: '#8b5cf6', color: 'white' },
         { label: 'Remove', onclick: 'removePlayerFromSession()', bg: '#ef4444', color: 'white' }
     ],
     money: [
         { label: 'Trans', onclick: 'viewTransactions()', bg: '#3b82f6', color: 'white' },
         { label: 'Report', onclick: 'viewAccountingReport()', bg: '#8b5cf6', color: 'white', bold: true },
-        { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Debug', onclick: 'debugViewRawData()', bg: '#f59e0b' },
         { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
     ],
@@ -3992,6 +3990,7 @@ const adminGroupButtons = {
     ],
     settings: [
         { label: 'New', onclick: 'clearSession()', bg: '#10b981', color: 'white', bold: true },
+        { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#f59e0b', color: 'white', bold: true },
         { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
         { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' }
     ]
