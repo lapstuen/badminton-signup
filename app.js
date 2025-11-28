@@ -38,6 +38,63 @@ const currentSessionRef = () => sessionsRef.doc(currentSessionId);
 const playersRef = () => currentSessionRef().collection('players');
 
 // ============================================
+// POSITION RECALCULATION HELPER
+// ============================================
+
+/**
+ * Recalculate all player positions to be sequential (1, 2, 3, ...)
+ * Call this after any player deletion to ensure waiting list players move up correctly
+ * Uses batch write for efficiency and atomicity
+ */
+async function recalculatePlayerPositions() {
+    try {
+        // Get fresh player list from Firestore
+        const playersSnapshot = await playersRef().get();
+        const players = [];
+        playersSnapshot.forEach(doc => {
+            players.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (players.length === 0) {
+            console.log('📍 No players to recalculate positions for');
+            return;
+        }
+
+        // Sort by current position
+        players.sort((a, b) => a.position - b.position);
+
+        // Check if any positions need updating
+        let needsUpdate = false;
+        players.forEach((player, index) => {
+            if (player.position !== index + 1) {
+                needsUpdate = true;
+            }
+        });
+
+        if (!needsUpdate) {
+            console.log('📍 Positions already sequential, no update needed');
+            return;
+        }
+
+        // Update each player's position to be sequential (1, 2, 3, ...)
+        const batch = db.batch();
+        players.forEach((player, index) => {
+            const newPosition = index + 1;
+            if (player.position !== newPosition) {
+                const playerRef = playersRef().doc(player.id);
+                batch.update(playerRef, { position: newPosition });
+                console.log(`📍 Position update: ${player.name} from ${player.position} to ${newPosition}`);
+            }
+        });
+
+        await batch.commit();
+        console.log(`✅ Positions recalculated: ${players.length} players now sequential`);
+    } catch (error) {
+        console.error('❌ Error recalculating positions:', error);
+    }
+}
+
+// ============================================
 // PRIVATE MODE DETECTION
 // ============================================
 
@@ -3081,6 +3138,9 @@ async function cancelRegistration() {
             console.log(`✅ Player moving up from waiting list: ${nextPlayer.name} (already paid at registration)`);
         }
 
+        // Recalculate positions so waiting list players move up correctly
+        await recalculatePlayerPositions();
+
         // Send Line notification (async, don't wait)
         sendLineCancellationNotification(userName);
 
@@ -4582,6 +4642,11 @@ async function publishSession() {
                 }
             }
 
+            // If any players were removed, recalculate positions
+            if (removed > 0) {
+                await recalculatePlayerPositions();
+            }
+
             // Publish session
             state.published = true;
             await saveSessionData();
@@ -5469,6 +5534,7 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                 const playerToRemove = state.players.find(p => p.name === user.name);
                 if (playerToRemove && playerToRemove.id) {
                     await playersRef().doc(playerToRemove.id).delete();
+                    await recalculatePlayerPositions(); // Ensure waiting list moves up
                     console.log(`✅ Removed ${user.name} from this ${dayName} session`);
                     await manageTodaysPlayers(true); // Skip auto-load when refreshing
                 }
@@ -5490,6 +5556,7 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                 const playerToRemove = state.players.find(p => p.name === user.name);
                 if (playerToRemove && playerToRemove.id) {
                     await playersRef().doc(playerToRemove.id).delete();
+                    await recalculatePlayerPositions(); // Ensure waiting list moves up
                 }
 
                 console.log(`✅ Removed ${user.name} from ALL ${dayName}s`);
@@ -5692,6 +5759,9 @@ async function removePlayerFromSession() {
 
         // Delete player from Firestore
         await playersRef().doc(playerToRemove.id).delete();
+
+        // Recalculate positions so waiting list players move up
+        await recalculatePlayerPositions();
 
         console.log(`✅ Player removed: ${playerName}`);
 
@@ -6228,6 +6298,9 @@ async function adminDeletePlayer(playerId, playerName, isGuest = false, guestOf 
 
         // Delete player from Firestore
         await playersRef().doc(playerId).delete();
+
+        // Recalculate positions so waiting list players move up
+        await recalculatePlayerPositions();
 
         console.log(`✅ Admin deleted player: ${playerName}`);
         alert(`✅ Player deleted and refunded\n\nลบผู้เล่นและคืนเงินแล้ว\n\n${playerName}\nRefund: ${state.paymentAmount} THB`);
