@@ -5242,9 +5242,42 @@ async function removeAuthorizedUser(userId) {
     const user = state.authorizedUsers.find(u => u.id === userId);
     if (!user) return;
 
-    if (confirm(`Remove ${user.name}? / ลบ ${user.name}?`)) {
+    // Check if user is registered in current session
+    const playerInSession = state.players.find(p => p.userId === userId);
+    const guestsInSession = state.players.filter(p => p.guestOf === userId);
+    const totalRegistrations = (playerInSession ? 1 : 0) + guestsInSession.length;
+
+    let confirmMsg = `Remove ${user.name}?\nลบ ${user.name}?\n\n`;
+
+    if (totalRegistrations > 0) {
+        confirmMsg += `⚠️ This user has ${totalRegistrations} registration(s) in current session.\n`;
+        confirmMsg += `ผู้ใช้นี้มี ${totalRegistrations} การลงทะเบียนในเซสชันปัจจุบัน\n\n`;
+        confirmMsg += `They will be removed from the session.\n`;
+        confirmMsg += `(Wallet balance will be lost when user is deleted)`;
+    }
+
+    if (confirm(confirmMsg)) {
         try {
+            // If user is registered, remove from session first
+            if (playerInSession) {
+                await playersRef().doc(playerInSession.id).delete();
+                console.log(`✅ Removed ${user.name} from session`);
+            }
+
+            // Remove any guests they registered
+            for (const guest of guestsInSession) {
+                await playersRef().doc(guest.id).delete();
+                console.log(`✅ Removed guest ${guest.name}`);
+            }
+
+            // Recalculate positions if any players were removed
+            if (totalRegistrations > 0) {
+                await recalculatePlayerPositions();
+            }
+
+            // Now delete the user from authorized users
             await usersRef.doc(userId).delete();
+
             alert('User removed / ลบผู้ใช้แล้ว');
         } catch (error) {
             console.error('Error removing user:', error);
@@ -5748,43 +5781,60 @@ async function removePlayerFromSession() {
     const wasPaid = playerToRemove.paid;
     const isGuest = playerToRemove.isGuest;
 
+    // Determine who would get the refund (for confirmation message)
+    const hostUserId = isGuest ? playerToRemove.guestOf : null;
+    const hostUser = hostUserId ? state.authorizedUsers.find(u => u.id === hostUserId) : null;
+
     // Confirm removal
-    const confirmMsg = `Remove player from session?\nลบผู้เล่นออกจากเซสชัน?\n\n` +
-                      `Player: ${playerName}\n` +
-                      `Status: ${wasPaid ? 'Paid ✓' : 'Unpaid ✗'}\n` +
-                      `${isGuest ? '(Guest player)' : ''}\n\n` +
-                      `${wasPaid && !isGuest ? 'Wallet will be refunded ' + state.paymentAmount + ' THB' : ''}`;
+    let confirmMsg = `Remove player from session?\nลบผู้เล่นออกจากเซสชัน?\n\n`;
+    confirmMsg += `Player: ${playerName}\n`;
+    confirmMsg += `Status: ${wasPaid ? 'Paid ✓' : 'Unpaid ✗'}\n`;
+    if (isGuest && hostUser) {
+        confirmMsg += `(Guest of ${hostUser.name})\n\n`;
+        confirmMsg += `Refund ${state.paymentAmount} THB to ${hostUser.name}`;
+    } else if (isGuest) {
+        confirmMsg += `(Guest player)\n`;
+    } else if (wasPaid) {
+        confirmMsg += `\nWallet will be refunded ${state.paymentAmount} THB`;
+    }
 
     if (!confirm(confirmMsg)) {
         return;
     }
 
     try {
-        // If player paid and is not a guest, refund to wallet
-        if (wasPaid && !isGuest && playerToRemove.userId) {
-            const user = state.authorizedUsers.find(u => u.id === playerToRemove.userId);
-            if (user) {
-                const currentBalance = user.balance || 0;
-                const newBalance = currentBalance + state.paymentAmount;
+        // Determine who gets the refund
+        // For regular players: refund to themselves
+        // For guests: refund to the host who registered them
+        const refundUserId = isGuest ? playerToRemove.guestOf : playerToRemove.userId;
+        const refundUser = refundUserId ? state.authorizedUsers.find(u => u.id === refundUserId) : null;
 
-                await usersRef.doc(playerToRemove.userId).update({
-                    balance: newBalance
-                });
+        // Refund if player paid and we can find the user to refund
+        if (wasPaid && refundUser) {
+            const currentBalance = refundUser.balance || 0;
+            const newBalance = currentBalance + state.paymentAmount;
 
-                // Add transaction record
-                await transactionsRef.add({
-                    userId: playerToRemove.userId,
-                    userName: playerName,
-                    type: 'refund',
-                    amount: state.paymentAmount,
-                    balance: newBalance,
-                    reason: `Admin removed from session ${state.sessionDay} ${state.sessionDate}`,
-                    sessionId: currentSessionId,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
+            await usersRef.doc(refundUserId).update({
+                balance: newBalance
+            });
 
-                console.log(`✅ Refunded ${state.paymentAmount} THB to ${playerName}`);
-            }
+            // Add transaction record
+            const refundReason = isGuest
+                ? `Admin removed guest (${playerName}) from session ${state.sessionDay} ${state.sessionDate}`
+                : `Admin removed from session ${state.sessionDay} ${state.sessionDate}`;
+
+            await transactionsRef.add({
+                userId: refundUserId,
+                userName: refundUser.name,
+                type: 'refund',
+                amount: state.paymentAmount,
+                balance: newBalance,
+                reason: refundReason,
+                sessionId: currentSessionId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            console.log(`✅ Refunded ${state.paymentAmount} THB to ${refundUser.name}${isGuest ? ` (host of ${playerName})` : ''}`);
         }
 
         // Delete player from Firestore
@@ -5795,10 +5845,17 @@ async function removePlayerFromSession() {
 
         console.log(`✅ Player removed: ${playerName}`);
 
-        alert(`✅ Player removed successfully!\n\n${wasPaid && !isGuest ? `Refunded ${state.paymentAmount} THB to wallet` : ''}\n\nลบผู้เล่นสำเร็จ!`);
+        let resultMsg = `✅ Player removed successfully!\n\nลบผู้เล่นสำเร็จ!`;
+        if (wasPaid && refundUser) {
+            resultMsg += `\n\nRefunded ${state.paymentAmount} THB to ${refundUser.name}`;
+            if (isGuest) {
+                resultMsg += ` (host)`;
+            }
+        }
+        alert(resultMsg);
 
         // Reload authorized users if refund happened
-        if (wasPaid && !isGuest) {
+        if (wasPaid && refundUser) {
             await loadAuthorizedUsers();
         }
 
