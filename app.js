@@ -3063,30 +3063,54 @@ async function cancelRegistration() {
     const userName = state.loggedInUser.name;
     const userId = state.loggedInUser.userId;
 
-    // Find the player
+    // Find the player (may be null if host only registered guests)
     const currentPlayer = state.players.find(p => p.name === userName);
-    if (!currentPlayer) {
+
+    // Check if user has registered guests
+    const userGuests = state.players.filter(p => p.guestOf === userId);
+
+    // If user is not registered AND has no guests, nothing to cancel
+    if (!currentPlayer && userGuests.length === 0) {
         alert('You are not registered / คุณไม่ได้ลงทะเบียน');
         return;
     }
 
-    // Check if user has registered guests
-    const userGuests = state.players.filter(p => p.guestOf === userId);
-    const totalRefund = state.paymentAmount * (1 + userGuests.length);
+    // Calculate refund based on what will be cancelled
+    const selfRefund = currentPlayer ? state.paymentAmount : 0;
+    const guestRefund = userGuests.length * state.paymentAmount;
+    const totalRefund = selfRefund + guestRefund;
 
-    // Confirm cancellation with guest info
-    let confirmMessage = `Cancel your registration? / ยกเลิกการลงทะเบียน?\n\n`;
-    confirmMessage += `This will remove you from the player list and refund ${state.paymentAmount} THB.\n\n`;
+    // Build confirmation message based on what will be cancelled
+    let confirmMessage = '';
 
-    if (userGuests.length > 0) {
-        confirmMessage += `⚠️ You have ${userGuests.length} guest(s) registered:\n`;
+    if (currentPlayer && userGuests.length > 0) {
+        // Both self and guests
+        confirmMessage = `Cancel your registration and ${userGuests.length} guest(s)?\n`;
+        confirmMessage += `ยกเลิกการลงทะเบียนของคุณและแขก ${userGuests.length} คน?\n\n`;
+        confirmMessage += `You: ${userName}\n`;
+        confirmMessage += `Guests:\n`;
         userGuests.forEach(g => {
             const guestNameOnly = g.name.split(' friend: ')[1] || g.name.split(' venn: ')[1] || g.name.split(' + ')[1];
             confirmMessage += `  - ${guestNameOnly}\n`;
         });
-        confirmMessage += `\nAll guests will also be cancelled.\n`;
-        confirmMessage += `Total refund: ${totalRefund} THB\n\n`;
+        confirmMessage += `\nTotal refund: ${totalRefund} THB\n`;
         confirmMessage += `รวมเงินคืน: ${totalRefund} บาท`;
+    } else if (currentPlayer) {
+        // Only self (no guests)
+        confirmMessage = `Cancel your registration? / ยกเลิกการลงทะเบียน?\n\n`;
+        confirmMessage += `This will remove you from the player list.\n`;
+        confirmMessage += `Refund: ${state.paymentAmount} THB`;
+    } else {
+        // Only guests (user not registered themselves)
+        confirmMessage = `Cancel your ${userGuests.length} guest registration(s)?\n`;
+        confirmMessage += `ยกเลิกการลงทะเบียนแขก ${userGuests.length} คน?\n\n`;
+        confirmMessage += `Guests:\n`;
+        userGuests.forEach(g => {
+            const guestNameOnly = g.name.split(' friend: ')[1] || g.name.split(' venn: ')[1] || g.name.split(' + ')[1];
+            confirmMessage += `  - ${guestNameOnly}\n`;
+        });
+        confirmMessage += `\nTotal refund: ${guestRefund} THB\n`;
+        confirmMessage += `รวมเงินคืน: ${guestRefund} บาท`;
     }
 
     if (!confirm(confirmMessage)) {
@@ -3102,16 +3126,20 @@ async function cancelRegistration() {
         const nextPlayer = hasWaitingList ?
             waitingListPlayers.sort((a, b) => a.position - b.position)[0] : null;
 
-        // Refund the payment amount for main player
-        await updateUserBalance(
-            userId,
-            userName,
-            state.paymentAmount,
-            `Refund for cancelled registration ${state.sessionDate}`
-        );
+        // Cancel self registration (if registered)
+        if (currentPlayer) {
+            // Refund the payment amount for main player
+            await updateUserBalance(
+                userId,
+                userName,
+                state.paymentAmount,
+                `Refund for cancelled registration ${state.sessionDate}`
+            );
 
-        // Delete player from Firestore
-        await playersRef().doc(currentPlayer.id).delete();
+            // Delete player from Firestore
+            await playersRef().doc(currentPlayer.id).delete();
+            console.log(`✅ Registration cancelled for: ${userName}`);
+        }
 
         // Cancel and refund all guests
         if (userGuests.length > 0) {
@@ -3141,8 +3169,10 @@ async function cancelRegistration() {
         // Recalculate positions so waiting list players move up correctly
         await recalculatePlayerPositions();
 
-        // Send Line notification (async, don't wait)
-        sendLineCancellationNotification(userName);
+        // Send Line notification (async, don't wait) - only if self was cancelled
+        if (currentPlayer) {
+            sendLineCancellationNotification(userName);
+        }
 
         // Clear localStorage
         localStorage.removeItem('userName');
