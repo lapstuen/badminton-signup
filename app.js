@@ -2183,27 +2183,74 @@ async function viewAccountingReport() {
  */
 async function generateWeeklyReport() {
     try {
-        // Prompt for week selection
-        const useThisWeek = confirm(
-            'Generate report for THIS WEEK (Nov 17-23)?\n\n' +
-            'สร้างรายงานสำหรับสัปดาห์นี้ (17-23 พ.ย.)?\n\n' +
-            'Click OK for this week, or CANCEL to enter custom dates.\n' +
-            'กด OK สำหรับสัปดาห์นี้ หรือ ยกเลิกเพื่อใส่วันที่'
+        // Calculate current week (Monday-Sunday) and next week
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+        // Calculate Monday of current week
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const currentMonday = new Date(today);
+        currentMonday.setDate(today.getDate() + mondayOffset);
+
+        // Calculate Sunday of current week
+        const currentSunday = new Date(currentMonday);
+        currentSunday.setDate(currentMonday.getDate() + 6);
+
+        // Calculate next week (Monday-Sunday)
+        const nextMonday = new Date(currentMonday);
+        nextMonday.setDate(currentMonday.getDate() + 7);
+        const nextSunday = new Date(nextMonday);
+        nextSunday.setDate(nextMonday.getDate() + 6);
+
+        // Format dates for display
+        const formatDisplay = (date) => {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return {
+                en: `${months[date.getMonth()]} ${date.getDate()}`,
+                th: `${date.getDate()} ${thaiMonths[date.getMonth()]}`
+            };
+        };
+
+        const formatISO = (date) => date.toISOString().split('T')[0];
+
+        const currentStart = formatDisplay(currentMonday);
+        const currentEnd = formatDisplay(currentSunday);
+        const nextStart = formatDisplay(nextMonday);
+        const nextEnd = formatDisplay(nextSunday);
+
+        // Prompt for week selection with dynamic dates
+        const weekChoice = prompt(
+            `Which week do you want to report?\nสัปดาห์ไหนที่ต้องการรายงาน?\n\n` +
+            `1 = THIS WEEK (${currentStart.en}-${currentEnd.en})\n` +
+            `     สัปดาห์นี้ (${currentStart.th}-${currentEnd.th})\n\n` +
+            `2 = NEXT WEEK (${nextStart.en}-${nextEnd.en})\n` +
+            `     สัปดาห์หน้า (${nextStart.th}-${nextEnd.th})\n\n` +
+            `3 = CUSTOM DATES\n` +
+            `     กำหนดวันที่เอง\n\n` +
+            `Enter 1, 2, or 3:`
         );
 
         let startDate, endDate;
 
-        if (useThisWeek) {
-            // Hardcoded: This week (Monday Nov 17 - Sunday Nov 23, 2025)
-            startDate = '2025-11-17';
-            endDate = '2025-11-23';
-        } else {
+        if (weekChoice === '1') {
+            // This week
+            startDate = formatISO(currentMonday);
+            endDate = formatISO(currentSunday);
+        } else if (weekChoice === '2') {
+            // Next week
+            startDate = formatISO(nextMonday);
+            endDate = formatISO(nextSunday);
+        } else if (weekChoice === '3') {
             // Custom date range
             startDate = prompt('Start date (YYYY-MM-DD) / วันเริ่มต้น:');
             if (!startDate) return;
 
             endDate = prompt('End date (YYYY-MM-DD) / วันสิ้นสุด:');
             if (!endDate) return;
+        } else {
+            // Cancelled or invalid input
+            return;
         }
 
         console.log(`📊 Generating weekly report: ${startDate} to ${endDate}`);
