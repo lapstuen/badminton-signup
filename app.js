@@ -3870,6 +3870,17 @@ function updateUI() {
             playersListContainer.style.display = 'none';
         }
         return; // Exit early, don't render player list
+    }
+
+    // Hide player list for regular users when session is not published
+    const userRole = state.loggedInUser.role || 'user';
+    const isAdminOrModerator = (userRole === 'admin' || userRole === 'moderator');
+
+    if (!state.published && !isAdminOrModerator) {
+        if (playersListContainer) {
+            playersListContainer.style.display = 'none';
+        }
+        return; // Exit early, don't render player list for regular users
     } else {
         if (playersListContainer) {
             playersListContainer.style.display = 'block';
