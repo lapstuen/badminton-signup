@@ -4919,12 +4919,40 @@ async function getRegularPlayersForDay(dayNumber) {
 }
 
 async function changePaymentAmount() {
-    const newAmount = prompt('New payment amount in THB / ราคาใหม่ (บาท):', state.paymentAmount);
+    // If session is published, payment amount cannot be changed
+    if (state.published) {
+        alert(
+            `🔒 PAYMENT AMOUNT FOR THIS SESSION\n` +
+            `ราคาสำหรับเซสชันนี้\n\n` +
+            `💰 ${state.paymentAmount} THB\n\n` +
+            `This amount is locked for the current session.\n` +
+            `ราคานี้ถูกล็อคสำหรับเซสชันปัจจุบัน\n\n` +
+            `To change: Start new session (New button)\n` +
+            `หากต้องการเปลี่ยน: เริ่มเซสชันใหม่ (ปุ่ม New)`
+        );
+        return;
+    }
+
+    // Session is not published (draft mode) - allow changing
+    const newAmount = prompt(
+        '⚠️ IMPORTANT: This amount will be used for ALL players in this session!\n' +
+        'สำคัญ: ราคานี้จะใช้กับผู้เล่นทุกคนในเซสชันนี้!\n\n' +
+        'Once published, it CANNOT be changed.\n' +
+        'เมื่อเผยแพร่แล้ว จะไม่สามารถเปลี่ยนได้\n\n' +
+        'Enter payment amount in THB / ใส่ราคา (บาท):',
+        state.paymentAmount
+    );
+
     if (newAmount !== null && !isNaN(newAmount) && newAmount >= 0) {
         state.paymentAmount = parseInt(newAmount);
         await saveSessionData();
         updateUI();
-        alert(`Payment amount updated to ${state.paymentAmount} THB / อัปเดตราคาเป็น ${state.paymentAmount} บาทแล้ว`);
+        alert(
+            `✅ Payment amount set to ${state.paymentAmount} THB\n` +
+            `ตั้งราคาเป็น ${state.paymentAmount} บาทแล้ว\n\n` +
+            `This will be locked when you publish the session.\n` +
+            `ราคานี้จะถูกล็อคเมื่อคุณเผยแพร่เซสชัน`
+        );
 
         // Mark step 3 as completed
         markStepCompleted('Change Payment Amount');
