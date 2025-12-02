@@ -3216,10 +3216,9 @@ async function cancelRegistration() {
         // Recalculate positions so waiting list players move up correctly
         await recalculatePlayerPositions();
 
-        // Send Line notification (async, don't wait) - only if self was cancelled
-        if (currentPlayer) {
-            sendLineCancellationNotification(userName);
-        }
+        // NOTE: Line notification is now sent automatically by Firestore trigger (onPlayerDeleted)
+        // No need to call sendLineCancellationNotification() from frontend anymore
+        // This ensures notification is sent even if user's phone/browser has issues
 
         // Clear localStorage
         localStorage.removeItem('userName');

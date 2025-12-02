@@ -4,8 +4,13 @@
  */
 
 const {onCall, onRequest, HttpsError} = require('firebase-functions/v2/https');
+const {onDocumentDeleted} = require('firebase-functions/v2/firestore');
 const {defineSecret} = require('firebase-functions/params');
+const admin = require('firebase-admin');
 const axios = require('axios');
+
+// Initialize Firebase Admin SDK
+admin.initializeApp();
 
 // Environment secrets (for v2 Cloud Functions)
 const lineToken = defineSecret('LINE_TOKEN');
@@ -328,9 +333,7 @@ ${playerName} ยกเลิกการลงทะเบียน
         message += `
 
 👉 Sign up here / ลงทะเบียนที่นี่:
-${appUrl}
-
-Reply quickly! / ตอบเร็ว!`;
+${appUrl}`;
     }
 
     return message;
@@ -448,9 +451,6 @@ function buildNudgeMessage(
 👥 Currently: ${currentPlayers}/${maxPlayers} players
 ปัจจุบัน: ${currentPlayers}/${maxPlayers} คน
 
-Please register soon to keep costs down! 🙏
-กรุณาลงทะเบียนเร็วๆ เพื่อรักษาค่าใช้จ่ายให้ต่ำ!
-
 👉 Sign up here / ลงทะเบียนที่นี่:
 ${appUrl}`;
 
@@ -560,13 +560,7 @@ exports.sendPasswordResetNotification = onCall({
         const message = `🔐 PASSWORD RESET / รีเซ็ตรหัสผ่าน
 
 User / ผู้ใช้: ${userName}
-Time / เวลา: ${timestamp}
-
-⚠️ This user has reset their password to default (123)
-ผู้ใช้นี้ได้รีเซ็ตรหัสผ่านเป็นค่าเริ่มต้น (123)
-
-If this was not authorized, please contact admin immediately.
-หากไม่ได้รับอนุญาต กรุณาติดต่อผู้ดูแลระบบทันที`;
+Time / เวลา: ${timestamp}`;
 
         // Send message to Line group
         const response = await axios.post(
@@ -847,3 +841,113 @@ function buildWeeklyReportMessage(
 
     return message;
 }
+
+/**
+ * FIRESTORE TRIGGER: Automatic cancellation notification
+ * Sends Line notification when a player document is deleted
+ * This runs entirely on the server - independent of user's phone/browser
+ */
+exports.onPlayerDeleted = onDocumentDeleted({
+    document: 'sessions/{sessionId}/players/{playerId}',
+    secrets: [lineToken, lineGroupId]
+}, async (event) => {
+    try {
+        const deletedData = event.data.data();
+        const sessionId = event.params.sessionId;
+
+        // Skip if no data (shouldn't happen, but safety check)
+        if (!deletedData) {
+            console.log('⚠️ No deleted data found, skipping notification');
+            return null;
+        }
+
+        const playerName = deletedData.name;
+        console.log(`🗑️ Player deleted: ${playerName} from session ${sessionId}`);
+
+        // Skip notification for guests (they have guestOf field)
+        if (deletedData.guestOf) {
+            console.log(`👤 Skipping notification for guest: ${playerName}`);
+            return null;
+        }
+
+        // Get session data
+        const db = admin.firestore();
+        const sessionDoc = await db.collection('sessions').doc(sessionId).get();
+
+        if (!sessionDoc.exists) {
+            console.log(`⚠️ Session ${sessionId} not found, skipping notification`);
+            return null;
+        }
+
+        const sessionData = sessionDoc.data();
+
+        // Skip if session is not published (draft mode)
+        if (!sessionData.published) {
+            console.log('⚠️ Session not published, skipping notification');
+            return null;
+        }
+
+        // Skip if session is closed/archived
+        if (sessionData.closed) {
+            console.log('⚠️ Session is closed/archived, skipping notification');
+            return null;
+        }
+
+        // Count remaining players
+        const playersSnapshot = await db.collection('sessions').doc(sessionId)
+            .collection('players').get();
+        const currentPlayers = playersSnapshot.size;
+        const maxPlayers = sessionData.maxPlayers || 12;
+
+        // Check if there's a waiting list
+        const hasWaitingList = currentPlayers >= maxPlayers;
+
+        // Get environment variables
+        const accessToken = lineToken.value();
+        const groupId = lineGroupId.value();
+
+        if (!accessToken || !groupId) {
+            console.error('❌ Line credentials not configured');
+            return null;
+        }
+
+        // Build notification message
+        const message = buildCancellationMessage(
+            playerName,
+            currentPlayers,
+            maxPlayers,
+            hasWaitingList,
+            sessionData.date || sessionId,
+            sessionData.day || 'Unknown',
+            sessionData.time || 'Unknown',
+            'https://lapstuen.github.io/badminton-signup/'
+        );
+
+        console.log('📤 Sending automatic cancellation notification for:', playerName);
+
+        // Send message to Line group
+        const response = await axios.post(
+            LINE_API_URL,
+            {
+                to: groupId,
+                messages: [{ type: 'text', text: message }]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        console.log('✅ Automatic cancellation notification sent:', response.data);
+        return { success: true, playerName: playerName };
+
+    } catch (error) {
+        console.error('❌ Error in onPlayerDeleted trigger:', error.message);
+        if (error.response) {
+            console.error('Line API error:', error.response.data);
+        }
+        return null;
+    }
+});
