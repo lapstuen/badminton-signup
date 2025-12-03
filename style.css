@@ -65,6 +65,97 @@ header h1 {
     margin: 0;
 }
 
+/* Thai/English text sizing */
+.thai-text {
+    font-size: 1.1em;
+}
+
+.eng-text {
+    font-size: 0.75em;
+    color: #9ca3af;
+}
+
+/* Wallet Section (styled like session-details) */
+.wallet-section {
+    background: #f0f9ff;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.wallet-header {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.wallet-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1e40af;
+    margin: 0;
+}
+
+.wallet-user {
+    position: absolute;
+    right: 0;
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.wallet-refresh-btn {
+    position: absolute;
+    left: 0;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.5;
+    transition: opacity 0.2s, transform 0.3s;
+}
+
+.wallet-refresh-btn:hover {
+    opacity: 1;
+}
+
+.wallet-refresh-btn:active {
+    transform: rotate(180deg);
+}
+
+.wallet-balance {
+    font-size: 16px;
+    color: #3730a3;
+    margin-bottom: 8px;
+}
+
+.wallet-balance strong {
+    font-size: 22px;
+    color: #ea580c;
+}
+
+.wallet-transactions-btn {
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wallet-transactions-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+    border-color: #9ca3af;
+}
+
 /* Old session-info - no longer used */
 .session-info {
     display: none;

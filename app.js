@@ -20,7 +20,7 @@ let state = {
     players: [],
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
-    sessionDay: 'Not Set / ไม่ได้กำหนด', // Default to day 8 (blank)
+    sessionDay: 'ไม่ได้กำหนด / Not Set', // Default to day 8 (blank)
     sessionTime: '10:00 - 12:00', // Default time (most common)
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
@@ -1602,7 +1602,7 @@ async function testSessionAnnouncement() {
         const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
 
         const notificationData = {
-            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
             sessionDate: state.sessionDate || '01/01/2025',
             sessionTime: state.sessionTime || '18:00 - 20:00',
             currentPlayers: playerNames.length,  // Use actual player count
@@ -1644,7 +1644,7 @@ async function testCancellationNotification() {
             maxPlayers: state.maxPlayers,
             hasWaitingList: hasWaitingList,
             sessionDate: state.sessionDate || '01/01/2025',
-            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
             sessionTime: state.sessionTime || '18:00 - 20:00',
             appUrl: PRODUCTION_URL  // Always use production URL for Line messages
         };
@@ -1672,7 +1672,7 @@ async function testNudgeNotification() {
         const sendNotification = functions.httpsCallable('sendNudgeNotification');
 
         const notificationData = {
-            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
+            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
             sessionDate: state.sessionDate || '01/01/2025',
             sessionTime: state.sessionTime || '18:00 - 20:00',
             currentPlayers: activePlayers.length,
@@ -3603,11 +3603,11 @@ function generatePaymentQR() {
     const hasPaid = currentPlayer && currentPlayer.paid;
 
     if (hasPaid) {
-        // Already paid - show green button with "Paid ✓"
+        // Already paid - show green button with "จ่ายแล้ว ✓"
         qrContainer.innerHTML = `
             <div style="text-align: center;">
                 <button style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: not-allowed; font-weight: bold;" disabled>
-                    Paid ✓<br>ชำระแล้ว ✓
+                    <span class="thai-text">จ่ายแล้ว ✓</span><br><span class="eng-text" style="color: rgba(255,255,255,0.8);">Paid</span>
                 </button>
             </div>
         `;
@@ -3733,13 +3733,13 @@ function updateUI() {
                     signupButton.disabled = true;
                     signupButton.style.background = '#9ca3af';
                     signupButton.style.cursor = 'not-allowed';
-                    signupButton.innerHTML = `Insufficient Balance<br>ยอดเงินไม่เพียงพอ<br><small style="font-size: 12px;">Balance: ${userBalance} THB (Need: ${state.paymentAmount} THB)</small>`;
+                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ต้องการ: ${state.paymentAmount} THB)</small>`;
                 } else {
                     // Sufficient balance - green button
                     signupButton.disabled = false;
                     signupButton.style.background = '#10b981';
                     signupButton.style.cursor = 'pointer';
-                    signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
+                    signupButton.innerHTML = `<span class="thai-text">ลงทะเบียน ${state.loggedInUser.name}</span><br><span class="eng-text">Join as ${state.loggedInUser.name}</span>`;
                 }
 
                 // Show "Register Guest" button only if user is logged in and not registered
@@ -3834,8 +3834,13 @@ function updateUI() {
         if (playersListContainerEl && state.loggedInUser) playersListContainerEl.style.display = 'block';
     }
 
-    // Update session info
-    document.getElementById('sessionDay').textContent = state.sessionDay;
+    // Update session info - split Thai/English and display Thai larger
+    const dayParts = state.sessionDay.split(' / ');
+    if (dayParts.length === 2) {
+        document.getElementById('sessionDay').innerHTML = `<span class="thai-text">${dayParts[0]}</span> <span class="eng-text">${dayParts[1]}</span>`;
+    } else {
+        document.getElementById('sessionDay').textContent = state.sessionDay;
+    }
     document.getElementById('sessionTime').textContent = state.sessionTime;
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
     document.getElementById('maxPlayers').textContent = state.maxPlayers;
@@ -3931,7 +3936,7 @@ function updateUI() {
         if (player.paid) {
             const badge = document.createElement('span');
             badge.className = 'paid-badge';
-            badge.textContent = 'Paid ✓';
+            badge.textContent = 'จ่ายแล้ว ✓';
             statusDiv.appendChild(badge);
         }
         // REMOVED: "Pay Now" button - all payments processed at publish time
@@ -4453,7 +4458,7 @@ async function clearSession() {
 
             // Update session date and UNPUBLISH - Set to day 8 (Not Set)
             state.sessionDate = new Date().toLocaleDateString('en-GB');
-            state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
+            state.sessionDay = 'ไม่ได้กำหนด / Not Set'; // Day 8
             state.sessionTime = '10:00 - 12:00'; // Default time (most common)
             state.maxPlayers = 12; // Keep default 12 (show 0 / 12)
             state.published = false; // Set to draft mode
@@ -4491,13 +4496,13 @@ async function clearSession() {
 async function previewSession() {
     try {
         const days = [
-            'Monday / วันจันทร์',
-            'Tuesday / วันอังคาร',
-            'Wednesday / วันพุธ',
-            'Thursday / พฤหัสบดี',
-            'Friday / วันศุกร์',
-            'Saturday / วันเสาร์',
-            'Sunday / อาทิตย์'
+            'วันจันทร์ / Monday',
+            'วันอังคาร / Tuesday',
+            'วันพุธ / Wednesday',
+            'พฤหัสบดี / Thursday',
+            'วันศุกร์ / Friday',
+            'วันเสาร์ / Saturday',
+            'อาทิตย์ / Sunday'
         ];
         const currentDayIndex = days.findIndex(d => d === state.sessionDay);
         const dayNumber = currentDayIndex + 1;
@@ -4825,14 +4830,14 @@ async function refundWaitingList() {
 
 async function changeSessionDetails() {
     const days = [
-        'Monday / วันจันทร์',
-        'Tuesday / วันอังคาร',
-        'Wednesday / วันพุธ',
-        'Thursday / วันพฤหัสบดี',
-        'Friday / วันศุกร์',
-        'Saturday / วันเสาร์',
-        'Sunday / วันอาทิตย์',
-        'Not Set / ไม่ได้กำหนด' // Day 8 - blank day
+        'วันจันทร์ / Monday',
+        'วันอังคาร / Tuesday',
+        'วันพุธ / Wednesday',
+        'วันพฤหัสบดี / Thursday',
+        'วันศุกร์ / Friday',
+        'วันเสาร์ / Saturday',
+        'วันอาทิตย์ / Sunday',
+        'ไม่ได้กำหนด / Not Set' // Day 8 - blank day
     ];
 
     const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-8):`;
@@ -5071,13 +5076,13 @@ function manageRegularPlayers() {
 
 async function selectDayForRegularPlayers(dayNumber) {
     const days = [
-        'Monday / วันจันทร์',
-        'Tuesday / วันอังคาร',
-        'Wednesday / วันพุธ',
-        'Thursday / วันพฤหัสบดี',
-        'Friday / วันศุกร์',
-        'Saturday / วันเสาร์',
-        'Sunday / วันอาทิตย์'
+        'วันจันทร์ / Monday',
+        'วันอังคาร / Tuesday',
+        'วันพุธ / Wednesday',
+        'วันพฤหัสบดี / Thursday',
+        'วันศุกร์ / Friday',
+        'วันเสาร์ / Saturday',
+        'วันอาทิตย์ / Sunday'
     ];
 
     const selectionArea = document.getElementById('regularPlayersSelectionArea');
@@ -5434,17 +5439,17 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
     // Find which day number we're on
     const days = [
-        'Monday / วันจันทร์',
-        'Tuesday / วันอังคาร',
-        'Wednesday / วันพุธ',
-        'Thursday / วันพฤหัสบดี',
-        'Friday / วันศุกร์',
-        'Saturday / วันเสาร์',
-        'Sunday / วันอาทิตย์'
+        'วันจันทร์ / Monday',
+        'วันอังคาร / Tuesday',
+        'วันพุธ / Wednesday',
+        'วันพฤหัสบดี / Thursday',
+        'วันศุกร์ / Friday',
+        'วันเสาร์ / Saturday',
+        'วันอาทิตย์ / Sunday'
     ];
     const currentDayIndex = days.findIndex(d => d === state.sessionDay);
     const dayNumber = currentDayIndex + 1; // 1-7
-    const dayNameShort = state.sessionDay.split(' / ')[0]; // "Monday"
+    const dayNameShort = state.sessionDay.split(' / ')[1]; // "Monday" (English is now second)
 
     // Update title to show current day
     titleEl.textContent = `Manage Players: ${state.sessionDay}`;
@@ -5654,15 +5659,15 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
 async function togglePlayerForToday(user, isCurrentlyRegistered) {
     const days = [
-        'Monday / วันจันทร์',
-        'Tuesday / วันอังคาร',
-        'Wednesday / วันพุธ',
-        'Thursday / วันพฤหัสบดี',
-        'Friday / วันศุกร์',
-        'Saturday / วันเสาร์',
-        'Sunday / วันอาทิตย์'
+        'วันจันทร์ / Monday',
+        'วันอังคาร / Tuesday',
+        'วันพุธ / Wednesday',
+        'วันพฤหัสบดี / Thursday',
+        'วันศุกร์ / Friday',
+        'วันเสาร์ / Saturday',
+        'วันอาทิตย์ / Sunday'
     ];
-    const dayName = state.sessionDay.split(' / ')[0]; // "Monday"
+    const dayName = state.sessionDay.split(' / ')[1]; // "Monday" (English is now second)
 
     try {
         if (isCurrentlyRegistered) {
