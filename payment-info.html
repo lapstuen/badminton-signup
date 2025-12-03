@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>วิธีการชำระเงิน / Payment Information</title>
+    <title>เติมเงิน Wallet / Top Up Wallet</title>
     <style>
         * {
             margin: 0;
@@ -31,14 +31,14 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             padding: 30px 20px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 5px;
         }
 
@@ -52,11 +52,11 @@
         }
 
         .section {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .section-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #374151;
             margin-bottom: 15px;
@@ -65,82 +65,144 @@
             gap: 8px;
         }
 
-        .qr-container {
-            text-align: center;
-            background: #f9fafb;
+        .thai-text {
+            font-size: 1.1em;
+        }
+
+        .eng-text {
+            font-size: 0.8em;
+            color: #6b7280;
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
             padding: 20px;
             border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .warning-box .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .warning-box .thai {
+            font-size: 18px;
+            font-weight: bold;
+            color: #991b1b;
+            margin-bottom: 5px;
+        }
+
+        .warning-box .eng {
+            font-size: 14px;
+            color: #b91c1c;
+        }
+
+        /* Amount Options */
+        .amount-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .qr-container img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        .amount-box {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 3px solid #0ea5e9;
+            border-radius: 16px;
+            padding: 25px 15px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .bank-info {
-            background: #f3f4f6;
+        .amount-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
+        }
+
+        .amount-box .amount {
+            font-size: 36px;
+            font-weight: bold;
+            color: #0369a1;
+            margin-bottom: 5px;
+        }
+
+        .amount-box .label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        /* How to pay */
+        .how-to-pay {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
             padding: 20px;
             border-radius: 12px;
-            border-left: 4px solid #10b981;
         }
 
-        .bank-row {
+        .how-to-pay h3 {
+            color: #166534;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .step {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #e5e7eb;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
-        .bank-row:last-child {
+        .step:last-child {
             margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
         }
 
-        .bank-label {
-            font-weight: 600;
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        .bank-value {
+        .step-number {
+            background: #22c55e;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: bold;
-            color: #111827;
             font-size: 14px;
-            text-align: right;
+            flex-shrink: 0;
         }
 
-        .account-number {
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            letter-spacing: 1px;
+        .step-text {
+            flex: 1;
         }
 
-        .instructions {
-            background: #fef3c7;
-            border: 2px solid #f59e0b;
+        .step-text .thai {
+            font-size: 15px;
+            color: #166534;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .step-text .eng {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* Info box */
+        .info-box {
+            background: #f3f4f6;
             padding: 15px;
-            border-radius: 12px;
+            border-radius: 10px;
             margin-top: 20px;
+            text-align: center;
         }
 
-        .instructions p {
-            color: #92400e;
-            font-size: 14px;
+        .info-box p {
+            font-size: 13px;
+            color: #6b7280;
             line-height: 1.6;
-            margin-bottom: 8px;
-        }
-
-        .instructions p:last-child {
-            margin-bottom: 0;
-        }
-
-        .instructions strong {
-            color: #78350f;
         }
 
         .back-button {
@@ -163,25 +225,13 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
 
-        .back-button:active {
-            transform: translateY(0);
-        }
-
         @media (max-width: 480px) {
             .header h1 {
-                font-size: 20px;
+                font-size: 24px;
             }
 
-            .header p {
-                font-size: 14px;
-            }
-
-            .section-title {
-                font-size: 16px;
-            }
-
-            .content {
-                padding: 20px 15px;
+            .amount-box .amount {
+                font-size: 28px;
             }
         }
     </style>
@@ -189,69 +239,79 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>💰 วิธีการชำระเงิน</h1>
-            <p>Payment Information</p>
+            <h1>💰 เติมเงิน Wallet</h1>
+            <p>Top Up Your Wallet</p>
         </div>
 
         <div class="content">
-            <!-- QR Code Section -->
-            <div class="section">
-                <div class="section-title">
-                    📱 สแกน QR Code / Scan QR Code
-                </div>
-                <div class="qr-container">
-                    <img src="payment-qr.png" alt="Thai QR Payment - Krungthai Bank"
-                         onerror="this.onerror=null; this.style.display='none'; document.getElementById('qr-placeholder').style.display='block';">
-                    <div id="qr-placeholder" style="display: none; padding: 40px 20px; background: white; border: 3px dashed #d1d5db; border-radius: 12px;">
-                        <div style="font-size: 48px; margin-bottom: 15px;">📱</div>
-                        <p style="color: #374151; font-weight: bold; font-size: 16px; margin-bottom: 10px;">
-                            รอการอัปโหลด QR Code
-                        </p>
-                        <p style="color: #6b7280; font-size: 14px; margin-bottom: 5px;">
-                            QR Code image not uploaded yet
-                        </p>
-                        <p style="color: #9ca3af; font-size: 12px; margin-top: 15px; line-height: 1.5;">
-                            Admin: Upload 'payment-qr.png' to GitHub<br>
-                            หรือใช้บัญชีธนาคารด้านล่าง / Or use bank account below
-                        </p>
-                    </div>
-                    <p style="margin-top: 15px; color: #6b7280; font-size: 14px;">
-                        สแกนด้วยแอปธนาคารของคุณ<br>
-                        Scan with your banking app
-                    </p>
-                </div>
+            <!-- Warning Box -->
+            <div class="warning-box">
+                <div class="icon">⚠️</div>
+                <p class="thai">ยอดเงินต้องมีอย่างน้อย 150 บาท</p>
+                <p class="eng">Wallet must have at least 150 THB</p>
+                <p style="margin-top: 10px; font-size: 13px; color: #991b1b;">
+                    ถ้ายอดเงินไม่พอ คุณจะไม่อยู่ในรายชื่อเมื่อเซสชันถูกสร้าง<br>
+                    <span style="color: #b91c1c;">If insufficient balance, you won't be on the list when session is generated</span>
+                </p>
             </div>
 
-            <!-- Bank Account Details -->
+            <!-- Amount Options -->
             <div class="section">
                 <div class="section-title">
-                    🏦 ข้อมูลบัญชีธนาคาร / Bank Account Details
+                    <span class="thai-text">💵 เลือกจำนวนเงิน</span>
+                    <span class="eng-text">Choose Amount</span>
                 </div>
-                <div class="bank-info">
-                    <div class="bank-row">
-                        <span class="bank-label">ธนาคาร / Bank:</span>
-                        <span class="bank-value">Krungthai / กรุงไทย</span>
+                <div class="amount-options">
+                    <div class="amount-box">
+                        <div class="amount">500</div>
+                        <div class="label">บาท / THB</div>
                     </div>
-                    <div class="bank-row">
-                        <span class="bank-label">ชื่อบัญชี / Account Name:</span>
-                        <span class="bank-value">น.ส.สุรีย์ ลาพสตูเอน</span>
-                    </div>
-                    <div class="bank-row">
-                        <span class="bank-label">เลขบัญชี / Account No:</span>
-                        <span class="bank-value account-number">XXX-X-XXXXX-X</span>
+                    <div class="amount-box">
+                        <div class="amount">1,000</div>
+                        <div class="label">บาท / THB</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Instructions -->
-            <div class="instructions">
-                <p><strong>📝 วิธีการเติมเงิน / How to Top Up:</strong></p>
-                <p>1. สแกน QR Code หรือโอนเงินไปยังบัญชีข้างบน</p>
-                <p>1. Scan QR Code or transfer to account above</p>
-                <p style="margin-top: 12px;">2. แจ้งแอดมินใน Line Group พร้อมสลิป</p>
-                <p>2. Notify admin in Line Group with slip</p>
-                <p style="margin-top: 12px;">3. รอแอดมินอัปเดตยอดเงินของคุณ</p>
-                <p>3. Wait for admin to update your wallet balance</p>
+            <!-- How to pay -->
+            <div class="section">
+                <div class="how-to-pay">
+                    <h3>📝 วิธีเติมเงิน / How to Top Up</h3>
+
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-text">
+                            <p class="thai">จ่ายเงินสดให้แอดมิน (500 หรือ 1,000 บาท)</p>
+                            <p class="eng">Pay cash to admin (500 or 1,000 THB)</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-text">
+                            <p class="thai">แอดมินจะเติมเงินเข้า Wallet ของคุณ</p>
+                            <p class="eng">Admin will top up your wallet</p>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-text">
+                            <p class="thai">ยอดเงินจะถูกหักอัตโนมัติเมื่อคุณลงทะเบียน</p>
+                            <p class="eng">Balance is auto-deducted when you register</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info box -->
+            <div class="info-box">
+                <p>
+                    💡 ค่าแบดมินตันจะคำนวณและแจ้งล่วงหน้าทุกสัปดาห์<br>
+                    <span style="color: #9ca3af;">Badminton fee is calculated and announced weekly</span><br><br>
+                    ราคาเท่ากันตลอดทั้งสัปดาห์<br>
+                    <span style="color: #9ca3af;">Same price for the entire week</span>
+                </p>
             </div>
 
             <!-- Back Button -->
