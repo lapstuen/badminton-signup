@@ -3709,7 +3709,7 @@ function updateUI() {
                 cancelBtnEl.style.display = 'block';
                 showSuccessMessage(alreadyRegistered);
 
-                // STILL show "Register Guest" button - users can register guests even after registering themselves
+                // Show "Register Guest" button ONLY when user is registered themselves
                 const guestBtnEl = document.getElementById('guestRegistrationBtn');
                 if (guestBtnEl) {
                     guestBtnEl.style.display = 'block';
@@ -3742,10 +3742,10 @@ function updateUI() {
                     signupButton.innerHTML = `<span class="thai-text">ลงทะเบียน ${state.loggedInUser.name}</span><br><span class="eng-text">Join as ${state.loggedInUser.name}</span>`;
                 }
 
-                // Show "Register Guest" button only if user is logged in and not registered
+                // Hide "Register Guest" button - user must register themselves first
                 const guestBtnEl = document.getElementById('guestRegistrationBtn');
                 if (guestBtnEl) {
-                    guestBtnEl.style.display = 'block';
+                    guestBtnEl.style.display = 'none';
                 }
             }
         }
@@ -3809,8 +3809,9 @@ function updateUI() {
         if (sessionDetailsEl) sessionDetailsEl.style.display = 'none';
         if (playersListContainerEl) playersListContainerEl.style.display = 'none';
 
-        // Hide registration form and guest button
+        // Hide registration form, cancel button and guest button
         if (registrationFormEl) registrationFormEl.style.display = 'none';
+        if (cancelBtnEl) cancelBtnEl.style.display = 'none';
         const guestBtnEl = document.getElementById('guestRegistrationBtn');
         if (guestBtnEl) guestBtnEl.style.display = 'none';
 
