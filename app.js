@@ -6657,16 +6657,31 @@ async function enablePushNotifications() {
         }
 
         // Get FCM token (VAPID key from Firebase Console - Cloud Messaging > Web Push certificates)
-        // Generate this at: Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
         const VAPID_KEY = 'BF5cc-ESVvkSkx0S8dbvTK9cD5fdLZDB6AKt_jqZPmmhQR5veZNfPZ8XKeVgcDR4C95pZ6gQx__KfCJVk-gUkho';
+
+        // Get the service worker registration we already have
+        const swPath = window.location.hostname === 'localhost'
+            ? '/firebase-messaging-sw.js'
+            : '/badminton-signup/firebase-messaging-sw.js';
+
+        console.log('📱 Getting service worker registration...');
+        const swRegistration = await navigator.serviceWorker.register(swPath);
+        await navigator.serviceWorker.ready;
+        console.log('📱 Service worker ready:', swRegistration.scope);
 
         let token;
         try {
-            token = await messaging.getToken({ vapidKey: VAPID_KEY });
+            // Pass our service worker registration to getToken
+            token = await messaging.getToken({
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: swRegistration
+            });
         } catch (tokenError) {
-            console.log('📱 Trying without VAPID key...');
+            console.log('📱 Token error:', tokenError.message);
             // Try without VAPID key as fallback
-            token = await messaging.getToken();
+            token = await messaging.getToken({
+                serviceWorkerRegistration: swRegistration
+            });
         }
 
         if (token) {
