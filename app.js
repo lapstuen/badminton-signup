@@ -6553,8 +6553,11 @@ async function initializeFCM() {
             return;
         }
 
-        // Register service worker
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        // Register service worker (use relative path for GitHub Pages)
+        const swPath = window.location.hostname === 'localhost'
+            ? '/firebase-messaging-sw.js'
+            : '/badminton-signup/firebase-messaging-sw.js';
+        const registration = await navigator.serviceWorker.register(swPath);
         console.log('📱 Service worker registered:', registration.scope);
 
         // Initialize Firebase Messaging
