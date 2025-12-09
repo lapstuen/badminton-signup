@@ -2,7 +2,7 @@
   "name": "Badminton Påmelding",
   "short_name": "Badminton",
   "description": "Påmeldingssystem for badminton",
-  "start_url": "/",
+  "start_url": "/badminton-signup/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#10b981",
