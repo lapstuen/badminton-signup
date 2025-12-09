@@ -844,8 +844,8 @@ function buildWeeklyReportMessage(
 
 /**
  * FIRESTORE TRIGGER: Automatic cancellation notification
- * Sends Line notification when a player document is deleted
- * This runs entirely on the server - independent of user's phone/browser
+ * Sends FCM push notification to admins when a player cancels
+ * Also attempts Line notification (may fail on free plan)
  */
 exports.onPlayerDeleted = onDocumentDeleted({
     document: 'sessions/{sessionId}/players/{playerId}',
@@ -902,52 +902,146 @@ exports.onPlayerDeleted = onDocumentDeleted({
         // Check if there's a waiting list
         const hasWaitingList = currentPlayers >= maxPlayers;
 
-        // Get environment variables
-        const accessToken = lineToken.value();
-        const groupId = lineGroupId.value();
+        // Build notification message
+        const title = hasWaitingList
+            ? `${playerName} cancelled`
+            : `🏸 SLOT AVAILABLE!`;
+        const body = hasWaitingList
+            ? `Now ${currentPlayers}/${maxPlayers} players`
+            : `${playerName} cancelled. Now ${currentPlayers}/${maxPlayers} players`;
 
-        if (!accessToken || !groupId) {
-            console.error('❌ Line credentials not configured');
-            return null;
+        // ==========================================
+        // SEND FCM PUSH NOTIFICATIONS TO ADMINS
+        // ==========================================
+        try {
+            // Get all admin users with FCM tokens
+            const adminsSnapshot = await db.collection('authorizedUsers')
+                .where('role', '==', 'admin')
+                .get();
+
+            const tokens = [];
+            adminsSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.fcmToken) {
+                    tokens.push(data.fcmToken);
+                }
+            });
+
+            if (tokens.length > 0) {
+                console.log(`📱 Sending FCM to ${tokens.length} admin(s)`);
+
+                // Send to all admin tokens
+                const fcmMessage = {
+                    notification: {
+                        title: title,
+                        body: body
+                    },
+                    data: {
+                        playerName: playerName,
+                        sessionId: sessionId,
+                        currentPlayers: String(currentPlayers),
+                        maxPlayers: String(maxPlayers),
+                        click_action: 'https://lapstuen.github.io/badminton-signup/'
+                    },
+                    tokens: tokens
+                };
+
+                const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+                console.log(`✅ FCM sent: ${fcmResponse.successCount} success, ${fcmResponse.failureCount} failed`);
+
+                // Log any failures
+                if (fcmResponse.failureCount > 0) {
+                    fcmResponse.responses.forEach((resp, idx) => {
+                        if (!resp.success) {
+                            console.log(`❌ FCM failed for token ${idx}:`, resp.error?.message);
+                        }
+                    });
+                }
+            } else {
+                console.log('📱 No admin FCM tokens found');
+            }
+        } catch (fcmError) {
+            console.error('❌ FCM error:', fcmError.message);
         }
 
-        // Build notification message
-        const message = buildCancellationMessage(
-            playerName,
-            currentPlayers,
-            maxPlayers,
-            hasWaitingList,
-            sessionData.date || sessionId,
-            sessionData.day || 'Unknown',
-            sessionData.time || 'Unknown',
-            'https://lapstuen.github.io/badminton-signup/'
-        );
+        // ==========================================
+        // ALSO TRY LINE (may fail on free plan)
+        // ==========================================
+        try {
+            const accessToken = lineToken.value();
+            const groupId = lineGroupId.value();
 
-        console.log('📤 Sending automatic cancellation notification for:', playerName);
+            if (accessToken && groupId) {
+                const lineMessage = buildCancellationMessage(
+                    playerName,
+                    currentPlayers,
+                    maxPlayers,
+                    hasWaitingList,
+                    sessionData.date || sessionId,
+                    sessionData.day || 'Unknown',
+                    sessionData.time || 'Unknown',
+                    'https://lapstuen.github.io/badminton-signup/'
+                );
 
-        // Send message to Line group
-        const response = await axios.post(
-            LINE_API_URL,
-            {
-                to: groupId,
-                messages: [{ type: 'text', text: message }]
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
+                console.log('📤 Attempting Line notification...');
+
+                const response = await axios.post(
+                    LINE_API_URL,
+                    {
+                        to: groupId,
+                        messages: [{ type: 'text', text: lineMessage }]
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    }
+                );
+
+                console.log('✅ Line notification sent:', response.data);
             }
-        );
+        } catch (lineError) {
+            // Line may fail on free plan - this is expected
+            console.log('⚠️ Line notification failed (expected on free plan):', lineError.message);
+        }
 
-        console.log('✅ Automatic cancellation notification sent:', response.data);
         return { success: true, playerName: playerName };
 
     } catch (error) {
         console.error('❌ Error in onPlayerDeleted trigger:', error.message);
-        if (error.response) {
-            console.error('Line API error:', error.response.data);
-        }
         return null;
+    }
+});
+
+/**
+ * Callable function to send test FCM notification
+ * For testing push notifications are working
+ */
+exports.testFCMNotification = onCall({}, async (request) => {
+    try {
+        const { fcmToken } = request.data;
+
+        if (!fcmToken) {
+            throw new HttpsError('invalid-argument', 'FCM token is required');
+        }
+
+        console.log('🧪 Sending test FCM notification');
+
+        const message = {
+            notification: {
+                title: '🧪 Test Notification',
+                body: 'FCM is working! Du vil motta varsler når noen melder seg av.'
+            },
+            token: fcmToken
+        };
+
+        const response = await admin.messaging().send(message);
+        console.log('✅ Test FCM sent:', response);
+
+        return { success: true, messageId: response };
+    } catch (error) {
+        console.error('❌ Test FCM error:', error.message);
+        throw new HttpsError('internal', 'Failed to send test notification: ' + error.message);
     }
 });

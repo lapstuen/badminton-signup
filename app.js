@@ -4148,7 +4148,8 @@ const adminGroupButtons = {
         { label: 'New', onclick: 'clearSession()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#f59e0b', color: 'white', bold: true },
         { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
-        { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' }
+        { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' },
+        { label: '🔔 Push', onclick: 'enablePushNotifications()', bg: '#8b5cf6', color: 'white' }
     ]
 };
 
@@ -6527,5 +6528,192 @@ function generateShareLink() {
 
     console.log('Share via Line:', lineShareUrl);
 }
+
+// ============================================
+// FIREBASE CLOUD MESSAGING (FCM) - PUSH NOTIFICATIONS
+// ============================================
+
+let messaging = null;
+
+/**
+ * Initialize Firebase Cloud Messaging
+ * Only works in browsers that support service workers
+ */
+async function initializeFCM() {
+    try {
+        // Check if browser supports service workers
+        if (!('serviceWorker' in navigator)) {
+            console.log('📱 Service workers not supported - FCM disabled');
+            return;
+        }
+
+        // Check if Notification API is supported
+        if (!('Notification' in window)) {
+            console.log('📱 Notifications not supported - FCM disabled');
+            return;
+        }
+
+        // Register service worker
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('📱 Service worker registered:', registration.scope);
+
+        // Initialize Firebase Messaging
+        messaging = firebase.messaging();
+
+        // Use the registered service worker
+        messaging.useServiceWorker(registration);
+
+        // Handle foreground messages (when app is open)
+        messaging.onMessage((payload) => {
+            console.log('📬 Foreground message received:', payload);
+
+            // Show notification manually for foreground
+            const title = payload.notification?.title || 'Badminton Update';
+            const body = payload.notification?.body || '';
+
+            // Show browser notification
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: '/icon-192.png',
+                    tag: 'badminton-foreground'
+                });
+            }
+
+            // Also show alert for immediate visibility
+            alert(`${title}\n\n${body}`);
+        });
+
+        console.log('📱 FCM initialized successfully');
+    } catch (error) {
+        console.error('❌ FCM initialization error:', error);
+    }
+}
+
+/**
+ * Request notification permission and get FCM token
+ * Call this when admin wants to enable push notifications
+ */
+async function enablePushNotifications() {
+    try {
+        // Check if user is logged in
+        if (!state.loggedInUser) {
+            alert('Please login first to enable push notifications.\n\nกรุณาเข้าสู่ระบบก่อนเพื่อเปิดใช้งาน push notifications');
+            return;
+        }
+
+        if (!messaging) {
+            await initializeFCM();
+        }
+
+        if (!messaging) {
+            alert('Push notifications are not supported in this browser.\n\nPush-varsler støttes ikke i denne nettleseren.');
+            return;
+        }
+
+        // Request permission
+        const permission = await Notification.requestPermission();
+        console.log('📱 Notification permission:', permission);
+
+        if (permission !== 'granted') {
+            alert('Notification permission denied.\n\nDu må tillate varsler for å motta push-meldinger.');
+            return;
+        }
+
+        // Get FCM token (VAPID key from Firebase Console - Cloud Messaging > Web Push certificates)
+        // Generate this at: Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
+        const VAPID_KEY = 'BF5cc-ESVvkSkx0S8dbvTK9cD5fdLZDB6AKt_jqZPmmhQR5veZNfPZ8XKeVgcDR4C95pZ6gQx__KfCJVk-gUkho';
+
+        let token;
+        try {
+            token = await messaging.getToken({ vapidKey: VAPID_KEY });
+        } catch (tokenError) {
+            console.log('📱 Trying without VAPID key...');
+            // Try without VAPID key as fallback
+            token = await messaging.getToken();
+        }
+
+        if (token) {
+            console.log('📱 FCM Token:', token);
+
+            // Store token in Firestore for this admin user
+            await storeFCMToken(token);
+
+            // Send test notification
+            try {
+                const testFCM = firebase.functions().httpsCallable('testFCMNotification');
+                await testFCM({ fcmToken: token });
+                alert('Push notifications enabled!\n\nPush-varsler er aktivert! Du vil nå motta varsler når noen melder seg av.\n\n(En test-notifikasjon ble sendt)');
+            } catch (testError) {
+                console.log('📱 Test notification failed (this is OK if functions not deployed yet)');
+                alert('Push notifications enabled!\n\nPush-varsler er aktivert! Du vil nå motta varsler når noen melder seg av.');
+            }
+        } else {
+            alert('Could not get FCM token. Try refreshing the page.\n\nKunne ikke få FCM-token. Prøv å oppdatere siden.');
+        }
+    } catch (error) {
+        console.error('❌ Error enabling push notifications:', error);
+
+        // More helpful error message
+        if (error.message?.includes('VAPID')) {
+            alert('VAPID key error. Admin needs to configure Firebase Cloud Messaging.\n\nSee: Firebase Console > Project Settings > Cloud Messaging > Web Push certificates');
+        } else {
+            alert(`Error enabling push notifications:\n${error.message}\n\nCheck browser console for details.`);
+        }
+    }
+}
+
+/**
+ * Store FCM token in Firestore
+ * Associates token with the logged-in user
+ */
+async function storeFCMToken(token) {
+    try {
+        if (!state.loggedInUser) {
+            console.log('📱 No user logged in, cannot store FCM token');
+            return;
+        }
+
+        // Store in authorizedUsers collection
+        await usersRef.doc(state.loggedInUser.name).update({
+            fcmToken: token,
+            fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log('📱 FCM token stored for user:', state.loggedInUser.name);
+    } catch (error) {
+        console.error('❌ Error storing FCM token:', error);
+    }
+}
+
+/**
+ * Get all admin FCM tokens for sending notifications
+ */
+async function getAdminFCMTokens() {
+    try {
+        const adminsSnapshot = await usersRef.where('role', '==', 'admin').get();
+        const tokens = [];
+
+        adminsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.fcmToken) {
+                tokens.push(data.fcmToken);
+            }
+        });
+
+        return tokens;
+    } catch (error) {
+        console.error('❌ Error getting admin FCM tokens:', error);
+        return [];
+    }
+}
+
+// Initialize FCM when app loads (after DOM is ready)
+document.addEventListener('DOMContentLoaded', () => {
+    // Delay FCM init slightly to not block main app initialization
+    setTimeout(() => {
+        initializeFCM();
+    }, 2000);
+});
 
 console.log('🔥 Firebase app loaded successfully!');
