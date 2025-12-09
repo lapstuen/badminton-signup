@@ -6725,15 +6725,30 @@ async function storeFCMToken(token) {
             return;
         }
 
+        // Use userId (document ID), not name
+        const docId = state.loggedInUser.userId || state.loggedInUser.name;
+        console.log('📱 Storing FCM token for doc ID:', docId);
+
         // Store in authorizedUsers collection
-        await usersRef.doc(state.loggedInUser.name).update({
+        await usersRef.doc(docId).update({
             fcmToken: token,
             fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log('📱 FCM token stored for user:', state.loggedInUser.name);
+        console.log('📱 FCM token stored successfully for:', state.loggedInUser.name);
     } catch (error) {
         console.error('❌ Error storing FCM token:', error);
+        // Try with name as fallback
+        try {
+            console.log('📱 Retrying with name as doc ID...');
+            await usersRef.doc(state.loggedInUser.name).update({
+                fcmToken: token,
+                fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log('📱 FCM token stored with fallback');
+        } catch (fallbackError) {
+            console.error('❌ Fallback also failed:', fallbackError);
+        }
     }
 }
 
