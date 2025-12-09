@@ -4149,7 +4149,8 @@ const adminGroupButtons = {
         { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#f59e0b', color: 'white', bold: true },
         { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
         { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' },
-        { label: '🔔 Push', onclick: 'enablePushNotifications()', bg: '#8b5cf6', color: 'white' }
+        { label: '🔔 Enable', onclick: 'enablePushNotifications()', bg: '#8b5cf6', color: 'white' },
+        { label: '🧪 Test', onclick: 'testPushNotification()', bg: '#f97316', color: 'white' }
     ]
 };
 
@@ -6740,6 +6741,62 @@ async function getAdminFCMTokens() {
     } catch (error) {
         console.error('❌ Error getting admin FCM tokens:', error);
         return [];
+    }
+}
+
+/**
+ * Test push notification - simple browser notification test
+ * Tests if notifications work at all before trying FCM
+ */
+async function testPushNotification() {
+    console.log('🧪 Testing push notification...');
+
+    // Step 1: Check if Notification API exists
+    if (!('Notification' in window)) {
+        alert('❌ Notification API not available in this browser.\n\nNotification API er ikke tilgjengelig i denne nettleseren.');
+        return;
+    }
+    console.log('✅ Step 1: Notification API exists');
+
+    // Step 2: Check current permission
+    console.log('📱 Current permission:', Notification.permission);
+
+    // Step 3: Request permission if needed
+    if (Notification.permission === 'default') {
+        console.log('📱 Requesting permission...');
+        const permission = await Notification.requestPermission();
+        console.log('📱 Permission result:', permission);
+
+        if (permission !== 'granted') {
+            alert('❌ Notification permission denied.\n\nDu må tillate varsler. Sjekk Safari/Chrome innstillinger.');
+            return;
+        }
+    } else if (Notification.permission === 'denied') {
+        alert('❌ Notifications are blocked.\n\nVarsler er blokkert. Gå til Safari → Innstillinger → Nettsteder → Varsler og tillat for denne siden.');
+        return;
+    }
+    console.log('✅ Step 2: Permission granted');
+
+    // Step 4: Show test notification
+    try {
+        const notification = new Notification('🧪 Test fra Badminton App', {
+            body: 'Push-varsler fungerer! Du vil motta varsler når noen melder seg av.',
+            icon: '/badminton-signup/icon-192.png',
+            tag: 'test-notification'
+        });
+
+        notification.onclick = () => {
+            console.log('📱 Notification clicked');
+            window.focus();
+            notification.close();
+        };
+
+        console.log('✅ Step 3: Notification sent!');
+        alert('✅ Test-varsel sendt!\n\nDu skal se en notifikasjon på skjermen. Hvis ikke, sjekk at varsler er aktivert i systeminnstillingene.');
+
+    } catch (error) {
+        console.error('❌ Error showing notification:', error);
+        alert(`❌ Kunne ikke vise notifikasjon:\n${error.message}`);
     }
 }
 
