@@ -6605,12 +6605,44 @@ async function enablePushNotifications() {
             return;
         }
 
+        // Check basic browser support
+        if (!('serviceWorker' in navigator)) {
+            alert('Service Workers not supported in this browser.\n\nDenne nettleseren støtter ikke Service Workers.');
+            return;
+        }
+
+        if (!('Notification' in window)) {
+            alert('Notifications API not supported in this browser.\n\nDenne nettleseren støtter ikke Notifications API.');
+            return;
+        }
+
+        // Check if Firebase Messaging is available
+        if (typeof firebase === 'undefined' || !firebase.messaging) {
+            alert('Firebase Messaging not loaded.\n\nFirebase Messaging er ikke lastet. Prøv å oppdatere siden.');
+            return;
+        }
+
+        // Try to initialize FCM if not already done
         if (!messaging) {
-            await initializeFCM();
+            console.log('📱 Initializing FCM for push...');
+
+            // Register service worker
+            const swPath = window.location.hostname === 'localhost'
+                ? '/firebase-messaging-sw.js'
+                : '/badminton-signup/firebase-messaging-sw.js';
+
+            console.log('📱 Registering service worker at:', swPath);
+            const registration = await navigator.serviceWorker.register(swPath);
+            console.log('📱 Service worker registered:', registration.scope);
+
+            // Initialize Firebase Messaging
+            messaging = firebase.messaging();
+            messaging.useServiceWorker(registration);
+            console.log('📱 FCM initialized');
         }
 
         if (!messaging) {
-            alert('Push notifications are not supported in this browser.\n\nPush-varsler støttes ikke i denne nettleseren.');
+            alert('Could not initialize Firebase Messaging.\n\nKunne ikke initialisere Firebase Messaging.');
             return;
         }
 
