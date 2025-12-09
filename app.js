@@ -4150,7 +4150,8 @@ const adminGroupButtons = {
         { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
         { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' },
         { label: '🔔 Enable', onclick: 'enablePushNotifications()', bg: '#8b5cf6', color: 'white' },
-        { label: '🧪 Test', onclick: 'testPushNotification()', bg: '#f97316', color: 'white' }
+        { label: '🧪 Lokal', onclick: 'testPushNotification()', bg: '#f97316', color: 'white' },
+        { label: '🚀 FCM', onclick: 'testRealFCM()', bg: '#ef4444', color: 'white' }
     ]
 };
 
@@ -6822,11 +6823,59 @@ async function testPushNotification() {
         };
 
         console.log('✅ Step 3: Notification sent!');
-        alert('✅ Test-varsel sendt!\n\nDu skal se en notifikasjon på skjermen. Hvis ikke, sjekk at varsler er aktivert i systeminnstillingene.');
+        alert('✅ LOKAL test OK!\n\nDette var en lokal notifikasjon.\nKlikk "🚀 FCM Test" for å teste full FCM-flyt fra server.');
 
     } catch (error) {
         console.error('❌ Error showing notification:', error);
         alert(`❌ Kunne ikke vise notifikasjon:\n${error.message}`);
+    }
+}
+
+/**
+ * Test REAL FCM notification via Cloud Function
+ * This tests the full flow: Cloud → FCM → Device
+ */
+async function testRealFCM() {
+    try {
+        if (!state.loggedInUser) {
+            alert('Logg inn først');
+            return;
+        }
+
+        // Get current FCM token
+        const swPath = window.location.hostname === 'localhost'
+            ? '/firebase-messaging-sw.js'
+            : '/badminton-signup/firebase-messaging-sw.js';
+
+        const swRegistration = await navigator.serviceWorker.register(swPath);
+        await navigator.serviceWorker.ready;
+
+        const VAPID_KEY = 'BF5cc-ESVvkSkx0S8dbvTK9cD5fdLZDB6AKt_jqZPmmhQR5veZNfPZ8XKeVgcDR4C95pZ6gQx__KfCJVk-gUkho';
+
+        const currentToken = await firebase.messaging().getToken({
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: swRegistration
+        });
+
+        if (!currentToken) {
+            alert('Kunne ikke hente FCM token');
+            return;
+        }
+
+        console.log('📱 Current FCM token:', currentToken.substring(0, 20) + '...');
+
+        // Call Cloud Function to send test FCM
+        alert('Sender FCM via Cloud Function...\n\nDu skal få en notifikasjon om 2-3 sekunder.');
+
+        const testFCM = firebase.functions().httpsCallable('testFCMNotification');
+        const result = await testFCM({ fcmToken: currentToken });
+
+        console.log('📱 FCM test result:', result);
+        alert('✅ FCM sendt fra server!\n\nHvis du IKKE fikk notifikasjon, er det et problem med FCM → iPhone levering.');
+
+    } catch (error) {
+        console.error('❌ FCM test error:', error);
+        alert(`❌ FCM test feilet:\n${error.message}`);
     }
 }
 
