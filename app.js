@@ -1627,6 +1627,84 @@ async function testSessionAnnouncement() {
 }
 
 /**
+ * Copy session announcement to clipboard
+ * Generates the same message format as sendSessionAnnouncement but copies to clipboard
+ */
+async function copySessionAnnouncement() {
+    try {
+        // Get current session data
+        const activePlayers = state.players.slice(0, state.maxPlayers);
+        const waitingList = state.players.slice(state.maxPlayers);
+        const availableSpots = state.maxPlayers - activePlayers.length;
+
+        // Extract player names
+        const playerNames = activePlayers.map(p => p.name);
+        const waitingListNames = waitingList.map(p => p.name);
+
+        // Build message (same format as Cloud Function)
+        let message = `🏸 BADMINTON SESSION / แบดมินตัน
+
+📅 ${state.sessionDay || 'Day not set'}
+📆 ${state.sessionDate || 'Date not set'}
+🕐 ${state.sessionTime || 'Time not set'}
+💰 ${state.paymentAmount} THB per player
+
+👥 Players: ${activePlayers.length}/${state.maxPlayers}`;
+
+        // Add registered players list
+        if (playerNames.length > 0) {
+            message += `
+
+📋 Registered / ลงทะเบียนแล้ว:`;
+            playerNames.forEach((name, index) => {
+                message += `\n${index + 1}. ${name}`;
+            });
+        }
+
+        // Add waiting list if exists
+        if (waitingListNames.length > 0) {
+            message += `
+
+⏳ Waiting List / รายชื่อสำรอง:`;
+            waitingListNames.forEach((name, index) => {
+                message += `\n${index + 1}. ${name}`;
+            });
+        }
+
+        // Add availability status
+        if (availableSpots > 0) {
+            message += `
+
+✅ ${availableSpots} spot${availableSpots > 1 ? 's' : ''} available!
+✅ มี ${availableSpots} ที่ว่าง!`;
+        } else if (waitingListNames.length > 0) {
+            message += `
+
+⚠️ Session is full! / เต็มแล้ว!`;
+        } else {
+            message += `
+
+✅ Session is full! / เต็มแล้ว!`;
+        }
+
+        // Add signup link
+        message += `
+
+👉 Sign up here / ลงทะเบียนที่นี่:
+${PRODUCTION_URL}`;
+
+        // Copy to clipboard
+        await navigator.clipboard.writeText(message);
+
+        console.log('📋 Session announcement copied to clipboard');
+        alert('✅ Copied to clipboard!\n\nคัดลอกไปยังคลิปบอร์ดแล้ว!\n\nPaste in Line to share.\nวางใน Line เพื่อแชร์');
+    } catch (error) {
+        console.error('❌ Error copying to clipboard:', error);
+        alert(`❌ Failed to copy:\n\n${error.message}`);
+    }
+}
+
+/**
  * TEST: Cancellation Notification
  * Sends cancellation notification with mock data
  */
@@ -4066,9 +4144,9 @@ function getVisibleGroups(status) {
         case 'maintenance':
             return ['users', 'settings'];
         case 'archived':
-            return ['money', 'settings']; // Archived: Only view reports and settings (no modifications)
+            return ['money', 'line', 'settings']; // Archived: view reports, line copy, and settings
         case 'closed':
-            return ['setup', 'users', 'money', 'settings'];
+            return ['setup', 'users', 'money', 'line', 'settings'];
         case 'open':
             return ['setup', 'close', 'users', 'money', 'line', 'settings'];
         default:
@@ -4135,6 +4213,7 @@ const adminGroupButtons = {
         { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
     ],
     line: [
+        { label: '📋 Copy', onclick: 'copySessionAnnouncement()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Config', onclick: 'testLineConfig()', bg: '#8b5cf6', color: 'white' },
         { label: 'Demo', onclick: 'testDemoLine()', bg: '#10b981', color: 'white' },
         { label: 'Test', onclick: 'testLineMessage()', bg: '#22c55e', color: 'white' },
