@@ -1,13 +1,14 @@
 /**
- * Firebase Cloud Function for sending Line notifications
- * When a user cancels their badminton registration
+ * Firebase Cloud Function for sending notifications
+ * Line, Email, and FCM notifications for badminton registrations
  */
 
 const {onCall, onRequest, HttpsError} = require('firebase-functions/v2/https');
-const {onDocumentDeleted} = require('firebase-functions/v2/firestore');
+const {onDocumentDeleted, onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {defineSecret} = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const axios = require('axios');
+const nodemailer = require('nodemailer');
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
@@ -15,9 +16,79 @@ admin.initializeApp();
 // Environment secrets (for v2 Cloud Functions)
 const lineToken = defineSecret('LINE_TOKEN');
 const lineGroupId = defineSecret('LINE_GROUP_ID');
+const emailUser = defineSecret('EMAIL_USER');
+const emailPass = defineSecret('EMAIL_PASS');
+const emailTo = defineSecret('EMAIL_TO');
+const telegramBotToken = defineSecret('TELEGRAM_BOT_TOKEN');
+const telegramChatId = defineSecret('TELEGRAM_CHAT_ID');
 
 // Line Messaging API endpoint
 const LINE_API_URL = 'https://api.line.me/v2/bot/message/push';
+
+/**
+ * Send Telegram notification
+ * @param {string} message - Message to send
+ */
+async function sendTelegramNotification(message) {
+    try {
+        const botToken = telegramBotToken.value();
+        const chatId = telegramChatId.value();
+
+        if (!botToken || !chatId) {
+            console.log('📱 Telegram not configured, skipping');
+            return;
+        }
+
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        const response = await axios.post(url, {
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'HTML'
+        });
+
+        console.log('📱 Telegram sent:', response.data.ok);
+    } catch (error) {
+        console.error('📱 Telegram error:', error.message);
+    }
+}
+
+/**
+ * Send email notification
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body text
+ */
+async function sendEmailNotification(subject, body) {
+    try {
+        const user = emailUser.value();
+        const pass = emailPass.value();
+        const to = emailTo.value();
+
+        if (!user || !pass || !to) {
+            console.log('📧 Email not configured, skipping');
+            return;
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: user,
+                pass: pass
+            }
+        });
+
+        const mailOptions = {
+            from: `Badminton App <${user}>`,
+            to: to,
+            subject: subject,
+            text: body
+        };
+
+        const result = await transporter.sendMail(mailOptions);
+        console.log('📧 Email sent:', result.messageId);
+    } catch (error) {
+        console.error('📧 Email error:', error.message);
+    }
+}
 
 /**
  * LINE Webhook Endpoint
@@ -849,7 +920,7 @@ function buildWeeklyReportMessage(
  */
 exports.onPlayerDeleted = onDocumentDeleted({
     document: 'sessions/{sessionId}/players/{playerId}',
-    secrets: [lineToken, lineGroupId]
+    secrets: [lineToken, lineGroupId, emailUser, emailPass, emailTo, telegramBotToken, telegramChatId]
 }, async (event) => {
     try {
         const deletedData = event.data.data();
@@ -965,6 +1036,42 @@ exports.onPlayerDeleted = onDocumentDeleted({
         }
 
         // ==========================================
+        // SEND EMAIL NOTIFICATION
+        // ==========================================
+        try {
+            const emailSubject = hasWaitingList
+                ? `🏸 ${playerName} avmeldt`
+                : `🏸 LEDIG PLASS! ${playerName} avmeldt`;
+            const emailBody = `${playerName} har meldt seg av badminton.
+
+Spillere nå: ${currentPlayers}/${maxPlayers}
+${hasWaitingList ? '(Venteliste vil rykke opp)' : 'Det er ledig plass!'}
+
+Dato: ${sessionData.date || sessionId}
+Dag: ${sessionData.day || 'Unknown'}
+Tid: ${sessionData.time || 'Unknown'}
+
+Se: https://lapstuen.github.io/badminton-signup/`;
+
+            await sendEmailNotification(emailSubject, emailBody);
+        } catch (emailError) {
+            console.error('📧 Email error:', emailError.message);
+        }
+
+        // ==========================================
+        // SEND TELEGRAM NOTIFICATION
+        // ==========================================
+        try {
+            const telegramMessage = hasWaitingList
+                ? `🏸 <b>${playerName}</b> avmeldt\n\nSpillere: ${currentPlayers}/${maxPlayers}\n(Venteliste rykker opp)`
+                : `🏸 <b>LEDIG PLASS!</b>\n\n${playerName} avmeldt\nSpillere: ${currentPlayers}/${maxPlayers}`;
+
+            await sendTelegramNotification(telegramMessage);
+        } catch (telegramError) {
+            console.error('📱 Telegram error:', telegramError.message);
+        }
+
+        // ==========================================
         // ALSO TRY LINE (may fail on free plan)
         // ==========================================
         try {
@@ -1043,5 +1150,144 @@ exports.testFCMNotification = onCall({}, async (request) => {
     } catch (error) {
         console.error('❌ Test FCM error:', error.message);
         throw new HttpsError('internal', 'Failed to send test notification: ' + error.message);
+    }
+});
+
+/**
+ * FIRESTORE TRIGGER: New player registration notification
+ * Sends FCM push notification to admins when a new player registers
+ * Only notifies for players registering AFTER session is published
+ */
+exports.onPlayerCreated = onDocumentCreated({
+    document: 'sessions/{sessionId}/players/{playerId}',
+    secrets: [emailUser, emailPass, emailTo, telegramBotToken, telegramChatId]
+}, async (event) => {
+    try {
+        const newData = event.data.data();
+        const sessionId = event.params.sessionId;
+
+        if (!newData) {
+            console.log('⚠️ No player data found');
+            return null;
+        }
+
+        const playerName = newData.name;
+        const position = newData.position || 0;
+        console.log(`➕ New player registered: ${playerName} (position ${position}) in session ${sessionId}`);
+
+        // Skip notification for guests (they have guestOf field)
+        if (newData.guestOf) {
+            console.log(`👤 Skipping notification for guest: ${playerName}`);
+            return null;
+        }
+
+        // Get session data
+        const db = admin.firestore();
+        const sessionDoc = await db.collection('sessions').doc(sessionId).get();
+
+        if (!sessionDoc.exists) {
+            console.log(`⚠️ Session ${sessionId} not found`);
+            return null;
+        }
+
+        const sessionData = sessionDoc.data();
+
+        // Skip if session is not published (draft mode - admin is adding regular players)
+        if (!sessionData.published) {
+            console.log('⚠️ Session not published yet, skipping notification');
+            return null;
+        }
+
+        // Skip if session is closed
+        if (sessionData.closed) {
+            console.log('⚠️ Session is closed, skipping notification');
+            return null;
+        }
+
+        const maxPlayers = sessionData.maxPlayers || 12;
+        const isWaitingList = position > maxPlayers;
+
+        // Build notification message
+        const title = isWaitingList
+            ? `📋 ${playerName} på venteliste`
+            : `✅ ${playerName} påmeldt!`;
+        const body = isWaitingList
+            ? `Posisjon ${position} (venteliste)`
+            : `Posisjon ${position}/${maxPlayers}`;
+
+        // Send FCM to admins
+        try {
+            const adminsSnapshot = await db.collection('authorizedUsers')
+                .where('role', '==', 'admin')
+                .get();
+
+            const tokens = [];
+            adminsSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.fcmToken) {
+                    tokens.push(data.fcmToken);
+                }
+            });
+
+            if (tokens.length > 0) {
+                console.log(`📱 Sending FCM to ${tokens.length} admin(s)`);
+
+                const fcmMessage = {
+                    notification: {
+                        title: title,
+                        body: body
+                    },
+                    data: {
+                        playerName: playerName,
+                        sessionId: sessionId,
+                        position: String(position),
+                        type: 'registration'
+                    },
+                    tokens: tokens
+                };
+
+                const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+                console.log(`✅ FCM sent: ${fcmResponse.successCount} success`);
+            }
+        } catch (fcmError) {
+            console.error('❌ FCM error:', fcmError.message);
+        }
+
+        // ==========================================
+        // SEND EMAIL NOTIFICATION
+        // ==========================================
+        try {
+            const emailSubject = isWaitingList
+                ? `📋 ${playerName} på venteliste (${position})`
+                : `✅ ${playerName} påmeldt! (${position}/${maxPlayers})`;
+            const emailBody = `${playerName} har meldt seg på badminton!
+
+Posisjon: ${position}${isWaitingList ? ' (venteliste)' : `/${maxPlayers}`}
+
+Se alle påmeldte: https://lapstuen.github.io/badminton-signup/`;
+
+            await sendEmailNotification(emailSubject, emailBody);
+        } catch (emailError) {
+            console.error('📧 Email error:', emailError.message);
+        }
+
+        // ==========================================
+        // SEND TELEGRAM NOTIFICATION
+        // ==========================================
+        try {
+            const telegramMessage = isWaitingList
+                ? `📋 <b>${playerName}</b> på venteliste (${position})`
+                : `✅ <b>${playerName}</b> påmeldt! (${position}/${maxPlayers})`;
+
+            await sendTelegramNotification(telegramMessage);
+        } catch (telegramError) {
+            console.error('📱 Telegram error:', telegramError.message);
+        }
+
+        return { success: true, playerName: playerName };
+
+    } catch (error) {
+        console.error('❌ Error in onPlayerCreated trigger:', error.message);
+        return null;
     }
 });

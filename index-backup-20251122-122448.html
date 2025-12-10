@@ -18,31 +18,29 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="stylesheet" href="style.css?v=20251206-1215">
+    <link rel="stylesheet" href="style.css?v=20251122-0800">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+            <h1>🏸 Badminton / แบดมินตัน</h1>
+            <p class="version-header">v2025-11-22 11:50 (Add detailed Firestore write logging)</p>
 
-            <!-- Wallet Section (styled like session-details) -->
-            <div class="wallet-section" id="loggedInInfo" style="display: none;">
-                <div class="wallet-header">
-                    <button onclick="refreshBalance()" class="wallet-refresh-btn" title="รีเฟรช / Refresh">🔄</button>
-                    <p class="wallet-title"><span class="thai-text">กระเป๋าเงิน</span> <span class="eng-text">Wallet</span></p>
-                    <p class="wallet-user"><strong id="loggedInName"></strong></p>
-                </div>
-                <p class="wallet-balance"><strong id="userBalance">0</strong> THB</p>
-                <button onclick="showMyTransactions()" class="wallet-transactions-btn"><span class="thai-text">รายการ</span> <span class="eng-text">Transactions</span></button>
+            <!-- Logged In User Info (moved here) -->
+            <div class="logged-in-info" id="loggedInInfo" style="display: none;">
+                <p>Logged in as: <strong id="loggedInName"></strong></p>
+                <p class="balance-display">
+                    Wallet Balance / ยอดเงิน: <strong id="userBalance">0</strong> THB
+                    <button onclick="refreshBalance()" class="refresh-balance-btn" title="Refresh balance / รีเฟรชยอดเงิน">🔄</button>
+                </p>
             </div>
 
             <div class="session-details">
                 <p class="session-day" id="sessionDay">Monday / วันจันทร์</p>
                 <p class="session-time" id="sessionTime">10:00 - 12:00</p>
-                <p class="session-spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="thai-text">ลงทะเบียนแล้ว</span> <span class="eng-text">Joined</span></p>
+                <p class="session-spots"><span id="currentPlayers">0</span> / <span id="maxPlayers">12</span> <span class="lang-text">Joined ลงทะเบียนแล้ว</span></p>
                 <p class="session-shuttlecocks" id="sessionShuttlecocks" style="display: none; font-size: 14px; color: #6b7280; margin-top: 8px;">
                     🏸 Shuttlecocks / ลูกแบด: <strong id="shuttlecocksCount">0</strong> (<span id="shuttlecocksCost">0</span> THB)
                 </p>
@@ -64,47 +62,57 @@
 
             <!-- User Login Section -->
             <div class="user-login" id="userLogin" style="display: none;">
-                <h2><span class="thai-text">เข้าสู่ระบบ</span><br><span class="eng-text">Login</span></h2>
+                <h2>Login<br>เข้าสู่ระบบ</h2>
                 <input type="text" id="loginName" placeholder="Name / ชื่อ" required>
 
                 <!-- Show password field + login button OR reset button (never both) -->
                 <div id="normalLoginSection">
                     <input type="password" id="loginPassword" placeholder="Password / รหัสผ่าน" required>
-                    <button type="button" onclick="handleLoginClick()" class="btn btn-primary"><span class="thai-text">เข้าสู่ระบบ</span><br><span class="eng-text">Login</span></button>
+                    <button type="button" onclick="handleLoginClick()" class="btn btn-primary">Login<br>เข้าสู่ระบบ</button>
                 </div>
 
                 <div id="resetPasswordSection" style="display: none;">
                     <button type="button" onclick="resetPassword()" class="btn btn-secondary" style="background: #f59e0b; width: 100%;">
-                        🔄 <span class="thai-text">รีเซ็ตรหัสผ่าน</span><br><span class="eng-text">Reset Password</span>
+                        🔄 Reset Password<br>รีเซ็ตรหัสผ่าน
                     </button>
                     <p class="login-note" style="margin-top: 10px; font-size: 12px; color: #666;">
-                        <span class="thai-text">เข้าไม่ได้? คลิกเพื่อรีเซ็ตรหัสเป็น 123</span><br>
-                        <span class="eng-text">Lost access? Click to reset password to 123</span>
+                        Lost access? Click to reset password to 123<br>
+                        เข้าไม่ได้? คลิกเพื่อรีเซ็ตรหัสเป็น 123
                     </p>
                 </div>
 
-                <p class="login-note"><span class="thai-text">เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</span><br><span class="eng-text">Only authorized players can login</span></p>
+                <p class="login-note">Only authorized players can login<br>เฉพาะผู้เล่นที่ได้รับอนุญาตเท่านั้น</p>
             </div>
 
             <div class="registration-form" id="registrationForm">
-                <h2><span class="thai-text">ลงทะเบียน</span> <span class="eng-text">Sign Up</span></h2>
+                <h2>Sign Up / ลงทะเบียน</h2>
                 <form id="signupForm">
                     <input type="text" id="playerName" placeholder="Name / ชื่อ" required>
-                    <button type="submit" class="btn btn-primary"><span class="thai-text">เข้าร่วม</span><br><span class="eng-text">Join</span></button>
+                    <button type="submit" class="btn btn-primary">Join<br>เข้าร่วม</button>
                 </form>
             </div>
 
+            <!-- Guest Registration Button (separate from registration form, visible when logged in) -->
+            <div id="guestRegistrationBtn" style="display: none; margin: 15px 0; padding: 0 20px;">
+                <button type="button" onclick="handleGuestRegistration()" class="btn btn-secondary" style="background: #8b5cf6; color: white; width: 100%; padding: 12px;">
+                    Register Guest 👤<br>ลงทะเบียนแขก
+                </button>
+                <p style="font-size: 12px; color: #888; text-align: center; margin-top: 5px;">
+                    Bring a friend/family member<br>พาเพื่อนหรือครอบครัว
+                </p>
+            </div>
+
             <div class="success-message" id="successMessage" style="display: none;">
-                <h2 style="margin-top: 0;"><span class="thai-text">คุณลงทะเบียนแล้ว!</span><br><span class="eng-text">You are registered!</span></h2>
+                <h2 style="margin-top: 0;">You are registered!<br>คุณลงทะเบียนแล้ว!</h2>
                 <div class="payment-info">
                     <div class="qr-code" id="qrCode"></div>
                 </div>
             </div>
 
             <div class="players-list">
-                <h2><span class="thai-text">ผู้เล่น</span> <span class="eng-text">Players</span></h2>
+                <h2>Players / ผู้เล่น</h2>
                 <ul id="playersList"></ul>
-                <h3><span class="thai-text">รายชื่อสำรอง</span> <span class="eng-text">Waiting List</span></h3>
+                <h3>Waiting List / รายชื่อสำรอง</h3>
                 <ul id="waitingList"></ul>
             </div>
 
@@ -117,16 +125,21 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+                <p class="version">v2025-11-22 11:50 (Add detailed Firestore write logging)</p>
 
                 <div class="bottom-buttons">
+                    <!-- Transaction History Button -->
+                    <button onclick="showMyTransactions()" class="btn-transaction-bottom" style="background: #3b82f6; color: white;">
+                        Transaction History<br>ประวัติการทำรายการ
+                    </button>
+
                     <!-- Cancel Registration Button (only when registered) -->
-                    <button onclick="cancelRegistration()" id="cancelBtn" style="display: none; background: #dc2626; color: white; width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer;">
-                        <span class="thai-text" style="color: white;">ยกเลิกการลงทะเบียน</span><br><span class="eng-text" style="color: rgba(255,255,255,0.8);">Cancel Registration</span>
+                    <button onclick="cancelRegistration()" id="cancelBtn" class="btn-cancel-bottom" style="display: none;">
+                        Cancel Registration<br>ยกเลิก
                     </button>
                 </div>
 
-                <!-- Wallet Top Up Information Link -->
+                <!-- Payment Information Link -->
                 <a href="payment-info.html" target="_blank" style="
                     display: block;
                     margin-top: 15px;
@@ -141,15 +154,9 @@
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     transition: transform 0.2s, box-shadow 0.2s;
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0, 0, 0, 0.15)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 6px rgba(0, 0, 0, 0.1)';">
-                    💰 <span class="thai-text">เติมเงิน Wallet</span><br><span class="eng-text">Top Up Wallet</span>
+                    💰 วิธีการชำระเงิน / Payment Info<br>
+                    <span style="font-size: 13px; opacity: 0.9;">ดูบัญชีธนาคารและ QR Code</span>
                 </a>
-
-                <!-- Guest Registration Button (moved to bottom, less prominent) -->
-                <div id="guestRegistrationBtn" style="display: none; margin-top: 15px;">
-                    <button type="button" onclick="handleGuestRegistration()" class="btn btn-secondary" style="background: #8b5cf6; color: white; width: 100%; padding: 12px; border-radius: 8px;">
-                        <span class="thai-text">ลงทะเบียนแขก</span> 👤<br><span class="eng-text">Register Guest</span>
-                    </button>
-                </div>
             </div>
         </main>
 
@@ -222,24 +229,6 @@
             <div class="modal-body">
                 <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
                 <div id="transactionsList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Session Announcement Modal -->
-    <div class="modal" id="announcementModal" style="display: none;" onclick="closeAnnouncementModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>📢 Session Announcement / ประกาศเซสชัน</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="copyAnnouncementText()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        📋 Copy / คัดลอก
-                    </button>
-                    <button class="close-btn" onclick="closeAnnouncementModal()">✕</button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <pre id="announcementText" style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; margin: 0; padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;"></pre>
             </div>
         </div>
     </div>
@@ -354,16 +343,16 @@
             </div>
             <div class="modal-body">
                 <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-                    <span class="thai-text">เลือกวัน</span> <span class="eng-text">Select day:</span>
+                    Select day / เลือกวัน:
                 </p>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px;">
-                    <button onclick="selectDayForRegularPlayers(1)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">1. <span class="thai-text">จันทร์</span> <span class="eng-text">Monday</span></button>
-                    <button onclick="selectDayForRegularPlayers(2)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">2. <span class="thai-text">อังคาร</span> <span class="eng-text">Tuesday</span></button>
-                    <button onclick="selectDayForRegularPlayers(3)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">3. <span class="thai-text">พุธ</span> <span class="eng-text">Wednesday</span></button>
-                    <button onclick="selectDayForRegularPlayers(4)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">4. <span class="thai-text">พฤหัส</span> <span class="eng-text">Thursday</span></button>
-                    <button onclick="selectDayForRegularPlayers(5)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">5. <span class="thai-text">ศุกร์</span> <span class="eng-text">Friday</span></button>
-                    <button onclick="selectDayForRegularPlayers(6)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">6. <span class="thai-text">เสาร์</span> <span class="eng-text">Saturday</span></button>
-                    <button onclick="selectDayForRegularPlayers(7)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; grid-column: span 2;">7. <span class="thai-text">อาทิตย์</span> <span class="eng-text">Sunday</span></button>
+                    <button onclick="selectDayForRegularPlayers(1)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">1. Monday / จันทร์</button>
+                    <button onclick="selectDayForRegularPlayers(2)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">2. Tuesday / อังคาร</button>
+                    <button onclick="selectDayForRegularPlayers(3)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">3. Wednesday / พุธ</button>
+                    <button onclick="selectDayForRegularPlayers(4)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">4. Thursday / พฤหัส</button>
+                    <button onclick="selectDayForRegularPlayers(5)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">5. Friday / ศุกร์</button>
+                    <button onclick="selectDayForRegularPlayers(6)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">6. Saturday / เสาร์</button>
+                    <button onclick="selectDayForRegularPlayers(7)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; grid-column: span 2;">7. Sunday / อาทิตย์</button>
                 </div>
                 <div id="regularPlayersSelectionArea" style="display: none;">
                     <h3 id="regularPlayersSelectedDay" style="margin-bottom: 10px; color: #333;"></h3>
@@ -400,32 +389,15 @@
         </div>
     </div>
 
-    <!-- Red Warning Modal for Low Balance Alerts -->
-    <div class="modal" id="lowBalanceWarningModal" style="display: none;" onclick="closeLowBalanceWarning()">
-        <div class="modal-content" onclick="event.stopPropagation()" style="border: 4px solid #dc2626; background: #fee2e2;">
-            <div class="modal-header" style="background: #dc2626; color: white;">
-                <h2 style="color: white;">⚠️ LOW BALANCE WARNING / คำเตือนยอดเงินต่ำ</h2>
-                <button class="close-btn" onclick="closeLowBalanceWarning()" style="color: white;">✕</button>
-            </div>
-            <div class="modal-body" style="background: #fee2e2;">
-                <div id="lowBalanceWarningContent" style="color: #7f1d1d; font-size: 16px; line-height: 1.8; font-weight: 500;"></div>
-                <button onclick="closeLowBalanceWarning()" style="width: 100%; padding: 14px; background: #dc2626; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px;">
-                    OK - I UNDERSTAND / เข้าใจแล้ว
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251210-1345"></script>
+    <script src="firebase-config.js?v=20251122-1150"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251210-1345"></script>
+    <script src="app.js?v=20251122-1150"></script>
 </body>
 </html>

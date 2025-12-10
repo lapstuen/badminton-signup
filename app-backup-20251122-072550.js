@@ -7,9 +7,6 @@ const APP_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:8000'
     : 'https://lapstuen.github.io/badminton-signup/';
 
-// Production URL - ALWAYS use this for Line messages (even when testing locally)
-const PRODUCTION_URL = 'https://lapstuen.github.io/badminton-signup/';
-
 // Current session ID - FIXED to "current" (does not auto-change daily)
 // Admin must manually start "New Session" to create a new session
 let currentSessionId = 'current';
@@ -20,13 +17,12 @@ let state = {
     players: [],
     maxPlayers: 12,
     sessionDate: new Date().toLocaleDateString('en-GB'),
-    sessionDay: 'ไม่ได้กำหนด / Not Set', // Default to day 8 (blank)
-    sessionTime: '10:00 - 12:00', // Default time (most common)
+    sessionDay: 'Not Set / ไม่ได้กำหนด', // Default to day 8 (blank)
+    sessionTime: '00:00 - 00:00', // Default blank time
     paymentAmount: 150,
     published: true, // Session visibility (false = draft mode)
     maintenanceMode: false, // Maintenance mode (blocks all user actions)
     shuttlecocksUsed: 0, // Number of shuttlecocks used in session (for cost tracking)
-    closed: false, // Session archived/closed status
     isAdmin: false,
     authorizedUsers: [],
     loggedInUser: null, // Now includes: { name, balance, userId, role }
@@ -36,63 +32,6 @@ let state = {
 // Firestore references
 const currentSessionRef = () => sessionsRef.doc(currentSessionId);
 const playersRef = () => currentSessionRef().collection('players');
-
-// ============================================
-// POSITION RECALCULATION HELPER
-// ============================================
-
-/**
- * Recalculate all player positions to be sequential (1, 2, 3, ...)
- * Call this after any player deletion to ensure waiting list players move up correctly
- * Uses batch write for efficiency and atomicity
- */
-async function recalculatePlayerPositions() {
-    try {
-        // Get fresh player list from Firestore
-        const playersSnapshot = await playersRef().get();
-        const players = [];
-        playersSnapshot.forEach(doc => {
-            players.push({ id: doc.id, ...doc.data() });
-        });
-
-        if (players.length === 0) {
-            console.log('📍 No players to recalculate positions for');
-            return;
-        }
-
-        // Sort by current position
-        players.sort((a, b) => a.position - b.position);
-
-        // Check if any positions need updating
-        let needsUpdate = false;
-        players.forEach((player, index) => {
-            if (player.position !== index + 1) {
-                needsUpdate = true;
-            }
-        });
-
-        if (!needsUpdate) {
-            console.log('📍 Positions already sequential, no update needed');
-            return;
-        }
-
-        // Update each player's position to be sequential (1, 2, 3, ...)
-        const batch = db.batch();
-        players.forEach((player, index) => {
-            const newPosition = index + 1;
-            if (player.position !== newPosition) {
-                const playerRef = playersRef().doc(player.id);
-                batch.update(playerRef, { position: newPosition });
-                console.log(`📍 Position update: ${player.name} from ${player.position} to ${newPosition}`);
-            }
-        });
-
-        await batch.commit();
-        console.log(`✅ Positions recalculated: ${players.length} players now sequential`);
-    } catch (error) {
-        console.error('❌ Error recalculating positions:', error);
-    }
-}
 
 // ============================================
 // PRIVATE MODE DETECTION
@@ -248,14 +187,12 @@ async function loadSessionData() {
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false; // Default false
             state.shuttlecocksUsed = data.shuttlecocksUsed !== undefined ? data.shuttlecocksUsed : 0; // Default 0 for old sessions
-            state.closed = data.closed !== undefined ? data.closed : false; // Default false - session not archived
             console.log('📥 Session data loaded from Firestore:', {
                 day: state.sessionDay,
                 time: state.sessionTime,
                 published: state.published,
                 maintenanceMode: state.maintenanceMode,
-                shuttlecocksUsed: state.shuttlecocksUsed,
-                closed: state.closed
+                shuttlecocksUsed: state.shuttlecocksUsed
             });
         } else {
             // Create new session
@@ -582,16 +519,8 @@ async function handleSignup(e) {
         return;
     }
 
-    // Get FRESH player data from Firestore (not from state which might be stale)
-    const playersSnapshot = await playersRef().get();
-    const currentPlayerCount = playersSnapshot.size;
-    const currentPlayers = [];
-    playersSnapshot.forEach(doc => {
-        currentPlayers.push({ id: doc.id, ...doc.data() });
-    });
-
     // Check if already registered (by name)
-    if (currentPlayers.find(p => p.name === name)) {
+    if (state.players.find(p => p.name === name)) {
         alert('This name is already registered / ชื่อนี้ลงทะเบียนแล้ว');
         return;
     }
@@ -605,7 +534,7 @@ async function handleSignup(e) {
 
     try {
         // Deduct payment BEFORE adding to Firestore
-        const isWaitingList = currentPlayerCount >= state.maxPlayers;
+        const isWaitingList = state.players.length >= state.maxPlayers;
         const paymentSuccess = await updateUserBalance(
             authorizedUser.id,
             name,
@@ -626,7 +555,7 @@ async function handleSignup(e) {
             userId: authorizedUser.id,
             paid: true,  // Already paid at registration
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            position: currentPlayerCount + 1
+            position: state.players.length + 1
         };
 
         await playersRef().add(playerData);
@@ -709,22 +638,14 @@ async function handleGuestRegistration() {
     const trimmedGuestName = guestName.trim();
     const fullGuestName = `${hostName} friend: ${trimmedGuestName}`;
 
-    // Get FRESH player data from Firestore (not from state which might be stale)
-    const playersSnapshot = await playersRef().get();
-    const currentPlayerCount = playersSnapshot.size;
-    const currentPlayers = [];
-    playersSnapshot.forEach(doc => {
-        currentPlayers.push({ id: doc.id, ...doc.data() });
-    });
-
     // Check if guest name already exists
-    if (currentPlayers.find(p => p.name === fullGuestName)) {
+    if (state.players.find(p => p.name === fullGuestName)) {
         alert('This guest is already registered / แขกคนนี้ลงทะเบียนแล้ว');
         return;
     }
 
     // Check if there's space available
-    if (currentPlayerCount >= state.maxPlayers) {
+    if (state.players.length >= state.maxPlayers) {
         // Ask if user wants to join waiting list
         if (!confirm(`Session is full (${state.maxPlayers}/${state.maxPlayers})\n\nJoin waiting list? / เซสชันเต็มแล้ว เข้าสู่รายการรอ?`)) {
             return;
@@ -740,7 +661,7 @@ async function handleGuestRegistration() {
 
     try {
         // Deduct payment from host BEFORE adding guest to Firestore
-        const isWaitingList = currentPlayerCount >= state.maxPlayers;
+        const isWaitingList = state.players.length >= state.maxPlayers;
         const paymentSuccess = await updateUserBalance(
             hostUserId,
             hostName,
@@ -764,7 +685,7 @@ async function handleGuestRegistration() {
             guestOf: hostUserId, // Link to host user
             guestOfName: hostName, // Host's name for easy reference
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            position: currentPlayerCount + 1
+            position: state.players.length + 1
         };
 
         await playersRef().add(guestData);
@@ -828,7 +749,7 @@ async function shareSessionToLine() {
             availableSpots: availableSpots,
             waitingListCount: waitingList.length,
             paymentAmount: state.paymentAmount,
-            appUrl: PRODUCTION_URL,  // Always use production URL for Line messages
+            appUrl: window.location.href,
             playerNames: playerNames,           // NEW: Add player names
             waitingListNames: waitingListNames  // NEW: Add waiting list names
         };
@@ -990,7 +911,7 @@ This is a demo message from the Badminton app!
 You can customize this message easily!
 คุณสามารถปรับแต่งข้อความนี้ได้ง่าย!
 
-👉 ${PRODUCTION_URL}`;
+👉 ${APP_URL}`;
 
         // Send the message using the simple API
         const success = await sendLineNotification(message);
@@ -1602,7 +1523,7 @@ async function testSessionAnnouncement() {
         const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
 
         const notificationData = {
-            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
             sessionDate: state.sessionDate || '01/01/2025',
             sessionTime: state.sessionTime || '18:00 - 20:00',
             currentPlayers: playerNames.length,  // Use actual player count
@@ -1610,7 +1531,7 @@ async function testSessionAnnouncement() {
             availableSpots: state.maxPlayers - playerNames.length,  // Calculate based on mock data
             waitingListCount: waitingListNames.length,
             paymentAmount: state.paymentAmount,
-            appUrl: PRODUCTION_URL,  // Always use production URL for Line messages
+            appUrl: window.location.href,
             playerNames: playerNames,
             waitingListNames: waitingListNames
         };
@@ -1624,116 +1545,6 @@ async function testSessionAnnouncement() {
         console.error('❌ Error sending session announcement:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
     }
-}
-
-/**
- * Show session announcement in modal window
- * Displays the announcement text with a copy button
- */
-function showSessionAnnouncement() {
-    try {
-        // Get current session data
-        const activePlayers = state.players.slice(0, state.maxPlayers);
-        const waitingList = state.players.slice(state.maxPlayers);
-        const availableSpots = state.maxPlayers - activePlayers.length;
-
-        // Extract player names
-        const playerNames = activePlayers.map(p => p.name);
-        const waitingListNames = waitingList.map(p => p.name);
-
-        // Build message (same format as Cloud Function)
-        let message = `🏸 BADMINTON SESSION / แบดมินตัน
-
-📅 ${state.sessionDay || 'Day not set'}  ${state.sessionDate || 'Date not set'}
-🕐 ${state.sessionTime || 'Time not set'}
-💰 ${state.paymentAmount} THB per player
-
-👥 Players: ${activePlayers.length}/${state.maxPlayers}`;
-
-        // Add registered players list
-        if (playerNames.length > 0) {
-            message += `
-
-📋 Registered / ลงทะเบียนแล้ว:`;
-            playerNames.forEach((name, index) => {
-                message += `\n${index + 1}. ${name}`;
-            });
-        }
-
-        // Add waiting list if exists
-        if (waitingListNames.length > 0) {
-            message += `
-
-⏳ Waiting List / รายชื่อสำรอง:`;
-            waitingListNames.forEach((name, index) => {
-                message += `\n${index + 1}. ${name}`;
-            });
-        }
-
-        // Add availability status
-        if (availableSpots > 0) {
-            message += `
-
-✅ ${availableSpots} spot${availableSpots > 1 ? 's' : ''} available!
-✅ มี ${availableSpots} ที่ว่าง!`;
-        } else if (waitingListNames.length > 0) {
-            message += `
-
-⚠️ Session is full! / เต็มแล้ว!`;
-        } else {
-            message += `
-
-✅ Session is full! / เต็มแล้ว!`;
-        }
-
-        // Add signup link
-        message += `
-
-👉 Sign up here / ลงทะเบียนที่นี่:
-${PRODUCTION_URL}`;
-
-        // Display in modal
-        document.getElementById('announcementText').textContent = message;
-        document.getElementById('announcementModal').style.display = 'block';
-
-        console.log('📢 Session announcement displayed in modal');
-    } catch (error) {
-        console.error('❌ Error showing announcement:', error);
-        alert(`❌ Failed to show announcement:\n\n${error.message}`);
-    }
-}
-
-/**
- * Copy announcement text from modal to clipboard
- */
-async function copyAnnouncementText() {
-    try {
-        const text = document.getElementById('announcementText').textContent;
-        await navigator.clipboard.writeText(text);
-
-        // Visual feedback on button
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Copied! / คัดลอกแล้ว!';
-        btn.style.background = '#10b981';
-
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.background = '#3b82f6';
-        }, 2000);
-
-        console.log('📋 Announcement copied to clipboard');
-    } catch (error) {
-        console.error('❌ Error copying to clipboard:', error);
-        alert(`❌ Failed to copy:\n\n${error.message}`);
-    }
-}
-
-/**
- * Close announcement modal
- */
-function closeAnnouncementModal() {
-    document.getElementById('announcementModal').style.display = 'none';
 }
 
 /**
@@ -1754,9 +1565,9 @@ async function testCancellationNotification() {
             maxPlayers: state.maxPlayers,
             hasWaitingList: hasWaitingList,
             sessionDate: state.sessionDate || '01/01/2025',
-            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
             sessionTime: state.sessionTime || '18:00 - 20:00',
-            appUrl: PRODUCTION_URL  // Always use production URL for Line messages
+            appUrl: window.location.href
         };
 
         console.log('📤 TEST: Sending cancellation notification...', notificationData);
@@ -1782,7 +1593,7 @@ async function testNudgeNotification() {
         const sendNotification = functions.httpsCallable('sendNudgeNotification');
 
         const notificationData = {
-            sessionDay: state.sessionDay || 'วันจันทร์ / Monday',
+            sessionDay: state.sessionDay || 'Monday / วันจันทร์',
             sessionDate: state.sessionDate || '01/01/2025',
             sessionTime: state.sessionTime || '18:00 - 20:00',
             currentPlayers: activePlayers.length,
@@ -1854,7 +1665,7 @@ async function sendExtraCourtMessage() {
 รอการยืนยันจากศูนย์กีฬา
 
 🔗 Register here / ลงทะเบียนที่นี่:
-${PRODUCTION_URL}`;
+${window.location.origin}${window.location.pathname}`;
 
     try {
         // Use Firebase Cloud Function - sendLineMessage (not sendLineGroupMessage!)
@@ -2293,74 +2104,27 @@ async function viewAccountingReport() {
  */
 async function generateWeeklyReport() {
     try {
-        // Calculate current week (Monday-Sunday) and next week
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-        // Calculate Monday of current week
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const currentMonday = new Date(today);
-        currentMonday.setDate(today.getDate() + mondayOffset);
-
-        // Calculate Sunday of current week
-        const currentSunday = new Date(currentMonday);
-        currentSunday.setDate(currentMonday.getDate() + 6);
-
-        // Calculate next week (Monday-Sunday)
-        const nextMonday = new Date(currentMonday);
-        nextMonday.setDate(currentMonday.getDate() + 7);
-        const nextSunday = new Date(nextMonday);
-        nextSunday.setDate(nextMonday.getDate() + 6);
-
-        // Format dates for display
-        const formatDisplay = (date) => {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            return {
-                en: `${months[date.getMonth()]} ${date.getDate()}`,
-                th: `${date.getDate()} ${thaiMonths[date.getMonth()]}`
-            };
-        };
-
-        const formatISO = (date) => date.toISOString().split('T')[0];
-
-        const currentStart = formatDisplay(currentMonday);
-        const currentEnd = formatDisplay(currentSunday);
-        const nextStart = formatDisplay(nextMonday);
-        const nextEnd = formatDisplay(nextSunday);
-
-        // Prompt for week selection with dynamic dates
-        const weekChoice = prompt(
-            `Which week do you want to report?\nสัปดาห์ไหนที่ต้องการรายงาน?\n\n` +
-            `1 = THIS WEEK (${currentStart.en}-${currentEnd.en})\n` +
-            `     สัปดาห์นี้ (${currentStart.th}-${currentEnd.th})\n\n` +
-            `2 = NEXT WEEK (${nextStart.en}-${nextEnd.en})\n` +
-            `     สัปดาห์หน้า (${nextStart.th}-${nextEnd.th})\n\n` +
-            `3 = CUSTOM DATES\n` +
-            `     กำหนดวันที่เอง\n\n` +
-            `Enter 1, 2, or 3:`
+        // Prompt for week selection
+        const useThisWeek = confirm(
+            'Generate report for THIS WEEK (Nov 17-23)?\n\n' +
+            'สร้างรายงานสำหรับสัปดาห์นี้ (17-23 พ.ย.)?\n\n' +
+            'Click OK for this week, or CANCEL to enter custom dates.\n' +
+            'กด OK สำหรับสัปดาห์นี้ หรือ ยกเลิกเพื่อใส่วันที่'
         );
 
         let startDate, endDate;
 
-        if (weekChoice === '1') {
-            // This week
-            startDate = formatISO(currentMonday);
-            endDate = formatISO(currentSunday);
-        } else if (weekChoice === '2') {
-            // Next week
-            startDate = formatISO(nextMonday);
-            endDate = formatISO(nextSunday);
-        } else if (weekChoice === '3') {
+        if (useThisWeek) {
+            // Hardcoded: This week (Monday Nov 17 - Sunday Nov 23, 2025)
+            startDate = '2025-11-17';
+            endDate = '2025-11-23';
+        } else {
             // Custom date range
             startDate = prompt('Start date (YYYY-MM-DD) / วันเริ่มต้น:');
             if (!startDate) return;
 
             endDate = prompt('End date (YYYY-MM-DD) / วันสิ้นสุด:');
             if (!endDate) return;
-        } else {
-            // Cancelled or invalid input
-            return;
         }
 
         console.log(`📊 Generating weekly report: ${startDate} to ${endDate}`);
@@ -3023,42 +2787,14 @@ async function debugViewRawData() {
             report += `Profit: ${totalIncome - totalExpenses} THB\n`;
         }
 
-        // Display in modal with copy button
+        // Display in alert (scrollable)
         console.log(report);
-
-        const modal = document.getElementById('debugReportModal');
-        const content = document.getElementById('debugReportContent');
-
-        content.textContent = report;
-        modal.style.display = 'block';
+        alert(report);
 
     } catch (error) {
         console.error('❌ Debug error:', error);
         alert(`❌ Error: ${error.message}\n\nCheck console for details.`);
     }
-}
-
-/**
- * Copy debug report to clipboard
- */
-async function copyDebugReport() {
-    const content = document.getElementById('debugReportContent');
-    const text = content.textContent;
-
-    try {
-        await navigator.clipboard.writeText(text);
-        alert('✅ Report copied to clipboard!\n\nคัดลอกรายงานแล้ว!');
-    } catch (error) {
-        console.error('Error copying to clipboard:', error);
-        alert('❌ Failed to copy. Please try selecting and copying manually.');
-    }
-}
-
-/**
- * Close debug report modal
- */
-function closeDebugReport() {
-    document.getElementById('debugReportModal').style.display = 'none';
 }
 
 /**
@@ -3220,54 +2956,30 @@ async function cancelRegistration() {
     const userName = state.loggedInUser.name;
     const userId = state.loggedInUser.userId;
 
-    // Find the player (may be null if host only registered guests)
+    // Find the player
     const currentPlayer = state.players.find(p => p.name === userName);
-
-    // Check if user has registered guests
-    const userGuests = state.players.filter(p => p.guestOf === userId);
-
-    // If user is not registered AND has no guests, nothing to cancel
-    if (!currentPlayer && userGuests.length === 0) {
+    if (!currentPlayer) {
         alert('You are not registered / คุณไม่ได้ลงทะเบียน');
         return;
     }
 
-    // Calculate refund based on what will be cancelled
-    const selfRefund = currentPlayer ? state.paymentAmount : 0;
-    const guestRefund = userGuests.length * state.paymentAmount;
-    const totalRefund = selfRefund + guestRefund;
+    // Check if user has registered guests
+    const userGuests = state.players.filter(p => p.guestOf === userId);
+    const totalRefund = state.paymentAmount * (1 + userGuests.length);
 
-    // Build confirmation message based on what will be cancelled
-    let confirmMessage = '';
+    // Confirm cancellation with guest info
+    let confirmMessage = `Cancel your registration? / ยกเลิกการลงทะเบียน?\n\n`;
+    confirmMessage += `This will remove you from the player list and refund ${state.paymentAmount} THB.\n\n`;
 
-    if (currentPlayer && userGuests.length > 0) {
-        // Both self and guests
-        confirmMessage = `Cancel your registration and ${userGuests.length} guest(s)?\n`;
-        confirmMessage += `ยกเลิกการลงทะเบียนของคุณและแขก ${userGuests.length} คน?\n\n`;
-        confirmMessage += `You: ${userName}\n`;
-        confirmMessage += `Guests:\n`;
+    if (userGuests.length > 0) {
+        confirmMessage += `⚠️ You have ${userGuests.length} guest(s) registered:\n`;
         userGuests.forEach(g => {
             const guestNameOnly = g.name.split(' friend: ')[1] || g.name.split(' venn: ')[1] || g.name.split(' + ')[1];
             confirmMessage += `  - ${guestNameOnly}\n`;
         });
-        confirmMessage += `\nTotal refund: ${totalRefund} THB\n`;
+        confirmMessage += `\nAll guests will also be cancelled.\n`;
+        confirmMessage += `Total refund: ${totalRefund} THB\n\n`;
         confirmMessage += `รวมเงินคืน: ${totalRefund} บาท`;
-    } else if (currentPlayer) {
-        // Only self (no guests)
-        confirmMessage = `Cancel your registration? / ยกเลิกการลงทะเบียน?\n\n`;
-        confirmMessage += `This will remove you from the player list.\n`;
-        confirmMessage += `Refund: ${state.paymentAmount} THB`;
-    } else {
-        // Only guests (user not registered themselves)
-        confirmMessage = `Cancel your ${userGuests.length} guest registration(s)?\n`;
-        confirmMessage += `ยกเลิกการลงทะเบียนแขก ${userGuests.length} คน?\n\n`;
-        confirmMessage += `Guests:\n`;
-        userGuests.forEach(g => {
-            const guestNameOnly = g.name.split(' friend: ')[1] || g.name.split(' venn: ')[1] || g.name.split(' + ')[1];
-            confirmMessage += `  - ${guestNameOnly}\n`;
-        });
-        confirmMessage += `\nTotal refund: ${guestRefund} THB\n`;
-        confirmMessage += `รวมเงินคืน: ${guestRefund} บาท`;
     }
 
     if (!confirm(confirmMessage)) {
@@ -3283,20 +2995,16 @@ async function cancelRegistration() {
         const nextPlayer = hasWaitingList ?
             waitingListPlayers.sort((a, b) => a.position - b.position)[0] : null;
 
-        // Cancel self registration (if registered)
-        if (currentPlayer) {
-            // Refund the payment amount for main player
-            await updateUserBalance(
-                userId,
-                userName,
-                state.paymentAmount,
-                `Refund for cancelled registration ${state.sessionDate}`
-            );
+        // Refund the payment amount for main player
+        await updateUserBalance(
+            userId,
+            userName,
+            state.paymentAmount,
+            `Refund for cancelled registration ${state.sessionDate}`
+        );
 
-            // Delete player from Firestore
-            await playersRef().doc(currentPlayer.id).delete();
-            console.log(`✅ Registration cancelled for: ${userName}`);
-        }
+        // Delete player from Firestore
+        await playersRef().doc(currentPlayer.id).delete();
 
         // Cancel and refund all guests
         if (userGuests.length > 0) {
@@ -3323,12 +3031,8 @@ async function cancelRegistration() {
             console.log(`✅ Player moving up from waiting list: ${nextPlayer.name} (already paid at registration)`);
         }
 
-        // Recalculate positions so waiting list players move up correctly
-        await recalculatePlayerPositions();
-
-        // NOTE: Line notification is now sent automatically by Firestore trigger (onPlayerDeleted)
-        // No need to call sendLineCancellationNotification() from frontend anymore
-        // This ensures notification is sent even if user's phone/browser has issues
+        // Send Line notification (async, don't wait)
+        sendLineCancellationNotification(userName);
 
         // Clear localStorage
         localStorage.removeItem('userName');
@@ -3621,14 +3325,10 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
     const name = nameParam || document.getElementById('loginName').value.trim();
     const password = passwordParam || document.getElementById('loginPassword').value;
 
-    console.log('🔍 Login attempt:', { name, passwordLength: password.length });
-
     // Check if user is authorized
     const authorizedUser = state.authorizedUsers.find(u => u.name === name && u.password === password);
 
     if (authorizedUser) {
-        console.log('✅ User found:', { name, role: authorizedUser.role, passwordLength: password.length });
-
         // Show maintenance warning for non-admin users
         if (state.maintenanceMode && authorizedUser.role !== 'admin' && authorizedUser.role !== 'moderator') {
             alert('System is under maintenance. You can login but cannot register or cancel.\nระบบกำลังปรับปรุง คุณสามารถเข้าสู่ระบบได้ แต่ไม่สามารถลงทะเบียนหรือยกเลิกได้');
@@ -3648,8 +3348,6 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
                     return v.toString(16);
                 });
 
-            console.log('🔑 Generated UUID, attempting to save to Firestore...');
-
             // Update user's password in database to UUID
             try {
                 await usersRef.doc(authorizedUser.id).update({
@@ -3657,15 +3355,11 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
                 });
                 console.log('✅ UUID password saved for', name);
             } catch (error) {
-                console.error('❌ Error saving UUID password:', error);
-                alert('Error setting up secure password. Please try again.\n\nError: ' + error.message);
+                console.error('Error saving UUID password:', error);
+                alert('Error setting up secure password. Please try again.');
                 return;
             }
-        } else {
-            console.log('✅ Using existing long password (>= 5 chars)');
         }
-
-        console.log('💾 Saving to localStorage and state...');
 
         // Save login info with permanent password (UUID or existing long password)
         state.loggedInUser = {
@@ -3677,13 +3371,10 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
         };
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
-        console.log('🔄 Calling updateUI()...');
         document.getElementById('loginForm').reset();
         updateUI();
-        console.log('✅ Login complete!');
         // No alert - just go straight to the app
     } else {
-        console.log('❌ User not found or wrong password');
         alert('Invalid name or password / ชื่อหรือรหัสผ่านไม่ถูกต้อง');
     }
 }
@@ -3713,11 +3404,11 @@ function generatePaymentQR() {
     const hasPaid = currentPlayer && currentPlayer.paid;
 
     if (hasPaid) {
-        // Already paid - show green button with "จ่ายแล้ว ✓"
+        // Already paid - show green button with "Paid ✓"
         qrContainer.innerHTML = `
             <div style="text-align: center;">
                 <button style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: not-allowed; font-weight: bold;" disabled>
-                    <span class="thai-text">จ่ายแล้ว ✓</span><br><span class="eng-text" style="color: rgba(255,255,255,0.8);">Paid</span>
+                    Paid ✓<br>ชำระแล้ว ✓
                 </button>
             </div>
         `;
@@ -3819,7 +3510,7 @@ function updateUI() {
                 cancelBtnEl.style.display = 'block';
                 showSuccessMessage(alreadyRegistered);
 
-                // Show "Register Guest" button ONLY when user is registered themselves
+                // STILL show "Register Guest" button - users can register guests even after registering themselves
                 const guestBtnEl = document.getElementById('guestRegistrationBtn');
                 if (guestBtnEl) {
                     guestBtnEl.style.display = 'block';
@@ -3843,19 +3534,19 @@ function updateUI() {
                     signupButton.disabled = true;
                     signupButton.style.background = '#9ca3af';
                     signupButton.style.cursor = 'not-allowed';
-                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ต้องการ: ${state.paymentAmount} THB)</small>`;
+                    signupButton.innerHTML = `Insufficient Balance<br>ยอดเงินไม่เพียงพอ<br><small style="font-size: 12px;">Balance: ${userBalance} THB (Need: ${state.paymentAmount} THB)</small>`;
                 } else {
                     // Sufficient balance - green button
                     signupButton.disabled = false;
                     signupButton.style.background = '#10b981';
                     signupButton.style.cursor = 'pointer';
-                    signupButton.innerHTML = `<span class="thai-text">ลงทะเบียน ${state.loggedInUser.name}</span><br><span class="eng-text">Join as ${state.loggedInUser.name}</span>`;
+                    signupButton.innerHTML = `Join as ${state.loggedInUser.name}<br>ลงทะเบียน`;
                 }
 
-                // Hide "Register Guest" button - user must register themselves first
+                // Show "Register Guest" button only if user is logged in and not registered
                 const guestBtnEl = document.getElementById('guestRegistrationBtn');
                 if (guestBtnEl) {
-                    guestBtnEl.style.display = 'none';
+                    guestBtnEl.style.display = 'block';
                 }
             }
         }
@@ -3910,48 +3601,8 @@ function updateUI() {
         }
     }
 
-    // HIDE session details and players for ALL users when session is ARCHIVED
-    const sessionDetailsEl = document.querySelector('.session-details');
-    const playersListContainerEl = document.querySelector('.players-list');
-
-    if (state.closed) {
-        // Session is ARCHIVED - hide everything for ALL users (including admin)
-        if (sessionDetailsEl) sessionDetailsEl.style.display = 'none';
-        if (playersListContainerEl) playersListContainerEl.style.display = 'none';
-
-        // Hide registration form, cancel button and guest button
-        if (registrationFormEl) registrationFormEl.style.display = 'none';
-        if (cancelBtnEl) cancelBtnEl.style.display = 'none';
-        const guestBtnEl = document.getElementById('guestRegistrationBtn');
-        if (guestBtnEl) guestBtnEl.style.display = 'none';
-
-        // Show "Next session not ready" message instead of "You are registered"
-        const successMessage = document.getElementById('successMessage');
-        if (successMessage && state.loggedInUser) {
-            successMessage.style.display = 'block';
-            successMessage.innerHTML = `
-                <h2 style="margin-top: 0; color: #f59e0b;">⏳ Next session is not ready yet</h2>
-                <h2 style="margin-top: 0; color: #f59e0b;">เซสชันถัดไปยังไม่พร้อม</h2>
-                <p style="color: #666; margin-top: 15px;">The previous session has been closed. Please wait for the admin to create a new session.</p>
-                <p style="color: #666;">เซสชันก่อนหน้าถูกปิดแล้ว กรุณารอแอดมินสร้างเซสชันใหม่</p>
-            `;
-        }
-
-        console.log('🔒 Session is ARCHIVED - showing "not ready" message');
-        return; // Stop updateUI early - no need to update hidden elements
-    } else {
-        // Show session details and players list (normal flow)
-        if (sessionDetailsEl) sessionDetailsEl.style.display = 'block';
-        if (playersListContainerEl && state.loggedInUser) playersListContainerEl.style.display = 'block';
-    }
-
-    // Update session info - split Thai/English and display Thai larger
-    const dayParts = state.sessionDay.split(' / ');
-    if (dayParts.length === 2) {
-        document.getElementById('sessionDay').innerHTML = `<span class="thai-text">${dayParts[0]}</span> <span class="eng-text">${dayParts[1]}</span>`;
-    } else {
-        document.getElementById('sessionDay').textContent = state.sessionDay;
-    }
+    // Update session info
+    document.getElementById('sessionDay').textContent = state.sessionDay;
     document.getElementById('sessionTime').textContent = state.sessionTime;
     document.getElementById('currentPlayers').textContent = Math.min(state.players.length, state.maxPlayers);
     document.getElementById('maxPlayers').textContent = state.maxPlayers;
@@ -3985,17 +3636,6 @@ function updateUI() {
             playersListContainer.style.display = 'none';
         }
         return; // Exit early, don't render player list
-    }
-
-    // Hide player list for regular users when session is not published
-    const userRole = state.loggedInUser.role || 'user';
-    const isAdminOrModerator = (userRole === 'admin' || userRole === 'moderator');
-
-    if (!state.published && !isAdminOrModerator) {
-        if (playersListContainer) {
-            playersListContainer.style.display = 'none';
-        }
-        return; // Exit early, don't render player list for regular users
     } else {
         if (playersListContainer) {
             playersListContainer.style.display = 'block';
@@ -4047,7 +3687,7 @@ function updateUI() {
         if (player.paid) {
             const badge = document.createElement('span');
             badge.className = 'paid-badge';
-            badge.textContent = 'จ่ายแล้ว ✓';
+            badge.textContent = 'Paid ✓';
             statusDiv.appendChild(badge);
         }
         // REMOVED: "Pay Now" button - all payments processed at publish time
@@ -4096,272 +3736,42 @@ function updateUI() {
  * Update visibility/styling of admin buttons based on published status
  * Prevents dangerous actions when session is published
  */
-// ============================================
-// ADMIN STATUS & GROUP MANAGEMENT
-// ============================================
-
-let currentAdminGroup = null; // Track selected group
-
-/**
- * Get current app status based on state
- * @returns {string} 'maintenance' | 'closed' | 'open' | 'archived'
- */
-function getAppStatus() {
-    console.log('🔍 getAppStatus check:', {
-        maintenanceMode: state.maintenanceMode,
-        published: state.published,
-        closed: state.closed,
-        isSessionLoaded: state.isSessionLoaded
-    });
-
-    if (state.maintenanceMode) return 'maintenance';
-    if (state.closed) return 'archived'; // Session is archived/finished
-    if (!state.published) return 'closed'; // Session not published yet
-    return 'open';
-}
-
-/**
- * Update status indicator in admin panel
- */
-function updateAdminStatusIndicator() {
-    const indicator = document.getElementById('adminStatusIndicator');
-    const statusText = document.getElementById('statusText');
-
-    if (!indicator || !statusText) {
-        console.error('❌ Status indicator elements not found!');
-        return;
-    }
-
-    // Show indicator when admin panel is open
-    indicator.style.display = 'block';
-
-    const status = getAppStatus();
-    console.log('📊 Current app status:', status, '(maintenance:', state.maintenanceMode, 'published:', state.published, 'closed:', state.closed, ')');
-
-    switch (status) {
-        case 'maintenance':
-            indicator.style.background = '#fee2e2';
-            indicator.style.border = '2px solid #ef4444';
-            indicator.style.color = '#991b1b';
-            statusText.textContent = '🔧 MAINT';
-            break;
-        case 'archived':
-            indicator.style.background = '#e0e7ff';
-            indicator.style.border = '2px solid #6366f1';
-            indicator.style.color = '#3730a3';
-            statusText.textContent = '📦 ARCHIVED';
-            break;
-        case 'closed':
-            indicator.style.background = '#fef3c7';
-            indicator.style.border = '2px solid #f59e0b';
-            indicator.style.color = '#92400e';
-            statusText.textContent = '❌ CLOSED';
-            break;
-        case 'open':
-            indicator.style.background = '#d1fae5';
-            indicator.style.border = '2px solid #10b981';
-            indicator.style.color = '#065f46';
-            statusText.textContent = '✅ OPEN';
-            break;
-    }
-}
-
-/**
- * Get which groups should be visible based on app status
- * @param {string} status - 'maintenance' | 'archived' | 'closed' | 'open'
- * @returns {string[]} Array of group names
- */
-function getVisibleGroups(status) {
-    switch (status) {
-        case 'maintenance':
-            return ['users', 'settings'];
-        case 'archived':
-            return ['money', 'line', 'settings']; // Archived: view reports, line copy, and settings
-        case 'closed':
-            return ['setup', 'users', 'money', 'line', 'settings'];
-        case 'open':
-            return ['setup', 'close', 'users', 'money', 'line', 'settings'];
-        default:
-            return [];
-    }
-}
-
-/**
- * Update which group tabs are visible based on status
- */
-function updateAdminGroupTabs() {
-    const status = getAppStatus();
-    const visibleGroups = getVisibleGroups(status);
-
-    console.log('🔄 Updating group tabs for status:', status, 'Visible groups:', visibleGroups);
-
-    const tabs = document.querySelectorAll('.group-tab');
-    console.log('📌 Found', tabs.length, 'group tabs');
-
-    tabs.forEach(tab => {
-        const group = tab.getAttribute('data-group');
-        if (visibleGroups.includes(group)) {
-            tab.style.display = 'inline-block';
-        } else {
-            tab.style.display = 'none';
-        }
-    });
-
-    // Auto-select first visible group if current group is now hidden
-    if (!visibleGroups.includes(currentAdminGroup)) {
-        console.log('🎯 Auto-selecting first visible group:', visibleGroups[0]);
-        selectAdminGroup(visibleGroups[0]);
-    }
-}
-
-/**
- * Define all action buttons for each group
- */
-const adminGroupButtons = {
-    setup: [
-        { label: 'New', onclick: 'clearSession()', bg: '#ef4444', color: 'white' },
-        { label: 'Edit', onclick: 'changeSessionDetails()', bg: '#f59e0b' },
-        { label: 'Pay Amt', onclick: 'changePaymentAmount()', bg: '#f59e0b' },
-        { label: 'Max Pl', onclick: 'changeMaxPlayers()', bg: '#f59e0b' },
-        { label: 'Today', onclick: 'manageTodaysPlayers()', bg: '#8b5cf6', color: 'white' },
-        { label: 'Preview', onclick: 'previewSession()', bg: '#3b82f6', color: 'white' },
-        { label: 'Publish', onclick: 'publishSession()', bg: '#10b981', color: 'white', bold: true }
-    ],
-    close: [
-        { label: 'Refund', onclick: 'refundWaitingList()', bg: '#f59e0b' },
-        { label: 'Shuttle', onclick: 'registerShuttlecocks()', bg: '#ec4899', color: 'white' },
-        { label: 'Close', onclick: 'closeLastSession()', bg: '#6366f1', color: 'white', bold: true }
-    ],
-    users: [
-        { label: 'Users', onclick: 'manageAuthorizedUsers()', bg: '#3b82f6', color: 'white' },
-        { label: 'Regular', onclick: 'manageRegularPlayers()', bg: '#f59e0b' },
-        { label: 'Wallets', onclick: 'manageWallets()', bg: '#10b981', color: 'white' },
-        { label: 'Remove', onclick: 'removePlayerFromSession()', bg: '#ef4444', color: 'white' }
-    ],
-    money: [
-        { label: 'Trans', onclick: 'viewTransactions()', bg: '#3b82f6', color: 'white' },
-        { label: 'Report', onclick: 'viewAccountingReport()', bg: '#8b5cf6', color: 'white', bold: true },
-        { label: 'Debug', onclick: 'debugViewRawData()', bg: '#f59e0b' },
-        { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
-    ],
-    line: [
-        { label: '📢 Announce Session', onclick: 'showSessionAnnouncement()', bg: '#10b981', color: 'white', bold: true },
-        { label: 'Config', onclick: 'testLineConfig()', bg: '#9ca3af', color: 'white' },
-        { label: 'Demo', onclick: 'testDemoLine()', bg: '#9ca3af', color: 'white' },
-        { label: 'Test', onclick: 'testLineMessage()', bg: '#9ca3af', color: 'white' },
-        { label: 'Announce', onclick: 'testSessionAnnouncement()', bg: '#9ca3af', color: 'white' },
-        { label: 'Cancel', onclick: 'testCancellationNotification()', bg: '#9ca3af', color: 'white' },
-        { label: 'Nudge', onclick: 'testNudgeNotification()', bg: '#9ca3af', color: 'white' },
-        { label: 'Reset', onclick: 'testPasswordResetNotification()', bg: '#9ca3af', color: 'white' },
-        { label: 'Extra', onclick: 'sendExtraCourtMessage()', bg: '#9ca3af', color: 'white' }
-    ],
-    settings: [
-        { label: 'Weekly', onclick: 'generateWeeklyReport()', bg: '#f59e0b', color: 'white', bold: true },
-        { label: 'Maint', onclick: 'toggleMaintenanceMode()', bg: '#ef4444', color: 'white', bold: true },
-        { label: 'Export', onclick: 'exportList()', bg: '#3b82f6', color: 'white' },
-        { label: '🔔 Enable', onclick: 'enablePushNotifications()', bg: '#9ca3af', color: 'white' },
-        { label: '🧪 Lokal', onclick: 'testPushNotification()', bg: '#9ca3af', color: 'white' },
-        { label: '🚀 FCM', onclick: 'testRealFCM()', bg: '#9ca3af', color: 'white' }
-    ]
-};
-
-/**
- * Select and display buttons for a group
- * @param {string} groupName - Name of group to select
- */
-function selectAdminGroup(groupName) {
-    currentAdminGroup = groupName;
-
-    // Update tab styling
-    const tabs = document.querySelectorAll('.group-tab');
-    tabs.forEach(tab => {
-        const isSelected = tab.getAttribute('data-group') === groupName;
-        if (isSelected) {
-            tab.style.background = '#10b981';
-            tab.style.color = 'white';
-            tab.style.borderColor = '#10b981';
-            tab.style.fontWeight = 'bold';
-        } else {
-            tab.style.background = '#f3f4f6';
-            tab.style.color = '#374151';
-            tab.style.borderColor = '#e5e7eb';
-            tab.style.fontWeight = 'normal';
-        }
-    });
-
-    // Render buttons for selected group
-    renderAdminActionButtons(groupName);
-}
-
-/**
- * Render action buttons for the selected group
- * @param {string} groupName - Name of group
- */
-function renderAdminActionButtons(groupName) {
-    const container = document.getElementById('adminActionButtons');
-    if (!container) return;
-
-    const buttons = adminGroupButtons[groupName] || [];
-
-    container.innerHTML = buttons.map(btn => {
-        const style = `
-            width: auto !important;
-            flex: 0 0 auto;
-            padding: 10px 12px;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            background: ${btn.bg || '#f3f4f6'};
-            color: ${btn.color || '#374151'};
-            cursor: pointer;
-            white-space: nowrap;
-            font-weight: ${btn.bold ? 'bold' : 'normal'};
-        `;
-        return `<button onclick="${btn.onclick}" style="${style}">${btn.label}</button>`;
-    }).join('');
-
-    // Hide payment status when switching groups
-    const paymentSection = document.getElementById('paymentStatusSection');
-    if (paymentSection) {
-        paymentSection.style.display = 'none';
-    }
-}
-
-/**
- * Toggle payment status visibility (called by Payment button in Users group)
- */
-function togglePaymentStatus() {
-    const paymentSection = document.getElementById('paymentStatusSection');
-    if (paymentSection) {
-        if (paymentSection.style.display === 'none') {
-            paymentSection.style.display = 'block';
-            updatePaymentList(); // Refresh payment list
-        } else {
-            paymentSection.style.display = 'none';
-        }
-    }
-}
-
 function updateAdminButtonVisibility() {
     const adminActions = document.getElementById('adminActions');
     if (!adminActions || adminActions.style.display === 'none') {
         return; // Admin panel not open
     }
 
-    // Update status indicator
-    updateAdminStatusIndicator();
+    // Find all admin buttons
+    const buttons = adminActions.querySelectorAll('button');
 
-    // Update which group tabs are visible
-    updateAdminGroupTabs();
+    buttons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
 
-    // If no group selected yet, select first visible group
-    if (!currentAdminGroup) {
-        const status = getAppStatus();
-        const visibleGroups = getVisibleGroups(status);
-        if (visibleGroups.length > 0) {
-            selectAdminGroup(visibleGroups[0]);
+        if (state.published) {
+            // Session is published - hide ONLY Edit Session (dangerous)
+            if (onclick === 'changeSessionDetails()') {
+                button.style.display = 'none';
+            } else if (onclick === 'changePaymentAmount()') {
+                // Keep payment amount button visible (useful for corrections)
+                button.style.display = 'block';
+                button.style.background = '#f59e0b'; // Orange warning color
+            } else if (onclick === 'clearSession()') {
+                // Make New Session button RED and more prominent
+                button.style.background = '#ef4444'; // Red
+                button.style.fontWeight = 'bold';
+            }
+        } else {
+            // Session is draft - show all buttons normally with orange warning color
+            if (onclick === 'changePaymentAmount()' || onclick === 'changeSessionDetails()') {
+                button.style.display = 'block';
+                button.style.background = '#f59e0b'; // Orange warning color
+            } else if (onclick === 'clearSession()') {
+                button.style.background = '#f3f4f6'; // Normal gray
+                button.style.fontWeight = 'normal';
+            }
         }
-    }
+    });
 }
 
 function toggleAdmin() {
@@ -4572,8 +3982,8 @@ async function clearSession() {
 
             // Update session date and UNPUBLISH - Set to day 8 (Not Set)
             state.sessionDate = new Date().toLocaleDateString('en-GB');
-            state.sessionDay = 'ไม่ได้กำหนด / Not Set'; // Day 8
-            state.sessionTime = '10:00 - 12:00'; // Default time (most common)
+            state.sessionDay = 'Not Set / ไม่ได้กำหนด'; // Day 8
+            state.sessionTime = '00:00 - 00:00'; // Blank time
             state.maxPlayers = 12; // Keep default 12 (show 0 / 12)
             state.published = false; // Set to draft mode
             state.closed = false; // Mark as open (not closed)
@@ -4588,6 +3998,9 @@ async function clearSession() {
 
             // Players will be automatically updated via real-time listener
             // No need to reload - admin stays logged in
+
+            // Reset auto-load flag so regular players will be loaded on next "Manage Today's Players"
+            hasAutoLoadedRegularPlayers = false;
 
             console.log('✅ Session cleared and set to DRAFT mode');
             alert('✅ Session cleared!\n\nSession is now in DRAFT mode (not visible to users).\n\nNEXT: Click "Edit Session" to set day/time!');
@@ -4610,13 +4023,13 @@ async function clearSession() {
 async function previewSession() {
     try {
         const days = [
-            'วันจันทร์ / Monday',
-            'วันอังคาร / Tuesday',
-            'วันพุธ / Wednesday',
-            'พฤหัสบดี / Thursday',
-            'วันศุกร์ / Friday',
-            'วันเสาร์ / Saturday',
-            'อาทิตย์ / Sunday'
+            'Monday / วันจันทร์',
+            'Tuesday / วันอังคาร',
+            'Wednesday / วันพุธ',
+            'Thursday / พฤหัสบดี',
+            'Friday / วันศุกร์',
+            'Saturday / วันเสาร์',
+            'Sunday / อาทิตย์'
         ];
         const currentDayIndex = days.findIndex(d => d === state.sessionDay);
         const dayNumber = currentDayIndex + 1;
@@ -4624,18 +4037,9 @@ async function previewSession() {
         // Get regular players for this day
         const regularPlayersForToday = await getRegularPlayersForDay(dayNumber);
 
-        // IMPORTANT: Get FRESH player data from Firestore (not from state which might be stale)
-        const playersSnapshot = await playersRef().get();
-        const currentPlayers = [];
-        playersSnapshot.forEach(doc => {
-            currentPlayers.push({ id: doc.id, ...doc.data() });
-        });
-        // Sort by position
-        currentPlayers.sort((a, b) => a.position - b.position);
-
         // Count players and check their balances
-        const totalPlayers = currentPlayers.length;
-        const unpaidPlayers = currentPlayers.filter(p => !p.paid);
+        const totalPlayers = state.players.length;
+        const unpaidPlayers = state.players.filter(p => !p.paid);
 
         // Check which unpaid players will be charged vs removed
         const playersToCharge = [];
@@ -4660,7 +4064,7 @@ async function previewSession() {
         // Find regular players who are NOT on the list (potential low balance issue)
         const missingRegularPlayers = [];
         for (const playerName of regularPlayersForToday) {
-            const isOnList = currentPlayers.some(p => p.name === playerName);
+            const isOnList = state.players.some(p => p.name === playerName);
             if (!isOnList) {
                 // Check their balance
                 const user = state.authorizedUsers.find(u => u.name === playerName);
@@ -4686,7 +4090,7 @@ async function previewSession() {
 
         // List all players
         message += `👥 PLAYERS (${totalPlayers}):\n\n`;
-        currentPlayers.forEach((player, index) => {
+        state.players.forEach((player, index) => {
             const paidStatus = player.paid ? '✅' : '❌';
             message += `${index + 1}. ${player.name} ${paidStatus}\n`;
         });
@@ -4742,54 +4146,13 @@ function closePreviewSession() {
     document.getElementById('previewSessionModal').style.display = 'none';
 }
 
-/**
- * Show red warning modal for low balance alerts
- * More visible than standard alert() to prevent accidental dismissal
- */
-function showLowBalanceWarning(players) {
-    const modal = document.getElementById('lowBalanceWarningModal');
-    const content = document.getElementById('lowBalanceWarningContent');
-
-    let message = `<p style="font-size: 18px; margin-bottom: 15px; font-weight: bold;">❌ SOME REGULAR PLAYERS WERE NOT ADDED</p>`;
-    message += `<p style="font-size: 18px; margin-bottom: 20px; font-weight: bold;">❌ ผู้เล่นประจำบางคนไม่ถูกเพิ่ม</p>`;
-    message += `<p style="margin-bottom: 10px;">The following regular players have <strong>INSUFFICIENT BALANCE</strong>:</p>`;
-    message += `<p style="margin-bottom: 20px;">ผู้เล่นประจำต่อไปนี้มี<strong>ยอดเงินไม่เพียงพอ</strong>:</p>`;
-    message += `<div style="background: white; padding: 15px; border-radius: 8px; border: 2px solid #dc2626; margin-bottom: 20px;">`;
-
-    players.forEach(p => {
-        message += `<p style="margin: 8px 0; font-size: 16px;">`;
-        message += `<strong>${p.name}</strong>: `;
-        message += `<span style="color: #dc2626; font-weight: bold;">${p.balance} THB</span> `;
-        message += `(needs ${state.paymentAmount} THB)`;
-        message += `</p>`;
-    });
-
-    message += `</div>`;
-    message += `<p style="font-size: 16px; font-weight: bold; margin-top: 20px;">⚠️ Please top up their wallets before they can join!</p>`;
-    message += `<p style="font-size: 16px; font-weight: bold;">⚠️ กรุณาเติมเงินให้พวกเขาก่อนที่จะเข้าร่วมได้!</p>`;
-
-    content.innerHTML = message;
-    modal.style.display = 'block';
-}
-
-function closeLowBalanceWarning() {
-    document.getElementById('lowBalanceWarningModal').style.display = 'none';
-}
-
 async function publishSession() {
-    // Get FRESH player data from Firestore (not from state which might be stale)
-    const playersSnapshot = await playersRef().get();
-    const currentPlayers = [];
-    playersSnapshot.forEach(doc => {
-        currentPlayers.push({ id: doc.id, ...doc.data() });
-    });
-
-    const unpaidPlayers = currentPlayers.filter(p => !p.paid);
+    const unpaidPlayers = state.players.filter(p => !p.paid);
 
     let confirmMessage = 'Publish this session?\n\nเผยแพร่เซสชัน?\n\n';
-    confirmMessage += `Current players: ${currentPlayers.length}\n`;
+    confirmMessage += `Current players: ${state.players.length}\n`;
     confirmMessage += `All players have already paid at registration.\n\n`;
-    confirmMessage += `ผู้เล่นปัจจุบัน: ${currentPlayers.length}\n`;
+    confirmMessage += `ผู้เล่นปัจจุบัน: ${state.players.length}\n`;
     confirmMessage += `ผู้เล่นทุกคนจ่ายเงินแล้วตอนลงทะเบียน`;
 
     // Legacy support: handle any unpaid players (should be 0 with new system)
@@ -4846,11 +4209,6 @@ async function publishSession() {
                         }
                     }
                 }
-            }
-
-            // If any players were removed, recalculate positions
-            if (removed > 0) {
-                await recalculatePlayerPositions();
             }
 
             // Publish session
@@ -4944,14 +4302,14 @@ async function refundWaitingList() {
 
 async function changeSessionDetails() {
     const days = [
-        'วันจันทร์ / Monday',
-        'วันอังคาร / Tuesday',
-        'วันพุธ / Wednesday',
-        'วันพฤหัสบดี / Thursday',
-        'วันศุกร์ / Friday',
-        'วันเสาร์ / Saturday',
-        'วันอาทิตย์ / Sunday',
-        'ไม่ได้กำหนด / Not Set' // Day 8 - blank day
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์',
+        'Not Set / ไม่ได้กำหนด' // Day 8 - blank day
     ];
 
     const dayPrompt = `Select day / เลือกวัน:\n${days.map((d, i) => `${i+1}. ${d}`).join('\n')}\n\nEnter number (1-8):`;
@@ -4999,8 +4357,8 @@ async function changeSessionDetails() {
             console.log(`🔍 Day 8 selected, keeping current date: ${state.sessionDate}`);
         }
 
-        // Default time: 10:00 - 12:00 (most common)
-        const defaultTime = (dayChoice == 8) ? '10:00 - 12:00' : state.sessionTime;
+        // If day 8 (Not Set), automatically set time to 00:00 - 00:00
+        const defaultTime = (dayChoice == 8) ? '00:00 - 00:00' : state.sessionTime;
 
         const timePrompt = 'Enter time / ใส่เวลา (e.g., 10:00 - 12:00):';
         const time = prompt(timePrompt, defaultTime);
@@ -5011,6 +4369,9 @@ async function changeSessionDetails() {
             console.log(`💾 SAVING to Firestore: date=${state.sessionDate}, day=${state.sessionDay}, time=${time}`);
             await saveSessionData();
             updateUI();
+
+            // Reset auto-load flag so regular players for NEW day will be loaded
+            hasAutoLoadedRegularPlayers = false;
 
             alert(`✅ Session details updated!\n\nDay: ${state.sessionDay}\nDate: ${state.sessionDate}\nTime: ${time}\n\nUse "Manage Today's Players" to add players.\n\nอัปเดตแล้ว! ใช้ "จัดการผู้เล่นวันนี้" เพื่อเพิ่มผู้เล่น`);
             console.log(`✅ Session updated: ${state.sessionDay} ${state.sessionDate} ${time}`);
@@ -5038,40 +4399,12 @@ async function getRegularPlayersForDay(dayNumber) {
 }
 
 async function changePaymentAmount() {
-    // If session is published, payment amount cannot be changed
-    if (state.published) {
-        alert(
-            `🔒 PAYMENT AMOUNT FOR THIS SESSION\n` +
-            `ราคาสำหรับเซสชันนี้\n\n` +
-            `💰 ${state.paymentAmount} THB\n\n` +
-            `This amount is locked for the current session.\n` +
-            `ราคานี้ถูกล็อคสำหรับเซสชันปัจจุบัน\n\n` +
-            `To change: Start new session (New button)\n` +
-            `หากต้องการเปลี่ยน: เริ่มเซสชันใหม่ (ปุ่ม New)`
-        );
-        return;
-    }
-
-    // Session is not published (draft mode) - allow changing
-    const newAmount = prompt(
-        '⚠️ IMPORTANT: This amount will be used for ALL players in this session!\n' +
-        'สำคัญ: ราคานี้จะใช้กับผู้เล่นทุกคนในเซสชันนี้!\n\n' +
-        'Once published, it CANNOT be changed.\n' +
-        'เมื่อเผยแพร่แล้ว จะไม่สามารถเปลี่ยนได้\n\n' +
-        'Enter payment amount in THB / ใส่ราคา (บาท):',
-        state.paymentAmount
-    );
-
+    const newAmount = prompt('New payment amount in THB / ราคาใหม่ (บาท):', state.paymentAmount);
     if (newAmount !== null && !isNaN(newAmount) && newAmount >= 0) {
         state.paymentAmount = parseInt(newAmount);
         await saveSessionData();
         updateUI();
-        alert(
-            `✅ Payment amount set to ${state.paymentAmount} THB\n` +
-            `ตั้งราคาเป็น ${state.paymentAmount} บาทแล้ว\n\n` +
-            `This will be locked when you publish the session.\n` +
-            `ราคานี้จะถูกล็อคเมื่อคุณเผยแพร่เซสชัน`
-        );
+        alert(`Payment amount updated to ${state.paymentAmount} THB / อัปเดตราคาเป็น ${state.paymentAmount} บาทแล้ว`);
 
         // Mark step 3 as completed
         markStepCompleted('Change Payment Amount');
@@ -5190,13 +4523,13 @@ function manageRegularPlayers() {
 
 async function selectDayForRegularPlayers(dayNumber) {
     const days = [
-        'วันจันทร์ / Monday',
-        'วันอังคาร / Tuesday',
-        'วันพุธ / Wednesday',
-        'วันพฤหัสบดี / Thursday',
-        'วันศุกร์ / Friday',
-        'วันเสาร์ / Saturday',
-        'วันอาทิตย์ / Sunday'
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
     ];
 
     const selectionArea = document.getElementById('regularPlayersSelectionArea');
@@ -5446,42 +4779,9 @@ async function removeAuthorizedUser(userId) {
     const user = state.authorizedUsers.find(u => u.id === userId);
     if (!user) return;
 
-    // Check if user is registered in current session
-    const playerInSession = state.players.find(p => p.userId === userId);
-    const guestsInSession = state.players.filter(p => p.guestOf === userId);
-    const totalRegistrations = (playerInSession ? 1 : 0) + guestsInSession.length;
-
-    let confirmMsg = `Remove ${user.name}?\nลบ ${user.name}?\n\n`;
-
-    if (totalRegistrations > 0) {
-        confirmMsg += `⚠️ This user has ${totalRegistrations} registration(s) in current session.\n`;
-        confirmMsg += `ผู้ใช้นี้มี ${totalRegistrations} การลงทะเบียนในเซสชันปัจจุบัน\n\n`;
-        confirmMsg += `They will be removed from the session.\n`;
-        confirmMsg += `(Wallet balance will be lost when user is deleted)`;
-    }
-
-    if (confirm(confirmMsg)) {
+    if (confirm(`Remove ${user.name}? / ลบ ${user.name}?`)) {
         try {
-            // If user is registered, remove from session first
-            if (playerInSession) {
-                await playersRef().doc(playerInSession.id).delete();
-                console.log(`✅ Removed ${user.name} from session`);
-            }
-
-            // Remove any guests they registered
-            for (const guest of guestsInSession) {
-                await playersRef().doc(guest.id).delete();
-                console.log(`✅ Removed guest ${guest.name}`);
-            }
-
-            // Recalculate positions if any players were removed
-            if (totalRegistrations > 0) {
-                await recalculatePlayerPositions();
-            }
-
-            // Now delete the user from authorized users
             await usersRef.doc(userId).delete();
-
             alert('User removed / ลบผู้ใช้แล้ว');
         } catch (error) {
             console.error('Error removing user:', error);
@@ -5542,6 +4842,9 @@ function closeUserSelection() {
 // MANAGE TODAY'S PLAYERS
 // ============================================
 
+// Track if we've already auto-loaded regular players for this session
+let hasAutoLoadedRegularPlayers = false;
+
 async function manageTodaysPlayers(skipAutoLoad = false) {
     // Close other admin sections first
     closeAllAdminSections();
@@ -5553,17 +4856,17 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
     // Find which day number we're on
     const days = [
-        'วันจันทร์ / Monday',
-        'วันอังคาร / Tuesday',
-        'วันพุธ / Wednesday',
-        'วันพฤหัสบดี / Thursday',
-        'วันศุกร์ / Friday',
-        'วันเสาร์ / Saturday',
-        'วันอาทิตย์ / Sunday'
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
     ];
     const currentDayIndex = days.findIndex(d => d === state.sessionDay);
     const dayNumber = currentDayIndex + 1; // 1-7
-    const dayNameShort = state.sessionDay.split(' / ')[1]; // "Monday" (English is now second)
+    const dayNameShort = state.sessionDay.split(' / ')[0]; // "Monday"
 
     // Update title to show current day
     titleEl.textContent = `Manage Players: ${state.sessionDay}`;
@@ -5579,17 +4882,10 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         currentPlayers.push({ id: doc.id, ...doc.data() });
     });
 
-    console.log('🔍 manageTodaysPlayers - Current players in session:', currentPlayers.map(p => p.name));
-    console.log('🔍 manageTodaysPlayers - Total players:', currentPlayers.length);
-
-    // Auto-add regular players ONLY on first open (not when refreshing after manual add/remove)
+    // Auto-add regular players ONLY on first open (not when refreshing after add/remove)
     let addedCount = 0;
     let skippedLowBalance = [];
-
-    if (!skipAutoLoad) {
-        console.log('🤖 AUTO-LOAD: Checking regular players for this day...');
-        console.log('🤖 Regular players for today:', regularPlayersForToday);
-
+    if (!skipAutoLoad && !hasAutoLoadedRegularPlayers) {
         for (const playerName of regularPlayersForToday) {
             const alreadyInSession = currentPlayers.some(p => p.name === playerName);
 
@@ -5598,22 +4894,21 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
                 const user = state.authorizedUsers.find(u => u.name === playerName);
 
                 if (user) {
-                    // CHECK BALANCE FIRST
+                    // CHECK BALANCE FIRST (same as manual add)
                     const userBalance = user.balance || 0;
 
                     if (userBalance < state.paymentAmount) {
                         // Skip this player due to insufficient balance
                         skippedLowBalance.push({name: playerName, balance: userBalance});
-                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB)`);
+                        console.log(`⚠️ Skipped ${playerName} - insufficient balance (${userBalance} THB)`);
                         continue; // Skip to next player
                     }
 
+                    // Use 'id' field (not 'userId') from authorized users
                     const userId = user.id || user.userId;
 
                     if (userId) {
-                        console.log(`➕ AUTO-ADDING ${playerName} (balance: ${userBalance} THB)`);
-
-                        // Add to session (without wallet deduction - happens on publish)
+                        // Add to session (without wallet deduction yet)
                         await playersRef().add({
                             name: playerName,
                             paid: false,
@@ -5623,40 +4918,28 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
                             isRegularPlayer: true
                         });
                         addedCount++;
-                        console.log(`✅ Added ${playerName} to session`);
                     }
-                } else {
-                    console.log(`⚠️ User ${playerName} not found in authorized users`);
                 }
-            } else {
-                console.log(`✓ ${playerName} already in session, skipping`);
             }
         }
+        hasAutoLoadedRegularPlayers = true; // Mark as loaded
 
-        // Wait for Firestore to commit before refreshing
+        // Wait a moment for Firestore to update before showing UI
         if (addedCount > 0) {
-            console.log(`⏳ Waiting for Firestore to commit ${addedCount} players...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 800));
         }
 
-        // Show RED WARNING if any players were skipped due to low balance
+        // Show warning if any players were skipped due to low balance
         if (skippedLowBalance.length > 0) {
-            showLowBalanceWarning(skippedLowBalance);
-        }
-
-        console.log(`🤖 AUTO-LOAD COMPLETE: Added ${addedCount} players, Skipped ${skippedLowBalance.length} (low balance)`);
-
-        // Refresh player data after auto-load
-        if (addedCount > 0) {
-            const refreshSnapshot = await playersRef().get();
-            currentPlayers.length = 0; // Clear array
-            refreshSnapshot.forEach(doc => {
-                currentPlayers.push({ id: doc.id, ...doc.data() });
+            let message = `⚠️ Warning: Low Balance / คำเตือน: ยอดเงินต่ำ\n\n`;
+            message += `The following regular players were NOT added due to insufficient balance:\n`;
+            message += `ผู้เล่นประจำต่อไปนี้ไม่ถูกเพิ่มเนื่องจากยอดเงินไม่เพียงพอ:\n\n`;
+            skippedLowBalance.forEach(p => {
+                message += `- ${p.name}: ${p.balance} THB (needs ${state.paymentAmount} THB)\n`;
             });
-            console.log('🔄 Refreshed player list after auto-load:', currentPlayers.map(p => p.name));
+            message += `\nPlease top up their wallets!\nกรุณาเติมเงินให้พวกเขา!`;
+            alert(message);
         }
-    } else {
-        console.log('⏭️ Skipping auto-load (skipAutoLoad = true)');
     }
 
     // Sort users alphabetically
@@ -5669,14 +4952,10 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
     const unregisteredUsers = [];
 
     sortedUsers.forEach(user => {
-        // Check if user is already registered for today's session (use FRESH data from Firestore)
-        const isRegisteredToday = currentPlayers.some(p => p.name === user.name);
+        // Check if user is already registered for today's session
+        const isRegisteredToday = state.players.some(p => p.name === user.name);
         // Check if user is configured as regular player for this day
         const isRegularPlayer = regularPlayersForToday.includes(user.name);
-
-        if (isRegisteredToday) {
-            console.log(`✅ ${user.name} is REGISTERED for today`);
-        }
 
         // Show as "selected" if they are registered for today
         if (isRegisteredToday) {
@@ -5686,21 +4965,15 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
         }
     });
 
-    console.log('🔍 Registered users:', registeredUsers.length);
-    console.log('🔍 Unregistered users:', unregisteredUsers.length);
-
     // Build user list with registered users at the top
     list.innerHTML = '';
-    console.log('🎨 Building UI - Clearing list and rebuilding...');
 
     // Add registered users first (at the top)
     if (registeredUsers.length > 0) {
-        console.log(`✅ Creating GREEN section with ${registeredUsers.length} registered users`);
         const headerRegistered = document.createElement('div');
         headerRegistered.style.cssText = 'padding: 10px; background: #dcfce7; border-radius: 8px; margin-bottom: 10px; font-weight: bold; color: #166534;';
         headerRegistered.textContent = `✅ On ${dayNameShort}'s List (${registeredUsers.length}) / อยู่ในรายชื่อ${dayNameShort}`;
         list.appendChild(headerRegistered);
-        console.log(`   Added header: "✅ On ${dayNameShort}'s List (${registeredUsers.length})"`);
 
         registeredUsers.forEach(user => {
             const balance = user.balance || 0;
@@ -5732,13 +5005,11 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
             `;
 
             list.appendChild(item);
-            console.log(`   ✅ Added ${user.name} to GREEN section (registered)`);
         });
     }
 
     // Add unregistered users
     if (unregisteredUsers.length > 0) {
-        console.log(`⬜ Creating GRAY section with ${unregisteredUsers.length} unregistered users`);
         const headerUnregistered = document.createElement('div');
         headerUnregistered.style.cssText = 'padding: 10px; background: #f3f4f6; border-radius: 8px; margin-bottom: 10px; margin-top: 15px; font-weight: bold; color: #374151;';
         headerUnregistered.textContent = `⬜ Not Registered (${unregisteredUsers.length}) / ยังไม่ได้ลงทะเบียน`;
@@ -5773,15 +5044,15 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
 async function togglePlayerForToday(user, isCurrentlyRegistered) {
     const days = [
-        'วันจันทร์ / Monday',
-        'วันอังคาร / Tuesday',
-        'วันพุธ / Wednesday',
-        'วันพฤหัสบดี / Thursday',
-        'วันศุกร์ / Friday',
-        'วันเสาร์ / Saturday',
-        'วันอาทิตย์ / Sunday'
+        'Monday / วันจันทร์',
+        'Tuesday / วันอังคาร',
+        'Wednesday / วันพุธ',
+        'Thursday / วันพฤหัสบดี',
+        'Friday / วันศุกร์',
+        'Saturday / วันเสาร์',
+        'Sunday / วันอาทิตย์'
     ];
-    const dayName = state.sessionDay.split(' / ')[1]; // "Monday" (English is now second)
+    const dayName = state.sessionDay.split(' / ')[0]; // "Monday"
 
     try {
         if (isCurrentlyRegistered) {
@@ -5801,7 +5072,6 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                 const playerToRemove = state.players.find(p => p.name === user.name);
                 if (playerToRemove && playerToRemove.id) {
                     await playersRef().doc(playerToRemove.id).delete();
-                    await recalculatePlayerPositions(); // Ensure waiting list moves up
                     console.log(`✅ Removed ${user.name} from this ${dayName} session`);
                     await manageTodaysPlayers(true); // Skip auto-load when refreshing
                 }
@@ -5823,7 +5093,6 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                 const playerToRemove = state.players.find(p => p.name === user.name);
                 if (playerToRemove && playerToRemove.id) {
                     await playersRef().doc(playerToRemove.id).delete();
-                    await recalculatePlayerPositions(); // Ensure waiting list moves up
                 }
 
                 console.log(`✅ Removed ${user.name} from ALL ${dayName}s`);
@@ -5862,25 +5131,15 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
             if (choice === '1') {
                 // Add to THIS session only
                 const userId = user.id || user.userId;
-
-                // Get FRESH count from Firestore (not state.players which might be stale)
-                const currentCount = (await playersRef().get()).size;
-
-                console.log(`➕ ADDING ${user.name} to Firestore...`);
-                console.log(`   Session ID: ${currentSessionId}`);
-                console.log(`   Current player count (from Firestore): ${currentCount}`);
-                console.log(`   New position: ${currentCount + 1}`);
-
-                const docRef = await playersRef().add({
+                await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    position: currentCount + 1,
+                    position: state.players.length + 1,
                     userId: userId,
                     isRegularPlayer: false
                 });
-
-                console.log(`✅ Added ${user.name} to this ${dayName} session only (doc ID: ${docRef.id})`);
+                console.log(`✅ Added ${user.name} to this ${dayName} session only`);
                 await manageTodaysPlayers(true); // Skip auto-load when refreshing
             } else if (choice === '2') {
                 // Add to regular players config AND this session
@@ -5900,26 +5159,16 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
 
                 // Add to this session
                 const userId = user.id || user.userId;
-
-                // Get FRESH count from Firestore (not state.players which might be stale)
-                const currentCount = (await playersRef().get()).size;
-
-                console.log(`➕ ADDING ${user.name} to Firestore AND config...`);
-                console.log(`   Session ID: ${currentSessionId}`);
-                console.log(`   Current player count (from Firestore): ${currentCount}`);
-                console.log(`   New position: ${currentCount + 1}`);
-                console.log(`   Config day: ${dayKey}`);
-
-                const docRef = await playersRef().add({
+                await playersRef().add({
                     name: user.name,
                     paid: false,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    position: currentCount + 1,
+                    position: state.players.length + 1,
                     userId: userId,
                     isRegularPlayer: true
                 });
 
-                console.log(`✅ Added ${user.name} to ALL ${dayName}s (doc ID: ${docRef.id})`);
+                console.log(`✅ Added ${user.name} to ALL ${dayName}s`);
                 await manageTodaysPlayers(true); // Skip auto-load when refreshing
             }
         }
@@ -5945,24 +5194,14 @@ function closeManagedPlayers() {
  * Refunds wallet if player had paid
  */
 async function removePlayerFromSession() {
-    // Get FRESH player data from Firestore (not from state which might be stale)
-    const playersSnapshot = await playersRef().get();
-    const currentPlayers = [];
-    playersSnapshot.forEach(doc => {
-        currentPlayers.push({ id: doc.id, ...doc.data() });
-    });
-
-    // Sort by position
-    currentPlayers.sort((a, b) => a.position - b.position);
-
-    if (currentPlayers.length === 0) {
+    if (state.players.length === 0) {
         alert('No players registered / ไม่มีผู้เล่นที่ลงทะเบียน');
         return;
     }
 
     // Build player list for selection
     let playerList = 'Select player number to remove / เลือกหมายเลขผู้เล่นที่จะลบ:\n\n';
-    currentPlayers.forEach((player, index) => {
+    state.players.forEach((player, index) => {
         const position = index + 1;
         const paidStatus = player.paid ? '✓ Paid' : '✗ Unpaid';
         const guestMarker = player.isGuest ? '👤 Guest' : '';
@@ -5975,91 +5214,64 @@ async function removePlayerFromSession() {
 
     const playerIndex = parseInt(selection) - 1;
 
-    if (isNaN(playerIndex) || playerIndex < 0 || playerIndex >= currentPlayers.length) {
+    if (isNaN(playerIndex) || playerIndex < 0 || playerIndex >= state.players.length) {
         alert('Invalid player number / หมายเลขผู้เล่นไม่ถูกต้อง');
         return;
     }
 
-    const playerToRemove = currentPlayers[playerIndex];
+    const playerToRemove = state.players[playerIndex];
     const playerName = playerToRemove.name;
     const wasPaid = playerToRemove.paid;
     const isGuest = playerToRemove.isGuest;
 
-    // Determine who would get the refund (for confirmation message)
-    const hostUserId = isGuest ? playerToRemove.guestOf : null;
-    const hostUser = hostUserId ? state.authorizedUsers.find(u => u.id === hostUserId) : null;
-
     // Confirm removal
-    let confirmMsg = `Remove player from session?\nลบผู้เล่นออกจากเซสชัน?\n\n`;
-    confirmMsg += `Player: ${playerName}\n`;
-    confirmMsg += `Status: ${wasPaid ? 'Paid ✓' : 'Unpaid ✗'}\n`;
-    if (isGuest && hostUser) {
-        confirmMsg += `(Guest of ${hostUser.name})\n\n`;
-        confirmMsg += `Refund ${state.paymentAmount} THB to ${hostUser.name}`;
-    } else if (isGuest) {
-        confirmMsg += `(Guest player)\n`;
-    } else if (wasPaid) {
-        confirmMsg += `\nWallet will be refunded ${state.paymentAmount} THB`;
-    }
+    const confirmMsg = `Remove player from session?\nลบผู้เล่นออกจากเซสชัน?\n\n` +
+                      `Player: ${playerName}\n` +
+                      `Status: ${wasPaid ? 'Paid ✓' : 'Unpaid ✗'}\n` +
+                      `${isGuest ? '(Guest player)' : ''}\n\n` +
+                      `${wasPaid && !isGuest ? 'Wallet will be refunded ' + state.paymentAmount + ' THB' : ''}`;
 
     if (!confirm(confirmMsg)) {
         return;
     }
 
     try {
-        // Determine who gets the refund
-        // For regular players: refund to themselves
-        // For guests: refund to the host who registered them
-        const refundUserId = isGuest ? playerToRemove.guestOf : playerToRemove.userId;
-        const refundUser = refundUserId ? state.authorizedUsers.find(u => u.id === refundUserId) : null;
+        // If player paid and is not a guest, refund to wallet
+        if (wasPaid && !isGuest && playerToRemove.userId) {
+            const user = state.authorizedUsers.find(u => u.id === playerToRemove.userId);
+            if (user) {
+                const currentBalance = user.balance || 0;
+                const newBalance = currentBalance + state.paymentAmount;
 
-        // Refund if player paid and we can find the user to refund
-        if (wasPaid && refundUser) {
-            const currentBalance = refundUser.balance || 0;
-            const newBalance = currentBalance + state.paymentAmount;
+                await usersRef.doc(playerToRemove.userId).update({
+                    balance: newBalance
+                });
 
-            await usersRef.doc(refundUserId).update({
-                balance: newBalance
-            });
+                // Add transaction record
+                await transactionsRef.add({
+                    userId: playerToRemove.userId,
+                    userName: playerName,
+                    type: 'refund',
+                    amount: state.paymentAmount,
+                    balance: newBalance,
+                    reason: `Admin removed from session ${state.sessionDay} ${state.sessionDate}`,
+                    sessionId: currentSessionId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-            // Add transaction record
-            const refundReason = isGuest
-                ? `Admin removed guest (${playerName}) from session ${state.sessionDay} ${state.sessionDate}`
-                : `Admin removed from session ${state.sessionDay} ${state.sessionDate}`;
-
-            await transactionsRef.add({
-                userId: refundUserId,
-                userName: refundUser.name,
-                type: 'refund',
-                amount: state.paymentAmount,
-                balance: newBalance,
-                reason: refundReason,
-                sessionId: currentSessionId,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            console.log(`✅ Refunded ${state.paymentAmount} THB to ${refundUser.name}${isGuest ? ` (host of ${playerName})` : ''}`);
+                console.log(`✅ Refunded ${state.paymentAmount} THB to ${playerName}`);
+            }
         }
 
         // Delete player from Firestore
         await playersRef().doc(playerToRemove.id).delete();
 
-        // Recalculate positions so waiting list players move up
-        await recalculatePlayerPositions();
-
         console.log(`✅ Player removed: ${playerName}`);
 
-        let resultMsg = `✅ Player removed successfully!\n\nลบผู้เล่นสำเร็จ!`;
-        if (wasPaid && refundUser) {
-            resultMsg += `\n\nRefunded ${state.paymentAmount} THB to ${refundUser.name}`;
-            if (isGuest) {
-                resultMsg += ` (host)`;
-            }
-        }
-        alert(resultMsg);
+        alert(`✅ Player removed successfully!\n\n${wasPaid && !isGuest ? `Refunded ${state.paymentAmount} THB to wallet` : ''}\n\nลบผู้เล่นสำเร็จ!`);
 
         // Reload authorized users if refund happened
-        if (wasPaid && refundUser) {
+        if (wasPaid && !isGuest) {
             await loadAuthorizedUsers();
         }
 
@@ -6071,25 +5283,17 @@ async function removePlayerFromSession() {
 }
 
 async function viewTransactions() {
-    const modal = document.getElementById('adminTransactionModal');
-    const list = document.getElementById('transactionsList');
+    const section = document.getElementById('transactionsSection');
 
-    modal.style.display = 'block';
+    // Close other sections first
+    document.getElementById('authorizedUsersSection').style.display = 'none';
 
-    // Show loading indicator
-    list.innerHTML = '<div style="text-align: center; padding: 50px; color: #666;"><div style="font-size: 40px; margin-bottom: 20px;">⏳</div>Loading transactions...<br>กำลังโหลด...</div>';
-
-    console.log('⏳ Loading transactions...');
-    const startTime = Date.now();
-
-    await loadTransactions();
-
-    const endTime = Date.now();
-    console.log(`✅ Transactions loaded in ${endTime - startTime}ms`);
-}
-
-function closeAdminTransactions() {
-    document.getElementById('adminTransactionModal').style.display = 'none';
+    if (section.style.display === 'none' || !section.style.display) {
+        section.style.display = 'block';
+        await loadTransactions();
+    } else {
+        section.style.display = 'none';
+    }
 }
 
 // Reset all balances and clear transaction history (admin utility)
@@ -6590,9 +5794,6 @@ async function adminDeletePlayer(playerId, playerName, isGuest = false, guestOf 
         // Delete player from Firestore
         await playersRef().doc(playerId).delete();
 
-        // Recalculate positions so waiting list players move up
-        await recalculatePlayerPositions();
-
         console.log(`✅ Admin deleted player: ${playerName}`);
         alert(`✅ Player deleted and refunded\n\nลบผู้เล่นและคืนเงินแล้ว\n\n${playerName}\nRefund: ${state.paymentAmount} THB`);
 
@@ -6640,361 +5841,5 @@ function generateShareLink() {
 
     console.log('Share via Line:', lineShareUrl);
 }
-
-// ============================================
-// FIREBASE CLOUD MESSAGING (FCM) - PUSH NOTIFICATIONS
-// ============================================
-
-let messaging = null;
-
-/**
- * Initialize Firebase Cloud Messaging
- * Only works in browsers that support service workers
- */
-async function initializeFCM() {
-    try {
-        // Check if browser supports service workers
-        if (!('serviceWorker' in navigator)) {
-            console.log('📱 Service workers not supported - FCM disabled');
-            return;
-        }
-
-        // Check if Notification API is supported
-        if (!('Notification' in window)) {
-            console.log('📱 Notifications not supported - FCM disabled');
-            return;
-        }
-
-        // Register service worker (use relative path for GitHub Pages)
-        const swPath = window.location.hostname === 'localhost'
-            ? '/firebase-messaging-sw.js'
-            : '/badminton-signup/firebase-messaging-sw.js';
-        const registration = await navigator.serviceWorker.register(swPath);
-        console.log('📱 Service worker registered:', registration.scope);
-
-        // Initialize Firebase Messaging
-        messaging = firebase.messaging();
-
-        // Use the registered service worker
-        messaging.useServiceWorker(registration);
-
-        // Handle foreground messages (when app is open)
-        messaging.onMessage((payload) => {
-            console.log('📬 Foreground message received:', payload);
-
-            // Show notification manually for foreground
-            const title = payload.notification?.title || 'Badminton Update';
-            const body = payload.notification?.body || '';
-
-            // Show browser notification
-            if (Notification.permission === 'granted') {
-                new Notification(title, {
-                    body: body,
-                    icon: '/icon-192.png',
-                    tag: 'badminton-foreground'
-                });
-            }
-
-            // Also show alert for immediate visibility
-            alert(`${title}\n\n${body}`);
-        });
-
-        console.log('📱 FCM initialized successfully');
-    } catch (error) {
-        console.error('❌ FCM initialization error:', error);
-    }
-}
-
-/**
- * Request notification permission and get FCM token
- * Call this when admin wants to enable push notifications
- */
-async function enablePushNotifications() {
-    try {
-        // Check if user is logged in
-        if (!state.loggedInUser) {
-            alert('Please login first to enable push notifications.\n\nกรุณาเข้าสู่ระบบก่อนเพื่อเปิดใช้งาน push notifications');
-            return;
-        }
-
-        // Check basic browser support
-        if (!('serviceWorker' in navigator)) {
-            alert('Service Workers not supported in this browser.\n\nDenne nettleseren støtter ikke Service Workers.');
-            return;
-        }
-
-        if (!('Notification' in window)) {
-            alert('Notifications API not supported in this browser.\n\nDenne nettleseren støtter ikke Notifications API.');
-            return;
-        }
-
-        // Check if Firebase Messaging is available
-        if (typeof firebase === 'undefined' || !firebase.messaging) {
-            alert('Firebase Messaging not loaded.\n\nFirebase Messaging er ikke lastet. Prøv å oppdatere siden.');
-            return;
-        }
-
-        // Try to initialize FCM if not already done
-        if (!messaging) {
-            console.log('📱 Initializing FCM for push...');
-
-            // Register service worker
-            const swPath = window.location.hostname === 'localhost'
-                ? '/firebase-messaging-sw.js'
-                : '/badminton-signup/firebase-messaging-sw.js';
-
-            console.log('📱 Registering service worker at:', swPath);
-            const registration = await navigator.serviceWorker.register(swPath);
-            console.log('📱 Service worker registered:', registration.scope);
-
-            // Initialize Firebase Messaging
-            messaging = firebase.messaging();
-            messaging.useServiceWorker(registration);
-            console.log('📱 FCM initialized');
-        }
-
-        if (!messaging) {
-            alert('Could not initialize Firebase Messaging.\n\nKunne ikke initialisere Firebase Messaging.');
-            return;
-        }
-
-        // Request permission
-        const permission = await Notification.requestPermission();
-        console.log('📱 Notification permission:', permission);
-
-        if (permission !== 'granted') {
-            alert('Notification permission denied.\n\nDu må tillate varsler for å motta push-meldinger.');
-            return;
-        }
-
-        // Get FCM token (VAPID key from Firebase Console - Cloud Messaging > Web Push certificates)
-        const VAPID_KEY = 'BF5cc-ESVvkSkx0S8dbvTK9cD5fdLZDB6AKt_jqZPmmhQR5veZNfPZ8XKeVgcDR4C95pZ6gQx__KfCJVk-gUkho';
-
-        // Get the service worker registration we already have
-        const swPath = window.location.hostname === 'localhost'
-            ? '/firebase-messaging-sw.js'
-            : '/badminton-signup/firebase-messaging-sw.js';
-
-        console.log('📱 Getting service worker registration...');
-        const swRegistration = await navigator.serviceWorker.register(swPath);
-        await navigator.serviceWorker.ready;
-        console.log('📱 Service worker ready:', swRegistration.scope);
-
-        let token;
-        try {
-            // Pass our service worker registration to getToken
-            token = await messaging.getToken({
-                vapidKey: VAPID_KEY,
-                serviceWorkerRegistration: swRegistration
-            });
-        } catch (tokenError) {
-            console.log('📱 Token error:', tokenError.message);
-            // Try without VAPID key as fallback
-            token = await messaging.getToken({
-                serviceWorkerRegistration: swRegistration
-            });
-        }
-
-        if (token) {
-            console.log('📱 FCM Token:', token);
-
-            // Store token in Firestore for this admin user
-            await storeFCMToken(token);
-
-            // Send test notification
-            try {
-                const testFCM = firebase.functions().httpsCallable('testFCMNotification');
-                await testFCM({ fcmToken: token });
-                alert('Push notifications enabled!\n\nPush-varsler er aktivert! Du vil nå motta varsler når noen melder seg av.\n\n(En test-notifikasjon ble sendt)');
-            } catch (testError) {
-                console.log('📱 Test notification failed (this is OK if functions not deployed yet)');
-                alert('Push notifications enabled!\n\nPush-varsler er aktivert! Du vil nå motta varsler når noen melder seg av.');
-            }
-        } else {
-            alert('Could not get FCM token. Try refreshing the page.\n\nKunne ikke få FCM-token. Prøv å oppdatere siden.');
-        }
-    } catch (error) {
-        console.error('❌ Error enabling push notifications:', error);
-
-        // More helpful error message
-        if (error.message?.includes('VAPID')) {
-            alert('VAPID key error. Admin needs to configure Firebase Cloud Messaging.\n\nSee: Firebase Console > Project Settings > Cloud Messaging > Web Push certificates');
-        } else {
-            alert(`Error enabling push notifications:\n${error.message}\n\nCheck browser console for details.`);
-        }
-    }
-}
-
-/**
- * Store FCM token in Firestore
- * Associates token with the logged-in user
- */
-async function storeFCMToken(token) {
-    try {
-        if (!state.loggedInUser) {
-            console.log('📱 No user logged in, cannot store FCM token');
-            return;
-        }
-
-        // Use userId (document ID), not name
-        const docId = state.loggedInUser.userId || state.loggedInUser.name;
-        console.log('📱 Storing FCM token for doc ID:', docId);
-
-        // Store in authorizedUsers collection
-        await usersRef.doc(docId).update({
-            fcmToken: token,
-            fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        console.log('📱 FCM token stored successfully for:', state.loggedInUser.name);
-    } catch (error) {
-        console.error('❌ Error storing FCM token:', error);
-        // Try with name as fallback
-        try {
-            console.log('📱 Retrying with name as doc ID...');
-            await usersRef.doc(state.loggedInUser.name).update({
-                fcmToken: token,
-                fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            console.log('📱 FCM token stored with fallback');
-        } catch (fallbackError) {
-            console.error('❌ Fallback also failed:', fallbackError);
-        }
-    }
-}
-
-/**
- * Get all admin FCM tokens for sending notifications
- */
-async function getAdminFCMTokens() {
-    try {
-        const adminsSnapshot = await usersRef.where('role', '==', 'admin').get();
-        const tokens = [];
-
-        adminsSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.fcmToken) {
-                tokens.push(data.fcmToken);
-            }
-        });
-
-        return tokens;
-    } catch (error) {
-        console.error('❌ Error getting admin FCM tokens:', error);
-        return [];
-    }
-}
-
-/**
- * Test push notification - simple browser notification test
- * Tests if notifications work at all before trying FCM
- */
-async function testPushNotification() {
-    console.log('🧪 Testing push notification...');
-
-    // Step 1: Check if Notification API exists
-    if (!('Notification' in window)) {
-        alert('❌ Notification API not available in this browser.\n\nNotification API er ikke tilgjengelig i denne nettleseren.');
-        return;
-    }
-    console.log('✅ Step 1: Notification API exists');
-
-    // Step 2: Check current permission
-    console.log('📱 Current permission:', Notification.permission);
-
-    // Step 3: Request permission if needed
-    if (Notification.permission === 'default') {
-        console.log('📱 Requesting permission...');
-        const permission = await Notification.requestPermission();
-        console.log('📱 Permission result:', permission);
-
-        if (permission !== 'granted') {
-            alert('❌ Notification permission denied.\n\nDu må tillate varsler. Sjekk Safari/Chrome innstillinger.');
-            return;
-        }
-    } else if (Notification.permission === 'denied') {
-        alert('❌ Notifications are blocked.\n\nVarsler er blokkert. Gå til Safari → Innstillinger → Nettsteder → Varsler og tillat for denne siden.');
-        return;
-    }
-    console.log('✅ Step 2: Permission granted');
-
-    // Step 4: Show test notification
-    try {
-        const notification = new Notification('🧪 Test fra Badminton App', {
-            body: 'Push-varsler fungerer! Du vil motta varsler når noen melder seg av.',
-            icon: '/badminton-signup/icon-192.png',
-            tag: 'test-notification'
-        });
-
-        notification.onclick = () => {
-            console.log('📱 Notification clicked');
-            window.focus();
-            notification.close();
-        };
-
-        console.log('✅ Step 3: Notification sent!');
-        alert('✅ LOKAL test OK!\n\nDette var en lokal notifikasjon.\nKlikk "🚀 FCM Test" for å teste full FCM-flyt fra server.');
-
-    } catch (error) {
-        console.error('❌ Error showing notification:', error);
-        alert(`❌ Kunne ikke vise notifikasjon:\n${error.message}`);
-    }
-}
-
-/**
- * Test REAL FCM notification via Cloud Function
- * This tests the full flow: Cloud → FCM → Device
- */
-async function testRealFCM() {
-    try {
-        if (!state.loggedInUser) {
-            alert('Logg inn først');
-            return;
-        }
-
-        // Get current FCM token
-        const swPath = window.location.hostname === 'localhost'
-            ? '/firebase-messaging-sw.js'
-            : '/badminton-signup/firebase-messaging-sw.js';
-
-        const swRegistration = await navigator.serviceWorker.register(swPath);
-        await navigator.serviceWorker.ready;
-
-        const VAPID_KEY = 'BF5cc-ESVvkSkx0S8dbvTK9cD5fdLZDB6AKt_jqZPmmhQR5veZNfPZ8XKeVgcDR4C95pZ6gQx__KfCJVk-gUkho';
-
-        const currentToken = await firebase.messaging().getToken({
-            vapidKey: VAPID_KEY,
-            serviceWorkerRegistration: swRegistration
-        });
-
-        if (!currentToken) {
-            alert('Kunne ikke hente FCM token');
-            return;
-        }
-
-        console.log('📱 Current FCM token:', currentToken.substring(0, 20) + '...');
-
-        // Call Cloud Function to send test FCM
-        alert('Sender FCM via Cloud Function...\n\nDu skal få en notifikasjon om 2-3 sekunder.');
-
-        const testFCM = firebase.functions().httpsCallable('testFCMNotification');
-        const result = await testFCM({ fcmToken: currentToken });
-
-        console.log('📱 FCM test result:', result);
-        alert('✅ FCM sendt fra server!\n\nHvis du IKKE fikk notifikasjon, er det et problem med FCM → iPhone levering.');
-
-    } catch (error) {
-        console.error('❌ FCM test error:', error);
-        alert(`❌ FCM test feilet:\n${error.message}`);
-    }
-}
-
-// Initialize FCM when app loads (after DOM is ready)
-document.addEventListener('DOMContentLoaded', () => {
-    // Delay FCM init slightly to not block main app initialization
-    setTimeout(() => {
-        initializeFCM();
-    }, 2000);
-});
 
 console.log('🔥 Firebase app loaded successfully!');

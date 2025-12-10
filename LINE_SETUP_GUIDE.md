@@ -99,8 +99,6 @@ Now 11/12 players
 
 👉 Meld deg på her / Sign up here:
 https://badminton-b95ac.web.app
-
-Svar raskt! / Reply quickly!
 ```
 
 ## Feilsøking

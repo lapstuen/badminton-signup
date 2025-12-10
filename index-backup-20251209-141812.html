@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+            <p class="version-header">v2025-12-06 12:15 (Hide cancel/guest buttons when not registered)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -117,7 +117,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+                <p class="version">v2025-12-06 12:15 (Hide cancel/guest buttons when not registered)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -222,24 +222,6 @@
             <div class="modal-body">
                 <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
                 <div id="transactionsList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Session Announcement Modal -->
-    <div class="modal" id="announcementModal" style="display: none;" onclick="closeAnnouncementModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>📢 Session Announcement / ประกาศเซสชัน</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="copyAnnouncementText()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        📋 Copy / คัดลอก
-                    </button>
-                    <button class="close-btn" onclick="closeAnnouncementModal()">✕</button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <pre id="announcementText" style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; margin: 0; padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;"></pre>
             </div>
         </div>
     </div>
@@ -423,9 +405,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251210-1345"></script>
+    <script src="firebase-config.js?v=20251206-1215"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251210-1345"></script>
+    <script src="app.js?v=20251206-1215"></script>
 </body>
 </html>

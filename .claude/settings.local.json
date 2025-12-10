@@ -41,7 +41,15 @@
       "Bash(firebase functions:config:get:*)",
       "Bash(firebase functions:config:unset:*)",
       "Bash(firebase functions:delete:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(./update-version.sh:*)",
+      "Bash(firebase firestore:delete:*)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase firestore:export:*)",
+      "Bash(node:*)",
+      "Bash(ping:*)",
+      "Bash(security find-internet-password:*)",
+      "Bash(gh auth:*)"
     ],
     "deny": [],
     "ask": []

@@ -228,7 +228,6 @@ Admin can now enable maintenance mode to safely test changes without interfering
 ⚠️ John cancelled registration
 👥 Now 9/12 players
 👉 Sign up here: [link]
-Reply quickly!
 ```
 
 *With waiting list (14/12 players):*

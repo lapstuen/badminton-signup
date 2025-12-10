@@ -161,8 +161,6 @@ John Doe ยกเลิกการลงทะเบียน
 
 👉 Sign up here / ลงทะเบียนที่นี่:
 https://lapstuen.github.io/badminton-signup/index.html
-
-Reply quickly! / ตอบเร็ว!
 ```
 
 #### Case 2: With Waiting List (should NOT mention available spot)
