@@ -4549,6 +4549,37 @@ function renderAdminActionButtons(groupName) {
         return `<button onclick="${btn.onclick}" style="${style}">${btn.label}</button>`;
     }).join('');
 
+    // NEW: Show lock info when setup or close group is selected
+    if (groupName === 'setup' || groupName === 'close') {
+        const lockTime = calculateSessionLockTime();
+        const isLocked = isSessionLocked();
+
+        if (lockTime) {
+            const lockTimeStr = lockTime.toLocaleString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: 'short'
+            });
+
+            const statusColor = isLocked ? '#ef4444' : '#10b981';
+            const statusIcon = isLocked ? '🔒' : '🔓';
+            const statusText = isLocked ? 'LOCKED' : 'OPEN';
+
+            const lockInfoBox = `
+                <div style="margin-top: 10px; padding: 12px; background: ${isLocked ? '#fee2e2' : '#d1fae5'}; border: 2px solid ${statusColor}; border-radius: 8px; font-size: 13px;">
+                    <div style="font-weight: bold; color: ${statusColor}; margin-bottom: 5px;">${statusIcon} Session Status: ${statusText}</div>
+                    <div style="color: #374151;">
+                        Session: ${state.sessionDate} ${state.sessionTime}<br>
+                        Lock time: ${lockTimeStr} (${LOCK_HOURS_BEFORE_SESSION}h before)<br>
+                        ${isLocked ? '⚠️ Registration/cancellation blocked' : '✅ Users can register/cancel'}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += lockInfoBox;
+        }
+    }
+
     // Hide payment status when switching groups
     const paymentSection = document.getElementById('paymentStatusSection');
     if (paymentSection) {
