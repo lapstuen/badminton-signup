@@ -4549,8 +4549,8 @@ function renderAdminActionButtons(groupName) {
         return `<button onclick="${btn.onclick}" style="${style}">${btn.label}</button>`;
     }).join('');
 
-    // NEW: Show lock info when setup or close group is selected
-    if (groupName === 'setup' || groupName === 'close') {
+    // NEW: Show lock info when setup, close, or settings group is selected
+    if (groupName === 'setup' || groupName === 'close' || groupName === 'settings') {
         const lockTime = calculateSessionLockTime();
         const isLocked = isSessionLocked();
 
