@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+            <p class="version-header">v2025-12-13 08:56 (Add session lock system + shuttle requirement)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -60,6 +60,16 @@
             <div id="draftBanner" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
                 <h3 style="margin: 0; color: #92400e;">📝 DRAFT MODE / โหมดร่าง</h3>
                 <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">Session is being prepared by admin / แอดมินกำลังเตรียมเซสชัน</p>
+            </div>
+
+            <!-- Locked Mode Banner (visible when session is locked) -->
+            <div id="lockedBanner" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center;">
+                <h3 style="margin: 0; color: #92400e;">🔒 SESSION LOCKED / เซสชันถูกล็อค</h3>
+                <p style="margin: 5px 0 0 0; color: #78350f; font-size: 14px;">
+                    Registration and cancellation are closed<br>
+                    ปิดรับลงทะเบียนและยกเลิกแล้ว
+                </p>
+                <p id="lockedTimeInfo" style="margin: 5px 0 0 0; color: #78350f; font-size: 12px;"></p>
             </div>
 
             <!-- User Login Section -->
@@ -117,7 +127,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2025-12-10 13:45 (Add copy announcement to clipboard button)</p>
+                <p class="version">v2025-12-13 08:56 (Add session lock system + shuttle requirement)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -423,9 +433,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20251210-1345"></script>
+    <script src="firebase-config.js?v=20251213-0856"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20251210-1345"></script>
+    <script src="app.js?v=20251213-0856"></script>
 </body>
 </html>

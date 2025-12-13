@@ -14,6 +14,9 @@ const PRODUCTION_URL = 'https://lapstuen.github.io/badminton-signup/';
 // Admin must manually start "New Session" to create a new session
 let currentSessionId = 'current';
 
+// Lock session N hours before start time (prevents last-minute registrations/cancellations)
+const LOCK_HOURS_BEFORE_SESSION = 2; // Easy to adjust (2, 3, 4, etc.)
+
 // App state (synced with Firebase)
 let state = {
     isSessionLoaded: false, // CRITICAL: Prevents saving before Firebase data is loaded
@@ -92,6 +95,100 @@ async function recalculatePlayerPositions() {
     } catch (error) {
         console.error('❌ Error recalculating positions:', error);
     }
+}
+
+// ============================================
+// SESSION LOCK TIME CALCULATION
+// ============================================
+
+/**
+ * Calculate when the session should be locked (N hours before session start)
+ * @returns {Date|null} Lock time as Date object, or null if unable to parse
+ */
+function calculateSessionLockTime() {
+    try {
+        // Parse sessionDate (format: "DD/MM/YYYY")
+        const [day, month, year] = state.sessionDate.split('/');
+        if (!day || !month || !year) {
+            console.warn('⚠️ Invalid sessionDate format:', state.sessionDate);
+            return null;
+        }
+
+        // Parse sessionTime to extract start time (format: "HH:MM - HH:MM")
+        // Example: "18:00 - 20:00" → "18:00"
+        const timeParts = state.sessionTime.split(' - ');
+        if (timeParts.length < 1) {
+            console.warn('⚠️ Invalid sessionTime format:', state.sessionTime);
+            return null;
+        }
+
+        const startTime = timeParts[0].trim(); // "18:00"
+        const [hours, minutes] = startTime.split(':');
+        if (!hours || !minutes) {
+            console.warn('⚠️ Invalid time format:', startTime);
+            return null;
+        }
+
+        // Create Date object for session start time
+        // Note: month is 0-indexed in JavaScript Date
+        const sessionStart = new Date(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            parseInt(hours),
+            parseInt(minutes),
+            0
+        );
+
+        // Calculate lock time (N hours before session start)
+        const lockTime = new Date(sessionStart);
+        lockTime.setHours(lockTime.getHours() - LOCK_HOURS_BEFORE_SESSION);
+
+        console.log('🔒 Lock time calculated:', {
+            sessionDate: state.sessionDate,
+            sessionTime: state.sessionTime,
+            sessionStart: sessionStart.toLocaleString('en-GB'),
+            lockTime: lockTime.toLocaleString('en-GB'),
+            hoursBeforeSession: LOCK_HOURS_BEFORE_SESSION
+        });
+
+        return lockTime;
+    } catch (error) {
+        console.error('❌ Error calculating lock time:', error);
+        return null;
+    }
+}
+
+/**
+ * Check if the session is currently locked (past lock time)
+ * @returns {boolean} true if session is locked, false otherwise
+ */
+function isSessionLocked() {
+    // Session cannot be locked if not published or already closed/archived
+    if (!state.published || state.closed) {
+        return false;
+    }
+
+    // Session cannot be locked during maintenance mode (maintenance takes priority)
+    if (state.maintenanceMode) {
+        return false;
+    }
+
+    const lockTime = calculateSessionLockTime();
+    if (!lockTime) {
+        // Unable to parse time - default to NOT locked (safe fallback)
+        console.warn('⚠️ Unable to calculate lock time, defaulting to unlocked');
+        return false;
+    }
+
+    const now = new Date();
+    const isLocked = now >= lockTime;
+
+    if (isLocked) {
+        console.log('🔒 Session is LOCKED (current time past lock time)');
+    }
+
+    return isLocked;
 }
 
 // ============================================
@@ -563,6 +660,26 @@ async function handleSignup(e) {
         return;
     }
 
+    // NEW: Check if session is locked
+    if (isSessionLocked()) {
+        const lockTime = calculateSessionLockTime();
+        const lockTimeStr = lockTime ? lockTime.toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'N/A';
+
+        alert(
+            `🔒 Registration is closed / ปิดรับลงทะเบียนแล้ว\n\n` +
+            `The session is locked ${LOCK_HOURS_BEFORE_SESSION} hours before start time.\n` +
+            `เซสชันถูกล็อค ${LOCK_HOURS_BEFORE_SESSION} ชั่วโมงก่อนเวลาเริ่ม\n\n` +
+            `Session time / เวลาเล่น: ${state.sessionTime}\n` +
+            `Locked since / ล็อคตั้งแต่: ${lockTimeStr}\n\n` +
+            `Registration is no longer possible.\n` +
+            `ไม่สามารถลงทะเบียนได้อีกต่อไป`
+        );
+        return;
+    }
+
     // Use logged-in user's name if available, otherwise get from form
     let name;
     if (state.loggedInUser) {
@@ -688,6 +805,23 @@ async function handleGuestRegistration() {
     // Check maintenance mode
     if (state.maintenanceMode && !state.isAdmin) {
         alert('System is under maintenance. Please wait.\nระบบกำลังปรับปรุง กรุณารอสักครู่');
+        return;
+    }
+
+    // NEW: Check if session is locked
+    if (isSessionLocked()) {
+        const lockTime = calculateSessionLockTime();
+        const lockTimeStr = lockTime ? lockTime.toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'N/A';
+
+        alert(
+            `🔒 Guest registration is closed / ปิดรับลงทะเบียนแขกแล้ว\n\n` +
+            `The session is locked ${LOCK_HOURS_BEFORE_SESSION} hours before start time.\n` +
+            `เซสชันถูกล็อค ${LOCK_HOURS_BEFORE_SESSION} ชั่วโมงก่อนเวลาเริ่ม\n\n` +
+            `Locked since / ล็อคตั้งแต่: ${lockTimeStr}`
+        );
         return;
     }
 
@@ -1188,6 +1322,19 @@ async function copyAndCloseSession() {
         const sessionDoc = await currentSessionRef().get();
         if (sessionDoc.exists && sessionDoc.data().closed) {
             alert('⚠️ เซสชันนี้ถูกปิดแล้ว!\n\nThis session is already closed!');
+            return;
+        }
+
+        // NEW: Check if shuttlecocks count is set (must be > 0)
+        if (!state.shuttlecocksUsed || state.shuttlecocksUsed === 0) {
+            alert(
+                '⚠️ SHUTTLECOCKS COUNT REQUIRED\n' +
+                'ต้องระบุจำนวนลูกแบดก่อน\n\n' +
+                'Please set the number of shuttlecocks used before closing the session.\n' +
+                'กรุณาระบุจำนวนลูกแบดที่ใช้ก่อนปิดเซสชัน\n\n' +
+                'Use "🏸 Shuttles" button in admin panel to set the count.\n' +
+                'ใช้ปุ่ม "🏸 Shuttles" ในแผงผู้ดูแลเพื่อตั้งค่า'
+            );
             return;
         }
 
@@ -3211,6 +3358,26 @@ async function cancelRegistration() {
         return;
     }
 
+    // NEW: Check if session is locked
+    if (isSessionLocked()) {
+        const lockTime = calculateSessionLockTime();
+        const lockTimeStr = lockTime ? lockTime.toLocaleString('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'N/A';
+
+        alert(
+            `🔒 Cancellation is not allowed / ไม่สามารถยกเลิกได้\n\n` +
+            `The session is locked ${LOCK_HOURS_BEFORE_SESSION} hours before start time.\n` +
+            `เซสชันถูกล็อค ${LOCK_HOURS_BEFORE_SESSION} ชั่วโมงก่อนเวลาเริ่ม\n\n` +
+            `Session time / เวลาเล่น: ${state.sessionTime}\n` +
+            `Locked since / ล็อคตั้งแต่: ${lockTimeStr}\n\n` +
+            `Your registration is now final.\n` +
+            `การลงทะเบียนของคุณเป็นสิ้นสุดแล้ว`
+        );
+        return;
+    }
+
     // Check if user is logged in
     if (!state.loggedInUser) {
         alert('Please log in first / กรุณาเข้าสู่ระบบก่อน');
@@ -3819,6 +3986,19 @@ function updateUI() {
                 cancelBtnEl.style.display = 'block';
                 showSuccessMessage(alreadyRegistered);
 
+                // NEW: Disable cancel button if session is locked
+                if (isSessionLocked()) {
+                    cancelBtnEl.disabled = true;
+                    cancelBtnEl.style.background = '#9ca3af';
+                    cancelBtnEl.style.cursor = 'not-allowed';
+                    cancelBtnEl.innerHTML = `<span class="thai-text">ไม่สามารถยกเลิกได้</span><br><span class="eng-text">Cancellation Locked</span>`;
+                } else {
+                    cancelBtnEl.disabled = false;
+                    cancelBtnEl.style.background = '#ef4444';
+                    cancelBtnEl.style.cursor = 'pointer';
+                    cancelBtnEl.innerHTML = `<span class="thai-text">ยกเลิก</span><br><span class="eng-text">Cancel Registration</span>`;
+                }
+
                 // Show "Register Guest" button ONLY when user is registered themselves
                 const guestBtnEl = document.getElementById('guestRegistrationBtn');
                 if (guestBtnEl) {
@@ -3849,7 +4029,18 @@ function updateUI() {
                     signupButton.disabled = false;
                     signupButton.style.background = '#10b981';
                     signupButton.style.cursor = 'pointer';
-                    signupButton.innerHTML = `<span class="thai-text">ลงทะเบียน ${state.loggedInUser.name}</span><br><span class="eng-text">Join as ${state.loggedInUser.name}</span>`;
+
+                    // NEW: Check if session is locked
+                    if (isSessionLocked()) {
+                        // Session locked - gray out button
+                        signupButton.disabled = true;
+                        signupButton.style.background = '#9ca3af';
+                        signupButton.style.cursor = 'not-allowed';
+                        signupButton.innerHTML = `<span class="thai-text">ปิดรับลงทะเบียนแล้ว</span><br><span class="eng-text">Registration Closed</span>`;
+                    } else {
+                        // Normal flow - show join button
+                        signupButton.innerHTML = `<span class="thai-text">ลงทะเบียน ${state.loggedInUser.name}</span><br><span class="eng-text">Join as ${state.loggedInUser.name}</span>`;
+                    }
                 }
 
                 // Hide "Register Guest" button - user must register themselves first
@@ -3896,6 +4087,30 @@ function updateUI() {
         draftBanner.style.display = (!state.published && isAdminOrModerator) ? 'block' : 'none';
     } else if (draftBanner) {
         draftBanner.style.display = 'none';
+    }
+
+    // NEW: Show/hide locked banner
+    const lockedBanner = document.getElementById('lockedBanner');
+    if (lockedBanner) {
+        if (isSessionLocked()) {
+            lockedBanner.style.display = 'block';
+
+            // Update lock time info
+            const lockedTimeInfo = document.getElementById('lockedTimeInfo');
+            if (lockedTimeInfo) {
+                const lockTime = calculateSessionLockTime();
+                const lockTimeStr = lockTime ? lockTime.toLocaleString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit'
+                }) : '';
+
+                lockedTimeInfo.textContent = `Locked since ${lockTimeStr} (${LOCK_HOURS_BEFORE_SESSION}h before session)`;
+            }
+        } else {
+            lockedBanner.style.display = 'none';
+        }
     }
 
     // Update maintenance mode button text in admin panel
@@ -4104,7 +4319,7 @@ let currentAdminGroup = null; // Track selected group
 
 /**
  * Get current app status based on state
- * @returns {string} 'maintenance' | 'closed' | 'open' | 'archived'
+ * @returns {string} 'maintenance' | 'archived' | 'locked' | 'closed' | 'open'
  */
 function getAppStatus() {
     console.log('🔍 getAppStatus check:', {
@@ -4114,9 +4329,13 @@ function getAppStatus() {
         isSessionLoaded: state.isSessionLoaded
     });
 
-    if (state.maintenanceMode) return 'maintenance';
+    if (state.maintenanceMode) return 'maintenance'; // Highest priority
     if (state.closed) return 'archived'; // Session is archived/finished
-    if (!state.published) return 'closed'; // Session not published yet
+    if (!state.published) return 'closed'; // Session not published yet (draft mode)
+
+    // NEW: Check if session is locked (time-based)
+    if (isSessionLocked()) return 'locked';
+
     return 'open';
 }
 
@@ -4151,6 +4370,13 @@ function updateAdminStatusIndicator() {
             indicator.style.color = '#3730a3';
             statusText.textContent = '📦 ARCHIVED';
             break;
+        case 'locked':
+            // NEW: Locked status indicator
+            indicator.style.background = '#fef3c7';
+            indicator.style.border = '2px solid #f59e0b';
+            indicator.style.color = '#92400e';
+            statusText.textContent = '🔒 LOCKED';
+            break;
         case 'closed':
             indicator.style.background = '#fef3c7';
             indicator.style.border = '2px solid #f59e0b';
@@ -4168,7 +4394,7 @@ function updateAdminStatusIndicator() {
 
 /**
  * Get which groups should be visible based on app status
- * @param {string} status - 'maintenance' | 'archived' | 'closed' | 'open'
+ * @param {string} status - 'maintenance' | 'archived' | 'locked' | 'closed' | 'open'
  * @returns {string[]} Array of group names
  */
 function getVisibleGroups(status) {
@@ -4177,6 +4403,9 @@ function getVisibleGroups(status) {
             return ['users', 'settings'];
         case 'archived':
             return ['money', 'line', 'settings']; // Archived: view reports, line copy, and settings
+        case 'locked':
+            // NEW: During lock, admin can still close session and view data
+            return ['close', 'users', 'money', 'line', 'settings'];
         case 'closed':
             return ['setup', 'users', 'money', 'line', 'settings'];
         case 'open':
