@@ -4552,7 +4552,7 @@ function renderAdminActionButtons(groupName) {
     // NEW: Show lock info when setup, close, or settings group is selected
     if (groupName === 'setup' || groupName === 'close' || groupName === 'settings') {
         const lockTime = calculateSessionLockTime();
-        const isLocked = isSessionLocked();
+        const appStatus = getAppStatus();
 
         if (lockTime) {
             const lockTimeStr = lockTime.toLocaleString('en-GB', {
@@ -4562,17 +4562,53 @@ function renderAdminActionButtons(groupName) {
                 month: 'short'
             });
 
-            const statusColor = isLocked ? '#ef4444' : '#10b981';
-            const statusIcon = isLocked ? '🔒' : '🔓';
-            const statusText = isLocked ? 'LOCKED' : 'OPEN';
+            // Determine status display based on app status
+            let statusColor, statusIcon, statusText, statusBg, statusMessage;
+
+            switch (appStatus) {
+                case 'archived':
+                    statusColor = '#6366f1';
+                    statusBg = '#e0e7ff';
+                    statusIcon = '📦';
+                    statusText = 'ARCHIVED';
+                    statusMessage = '⚠️ Session is closed and archived';
+                    break;
+                case 'closed':
+                    statusColor = '#f59e0b';
+                    statusBg = '#fef3c7';
+                    statusIcon = '📝';
+                    statusText = 'DRAFT';
+                    statusMessage = '⚠️ Session not published yet';
+                    break;
+                case 'locked':
+                    statusColor = '#ef4444';
+                    statusBg = '#fee2e2';
+                    statusIcon = '🔒';
+                    statusText = 'LOCKED';
+                    statusMessage = '⚠️ Registration/cancellation blocked';
+                    break;
+                case 'open':
+                    statusColor = '#10b981';
+                    statusBg = '#d1fae5';
+                    statusIcon = '🔓';
+                    statusText = 'OPEN';
+                    statusMessage = '✅ Users can register/cancel';
+                    break;
+                default:
+                    statusColor = '#6b7280';
+                    statusBg = '#f3f4f6';
+                    statusIcon = '❓';
+                    statusText = 'UNKNOWN';
+                    statusMessage = '⚠️ Unknown status';
+            }
 
             const lockInfoBox = `
-                <div style="margin-top: 10px; padding: 12px; background: ${isLocked ? '#fee2e2' : '#d1fae5'}; border: 2px solid ${statusColor}; border-radius: 8px; font-size: 13px;">
+                <div style="margin-top: 10px; padding: 12px; background: ${statusBg}; border: 2px solid ${statusColor}; border-radius: 8px; font-size: 13px;">
                     <div style="font-weight: bold; color: ${statusColor}; margin-bottom: 5px;">${statusIcon} Session Status: ${statusText}</div>
                     <div style="color: #374151;">
                         Session: ${state.sessionDate} ${state.sessionTime}<br>
                         Lock time: ${lockTimeStr} (${LOCK_HOURS_BEFORE_SESSION}h before)<br>
-                        ${isLocked ? '⚠️ Registration/cancellation blocked' : '✅ Users can register/cancel'}
+                        ${statusMessage}
                     </div>
                 </div>
             `;
