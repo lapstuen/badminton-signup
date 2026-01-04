@@ -1073,7 +1073,9 @@ Se: https://lapstuen.github.io/badminton-signup/`;
 
         // ==========================================
         // ALSO TRY LINE (may fail on free plan)
+        // DISABLED: Line notifications stopped working reliably (quota issues)
         // ==========================================
+        /*
         try {
             const accessToken = lineToken.value();
             const groupId = lineGroupId.value();
@@ -1112,6 +1114,8 @@ Se: https://lapstuen.github.io/badminton-signup/`;
             // Line may fail on free plan - this is expected
             console.log('⚠️ Line notification failed (expected on free plan):', lineError.message);
         }
+        */
+        console.log('📤 Line notifications disabled (onPlayerDeleted trigger)');
 
         return { success: true, playerName: playerName };
 

@@ -950,6 +950,8 @@ async function shareSessionToLine() {
         const waitingListNames = waitingList.map(p => p.name);
 
         // Get Cloud Function reference
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
 
         // Prepare notification data
@@ -974,6 +976,9 @@ async function shareSessionToLine() {
 
         console.log('✅ Session shared to Line:', result.data);
         alert('✅ Session shared to Line!\n\nเผยแพร่ไปยัง Line แล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sharing to Line:', error);
         alert(`❌ Failed to share to Line:\n\n${error.message}\n\nกรุณาลองใหม่อีกครั้ง`);
@@ -985,6 +990,8 @@ async function shareSessionToLine() {
  * Sends a test message and displays Group ID
  */
 async function testLineConfig() {
+    // DISABLED: Line notifications stopped working reliably (quota issues)
+    /*
     try {
         console.log('🧪 Testing Line configuration...');
 
@@ -1027,6 +1034,8 @@ async function testLineConfig() {
 
         alert(errorMessage);
     }
+    */
+    alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
 }
 
 // ============================================================================
@@ -1078,6 +1087,8 @@ async function testLineConfig() {
  * }
  */
 async function sendLineNotification(message) {
+    // DISABLED: Line notifications stopped working reliably (quota issues)
+    /*
     try {
         console.log('📤 Sending Line notification:', message);
 
@@ -1101,6 +1112,9 @@ async function sendLineNotification(message) {
 
         return false;
     }
+    */
+    console.log('📤 Line notifications disabled:', message);
+    return false;
 }
 
 /**
@@ -1258,6 +1272,8 @@ async function nudgePlayers() {
         }
 
         // Get Cloud Function reference
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendNudgeNotification');
 
         // Prepare notification data
@@ -1279,6 +1295,9 @@ async function nudgePlayers() {
 
         console.log('✅ Nudge sent to Line:', result.data);
         alert('✅ Nudge sent to Line!\n\nเตือนความจำส่งไปยัง Line แล้ว!');
+        */
+        console.log('📢 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending nudge:', error);
         alert(`❌ Failed to send nudge:\n\n${error.message}\n\nกรุณาลองใหม่อีกครั้ง`);
@@ -1692,11 +1711,16 @@ async function shareSessionSummaryToLine() {
         console.log('📤 Sharing session summary to Line...');
 
         // Use generic Line sender
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendToLine = functions.httpsCallable('sendLineMessage');
         const result = await sendToLine({ message: message });
 
         console.log('✅ Summary shared to Line:', result.data);
         alert('✅ แชร์ไปยัง Line แล้ว!\n\nShared to Line successfully!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sharing to Line:', error);
         alert(`❌ Failed to share:\n\n${error.message}`);
@@ -1713,11 +1737,16 @@ async function testLineMessage() {
         console.log('📤 Sending test message to Line...');
 
         // Use generic Line sender
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendToLine = functions.httpsCallable('sendLineMessage');
         const result = await sendToLine({ message: message });
 
         console.log('✅ Test message sent:', result.data);
         alert('✅ Test message sent to Line!\n\nข้อความทดสอบส่งไปแล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending test message:', error);
         alert(`❌ Failed to send test:\n\n${error.message}`);
@@ -1746,6 +1775,8 @@ async function testSessionAnnouncement() {
             console.log('⚠️ No real players found, using mock data for testing');
         }
 
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendSessionAnnouncement');
 
         const notificationData = {
@@ -1767,6 +1798,9 @@ async function testSessionAnnouncement() {
 
         console.log('✅ Session announcement sent:', result.data);
         alert('✅ Session announcement sent!\n\nประกาศเซสชันส่งไปแล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending session announcement:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
@@ -1893,6 +1927,8 @@ async function testCancellationNotification() {
         const mockPlayerName = state.loggedInUser?.name || 'Test Player';
         const hasWaitingList = state.players.length > state.maxPlayers;
 
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendCancellationNotification');
 
         const notificationData = {
@@ -1911,6 +1947,9 @@ async function testCancellationNotification() {
 
         console.log('✅ Cancellation notification sent:', result.data);
         alert('✅ Cancellation notification sent!\n\nข้อความยกเลิกส่งไปแล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending cancellation notification:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
@@ -1926,6 +1965,8 @@ async function testNudgeNotification() {
         const activePlayers = state.players.slice(0, state.maxPlayers);
         const availableSpots = state.maxPlayers - activePlayers.length;
 
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendNudgeNotification');
 
         const notificationData = {
@@ -1944,6 +1985,9 @@ async function testNudgeNotification() {
 
         console.log('✅ Nudge notification sent:', result.data);
         alert('✅ Nudge notification sent!\n\nข้อความเตือนส่งไปแล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending nudge notification:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
@@ -1958,6 +2002,8 @@ async function testPasswordResetNotification() {
     try {
         const mockUserName = state.loggedInUser?.name || 'Test User';
 
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendPasswordResetNotification');
 
         const notificationData = {
@@ -1977,6 +2023,9 @@ async function testPasswordResetNotification() {
 
         console.log('✅ Password reset notification sent:', result.data);
         alert('✅ Password reset notification sent!\n\nข้อความรีเซ็ตรหัสผ่านส่งไปแล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending password reset notification:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
@@ -2005,11 +2054,16 @@ ${PRODUCTION_URL}`;
 
     try {
         // Use Firebase Cloud Function - sendLineMessage (not sendLineGroupMessage!)
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendLineMessage');
         const result = await sendNotification({ message: message });
 
         console.log('✅ Extra court message sent:', result);
         alert('✅ Message sent to Line group!\n\nข้อความถูกส่งไปยังกลุ่ม Line แล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
     } catch (error) {
         console.error('❌ Error sending extra court message:', error);
         alert(`❌ Failed to send:\n\n${error.message}`);
@@ -2649,7 +2703,7 @@ async function generateWeeklyReport() {
         const WEEKLY_SHUTTLECOCKS = 18;
         const SHUTTLECOCK_PRICE = 90;
         const PLAYERS_PER_WEEK = 36; // 3 sessions × 12 players
-        const DISTRIBUTION_WEEKS = 4; // Distribute balance over 4 weeks
+        const DISTRIBUTION_WEEKS = 2; // Distribute balance over 2 weeks (faster adjustment)
 
         const weeklyCost = (WEEKLY_COURTS * COURT_PRICE) + (WEEKLY_SHUTTLECOCKS * SHUTTLECOCK_PRICE);
         const basePrice = Math.round(weeklyCost / PLAYERS_PER_WEEK); // 118 THB
@@ -2977,6 +3031,8 @@ async function sendWeeklyReportToLine(data) {
         } = data;
 
         // Get Cloud Function reference
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendWeeklyReport');
 
         // Prepare notification data
@@ -3004,6 +3060,9 @@ async function sendWeeklyReportToLine(data) {
 
         console.log('✅ Line notification sent:', result.data);
         alert('✅ Report sent to Line group!\n\nรายงานส่งไปยังกลุ่ม Line แล้ว!');
+        */
+        console.log('📤 Line notifications disabled');
+        alert('ℹ️ Line notifications are currently disabled\n\nLine notifications ถูกปิดใช้งานชั่วคราว');
 
     } catch (error) {
         console.error('❌ Error sending to Line:', error);
@@ -3321,6 +3380,8 @@ async function sendLineCancellationNotification(playerName) {
         const hasWaitingList = state.players.length > state.maxPlayers;
 
         // Get Cloud Function reference
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         const sendNotification = functions.httpsCallable('sendCancellationNotification');
 
         // Prepare notification data
@@ -3341,6 +3402,8 @@ async function sendLineCancellationNotification(playerName) {
         const result = await sendNotification(notificationData);
 
         console.log('✅ Line notification sent:', result.data);
+        */
+        console.log('📤 Line notifications disabled');
     } catch (error) {
         console.error('❌ Error sending Line notification:', error);
         // Don't block cancellation if notification fails
@@ -3738,6 +3801,8 @@ async function resetPassword() {
         });
 
         // Send Line notification
+        // DISABLED: Line notifications stopped working reliably (quota issues)
+        /*
         try {
             const sendPasswordResetNotification = functions.httpsCallable('sendPasswordResetNotification');
             await sendPasswordResetNotification({
@@ -3756,6 +3821,8 @@ async function resetPassword() {
             console.error('❌ Line notification failed:', error);
             // Don't block reset if Line fails
         }
+        */
+        console.log('📤 Line notifications disabled (password reset)');
 
         // Reload authorized users to get updated password
         await loadAuthorizedUsers();
@@ -4470,6 +4537,7 @@ const adminGroupButtons = {
     money: [
         { label: 'Trans', onclick: 'viewTransactions()', bg: '#3b82f6', color: 'white' },
         { label: 'Report', onclick: 'viewAccountingReport()', bg: '#8b5cf6', color: 'white', bold: true },
+        { label: 'Financial', onclick: 'showFinancialReport()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Debug', onclick: 'debugViewRawData()', bg: '#f59e0b' },
         { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
     ],
@@ -6582,13 +6650,18 @@ async function showMyTransactions() {
             transactions.push({ id: doc.id, ...doc.data() });
         });
 
-        // Sort by timestamp descending (newest first)
+        // Sort by timestamp ascending (oldest first)
         transactions.sort((a, b) => {
-            if (!a.timestamp || !b.timestamp) return 0;
-            return b.timestamp.toMillis() - a.timestamp.toMillis();
+            // Handle missing timestamps - put them at the end
+            if (!a.timestamp && !b.timestamp) return 0;
+            if (!a.timestamp) return 1;  // a goes after b
+            if (!b.timestamp) return -1; // b goes after a
+
+            // Sort by actual timestamp (chronologically)
+            return a.timestamp.toMillis() - b.timestamp.toMillis();
         });
 
-        // Limit to 20 most recent
+        // Limit to 20 oldest
         const recentTransactions = transactions.slice(0, 20);
 
         console.log('📋 Showing', recentTransactions.length, 'transactions');
