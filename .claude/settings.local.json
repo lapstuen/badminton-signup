@@ -49,7 +49,8 @@
       "Bash(node:*)",
       "Bash(ping:*)",
       "Bash(security find-internet-password:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

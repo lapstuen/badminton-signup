@@ -25,7 +25,7 @@ let state = {
     sessionDate: new Date().toLocaleDateString('en-GB'),
     sessionDay: 'ไม่ได้กำหนด / Not Set', // Default to day 8 (blank)
     sessionTime: '10:00 - 12:00', // Default time (most common)
-    paymentAmount: 150,
+    paymentAmount: 10,
     published: true, // Session visibility (false = draft mode)
     maintenanceMode: false, // Maintenance mode (blocks all user actions)
     shuttlecocksUsed: 0, // Number of shuttlecocks used in session (for cost tracking)
