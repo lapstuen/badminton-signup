@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2026-01-11 03:30 (Add Give 100 baht peer-to-peer transfer feature + fix transaction sorting)</p>
+            <p class="version-header">v2026-01-11 03:45 (Filter out inactive users from Give 100 baht recipient list)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -127,7 +127,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2026-01-11 03:30 (Add Give 100 baht peer-to-peer transfer feature + fix transaction sorting)</p>
+                <p class="version">v2026-01-11 03:45 (Filter out inactive users from Give 100 baht recipient list)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -442,8 +442,8 @@
             </div>
             <div class="modal-body">
                 <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-                    <span class="thai-text">เลือกผู้รับ (ยอดเงินต่ำกว่า 10 บาท)</span><br>
-                    <span class="eng-text">Select recipient (balance below 10 baht)</span>
+                    <span class="thai-text">เลือกผู้รับ (ผู้เล่นที่ใช้งาน, ยอดเงินต่ำกว่า 10 บาท)</span><br>
+                    <span class="eng-text">Select recipient (active players, balance below 10 baht)</span>
                 </p>
                 <div id="give100RecipientsList" style="max-height: 400px; overflow-y: auto;"></div>
                 <p id="give100NoRecipients" style="display: none; text-align: center; padding: 20px; color: #10b981; font-weight: bold;">
@@ -461,9 +461,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20260111-0330"></script>
+    <script src="firebase-config.js?v=20260111-0345"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20260111-0330"></script>
+    <script src="app.js?v=20260111-0345"></script>
 </body>
 </html>

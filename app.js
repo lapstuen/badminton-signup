@@ -6812,13 +6812,14 @@ async function showGive100Modal() {
         return;
     }
 
-    // Get all users with balance less than 10 baht (including negative balances)
+    // Get all ACTIVE users with balance less than 10 baht (including negative balances)
     const lowBalanceUsers = state.authorizedUsers.filter(user => {
         const balance = user.balance || 0;
-        // Exclude current user and only show users with balance < 10 THB (including negative)
+        const isActive = user.active !== false; // Default to true if not set
+        // Exclude current user, inactive users, and only show users with balance < 10 THB
         const currentUserId = state.loggedInUser.userId || state.loggedInUser.id;
         const userId = user.userId || user.id;
-        return userId !== currentUserId && balance < 10;
+        return userId !== currentUserId && isActive && balance < 10;
     });
 
     const recipientsList = document.getElementById('give100RecipientsList');
