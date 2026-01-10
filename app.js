@@ -475,8 +475,10 @@ async function updateUserBalance(userId, userName, amountChange, description, si
         const currentBalance = userDoc.data().balance || 0;
         const newBalance = currentBalance + amountChange;
 
-        // Don't allow negative balance
-        if (newBalance < 0) {
+        // Only prevent negative balance when WITHDRAWING money (negative amountChange)
+        // Allow negative balance when ADDING money (positive amountChange) - e.g., gifts to users in debt
+        if (newBalance < 0 && amountChange < 0) {
+            // User is trying to spend money they don't have
             if (!silent) {
                 alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${Math.abs(amountChange)} THB`);
             }
@@ -4071,6 +4073,12 @@ function updateUI() {
                 if (guestBtnEl) {
                     guestBtnEl.style.display = 'block';
                 }
+
+                // Show "Give 100 baht" button when logged in
+                const give100BtnEl = document.getElementById('give100BahtBtn');
+                if (give100BtnEl) {
+                    give100BtnEl.style.display = 'block';
+                }
             } else {
                 // User not registered yet - show join button, hide cancel button
                 registrationFormEl.style.display = 'block';
@@ -4115,6 +4123,12 @@ function updateUI() {
                 if (guestBtnEl) {
                     guestBtnEl.style.display = 'none';
                 }
+
+                // Show "Give 100 baht" button when logged in (even if not registered)
+                const give100BtnEl = document.getElementById('give100BahtBtn');
+                if (give100BtnEl) {
+                    give100BtnEl.style.display = 'block';
+                }
             }
         }
     } else {
@@ -4128,6 +4142,12 @@ function updateUI() {
         const guestBtnEl = document.getElementById('guestRegistrationBtn');
         if (guestBtnEl) {
             guestBtnEl.style.display = 'none';
+        }
+
+        // Hide "Give 100 baht" button when not logged in
+        const give100BtnEl = document.getElementById('give100BahtBtn');
+        if (give100BtnEl) {
+            give100BtnEl.style.display = 'none';
         }
 
         // Reset name input and button (in case it was changed)
@@ -6650,18 +6670,18 @@ async function showMyTransactions() {
             transactions.push({ id: doc.id, ...doc.data() });
         });
 
-        // Sort by timestamp ascending (oldest first)
+        // Sort by timestamp descending (newest first)
         transactions.sort((a, b) => {
             // Handle missing timestamps - put them at the end
             if (!a.timestamp && !b.timestamp) return 0;
-            if (!a.timestamp) return 1;  // a goes after b
-            if (!b.timestamp) return -1; // b goes after a
+            if (!a.timestamp) return 1;  // a goes after b (to the end)
+            if (!b.timestamp) return -1; // b goes after a (to the end)
 
-            // Sort by actual timestamp (chronologically)
-            return a.timestamp.toMillis() - b.timestamp.toMillis();
+            // Sort by actual timestamp (newest first)
+            return b.timestamp.toMillis() - a.timestamp.toMillis();
         });
 
-        // Limit to 20 oldest
+        // Limit to 20 newest
         const recentTransactions = transactions.slice(0, 20);
 
         console.log('📋 Showing', recentTransactions.length, 'transactions');
@@ -6727,6 +6747,218 @@ async function showMyTransactions() {
 
 function closeMyTransactions() {
     document.getElementById('userTransactionModal').style.display = 'none';
+}
+
+// ============================================
+// GIVE 100 BAHT FEATURE
+// ============================================
+
+async function showGive100Modal() {
+    // Check if user is logged in
+    if (!state.loggedInUser) {
+        alert('Please login first / กรุณาเข้าสู่ระบบก่อน');
+        return;
+    }
+
+    // DEBUG: Log entire state.loggedInUser object
+    console.log('🔍 === DEBUG: state.loggedInUser ===');
+    console.log(JSON.stringify(state.loggedInUser, null, 2));
+    console.log('🔍 === END DEBUG ===');
+
+    // Get current user's ACTUAL balance from Firebase (not from state)
+    const userId = state.loggedInUser.userId || state.loggedInUser.id;
+    const userName = state.loggedInUser.name;
+
+    console.log(`🔍 Looking up user in Firebase:`);
+    console.log(`   Name: ${userName}`);
+    console.log(`   ID from state: ${userId}`);
+
+    let currentBalance = 0;
+    let actualUserId = userId;
+
+    try {
+        // First try with the ID from state
+        let userDoc = await usersRef.doc(userId).get();
+
+        if (!userDoc.exists) {
+            // ID didn't work - try finding by name instead
+            console.warn(`⚠️ User ID ${userId} not found, searching by name: ${userName}`);
+            const snapshot = await usersRef.where('name', '==', userName).get();
+            if (snapshot.empty) {
+                alert(`Error: User "${userName}" not found in database / ข้อผิดพลาด: ไม่พบผู้ใช้ "${userName}" ในฐานข้อมูล`);
+                return;
+            }
+            userDoc = snapshot.docs[0];
+            actualUserId = userDoc.id;
+            console.log(`✅ Found user by name. Actual ID: ${actualUserId}`);
+        }
+
+        const userData = userDoc.data();
+        currentBalance = userData.balance || 0;
+        console.log(`💰 User data from Firebase:`);
+        console.log(`   Name: ${userData.name}`);
+        console.log(`   Balance: ${currentBalance} THB`);
+        console.log(`   Document ID: ${actualUserId}`);
+
+    } catch (error) {
+        console.error('Error fetching user balance:', error);
+        alert('Error loading balance / ข้อผิดพลาดในการโหลดยอดเงิน');
+        return;
+    }
+
+    // Check if user has enough balance
+    if (currentBalance < 100) {
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nYour balance: ${currentBalance} THB\nNeed: 100 THB\n\nคุณ: ${state.loggedInUser.name}\nยอดเงินของคุณ: ${currentBalance} บาท\nต้องการ: 100 บาท`);
+        return;
+    }
+
+    // Get all users with balance less than 10 baht (including negative balances)
+    const lowBalanceUsers = state.authorizedUsers.filter(user => {
+        const balance = user.balance || 0;
+        // Exclude current user and only show users with balance < 10 THB (including negative)
+        const currentUserId = state.loggedInUser.userId || state.loggedInUser.id;
+        const userId = user.userId || user.id;
+        return userId !== currentUserId && balance < 10;
+    });
+
+    const recipientsList = document.getElementById('give100RecipientsList');
+    const noRecipients = document.getElementById('give100NoRecipients');
+
+    if (lowBalanceUsers.length === 0) {
+        // No users with low balance
+        recipientsList.innerHTML = '';
+        recipientsList.style.display = 'none';
+        noRecipients.style.display = 'block';
+    } else {
+        // Show users as clickable buttons
+        noRecipients.style.display = 'none';
+        recipientsList.style.display = 'block';
+        recipientsList.innerHTML = lowBalanceUsers
+            .sort((a, b) => (a.balance || 0) - (b.balance || 0)) // Sort by balance (lowest first)
+            .map(user => {
+                const balance = user.balance || 0;
+                const userId = user.userId || user.id; // Support both field names
+                // Escape special characters in name for safe display
+                const safeName = user.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                return `
+                    <button onclick="give100BahtById('${userId}')"
+                            data-user-id="${userId}"
+                            data-user-name="${safeName}"
+                            data-user-balance="${balance}"
+                            style="width: 100%; padding: 15px; margin-bottom: 10px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; cursor: pointer; text-align: left; font-size: 15px; transition: all 0.2s;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 16px; color: #92400e;">${user.name}</strong>
+                                <br>
+                                <span style="color: #dc2626; font-weight: bold;">Balance: ${balance} THB</span>
+                            </div>
+                            <div style="font-size: 24px;">👉</div>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+    }
+
+    // Show modal
+    document.getElementById('give100Modal').style.display = 'flex';
+}
+
+async function give100BahtById(recipientId) {
+    // Find recipient in authorized users (support both userId and id fields)
+    const recipient = state.authorizedUsers.find(u => {
+        const userId = u.userId || u.id;
+        return userId === recipientId;
+    });
+
+    console.log(`🔍 Looking for user with ID: ${recipientId}`);
+    console.log(`🔍 Found ${state.authorizedUsers.length} users in state`);
+    console.log(`🔍 Recipient found:`, recipient);
+
+    if (!recipient) {
+        alert('Recipient not found / ไม่พบผู้รับ');
+        return;
+    }
+
+    await give100Baht(recipientId, recipient.name, recipient.balance || 0);
+}
+
+async function give100Baht(recipientId, recipientName, recipientBalance) {
+    // Confirm transfer
+    const confirmed = confirm(
+        `Give 100 baht to ${recipientName}?\n` +
+        `ให้ 100 บาท กับ ${recipientName}?\n\n` +
+        `Their current balance: ${recipientBalance} THB\n` +
+        `After transfer: ${recipientBalance + 100} THB\n\n` +
+        `Your balance will decrease by 100 THB`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const giverId = state.loggedInUser.userId || state.loggedInUser.id;
+        const giverName = state.loggedInUser.name;
+
+        console.log(`🎁 Starting transfer: ${giverName} (ID: ${giverId}) → ${recipientName} (ID: ${recipientId}) (100 THB)`);
+
+        // Deduct 100 from giver
+        const giverSuccess = await updateUserBalance(
+            giverId,
+            giverName,
+            -100,
+            `Gift to ${recipientName} / มอบให้ ${recipientName}`
+        );
+
+        console.log(`🎁 Giver deduction result:`, giverSuccess);
+
+        if (!giverSuccess) {
+            alert('Transfer failed - Could not deduct from your balance / การโอนล้มเหลว - ไม่สามารถหักเงินจากคุณได้');
+            return;
+        }
+
+        // Add 100 to recipient
+        const recipientSuccess = await updateUserBalance(
+            recipientId,
+            recipientName,
+            100,
+            `Gift from ${giverName} / ของขวัญจาก ${giverName}`
+        );
+
+        console.log(`🎁 Recipient addition result:`, recipientSuccess);
+
+        if (!recipientSuccess) {
+            // If recipient update fails, refund the giver
+            console.log(`🎁 Refunding giver...`);
+            await updateUserBalance(
+                giverId,
+                giverName,
+                100,
+                `Refund - failed gift / คืนเงิน - การมอบล้มเหลว`,
+                true // silent
+            );
+            alert('Transfer failed - Could not add to recipient balance / การโอนล้มเหลว - ไม่สามารถเพิ่มเงินให้ผู้รับได้');
+            return;
+        }
+
+        // Success!
+        alert(
+            `✅ Transfer successful! / โอนสำเร็จ!\n\n` +
+            `You gave 100 THB to ${recipientName}\n` +
+            `คุณให้ 100 บาท กับ ${recipientName}\n\n` +
+            `Your new balance: ${(state.loggedInUser.balance || 0)} THB`
+        );
+
+        // Close modal and refresh
+        closeGive100Modal();
+        await refreshBalance();
+
+    } catch (error) {
+        console.error('Error in give100Baht:', error);
+        alert('Transfer failed. Please try again. / การโอนล้มเหลว กรุณาลองใหม่');
+    }
+}
+
+function closeGive100Modal() {
+    document.getElementById('give100Modal').style.display = 'none';
 }
 
 // ============================================

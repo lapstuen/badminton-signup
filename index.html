@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2026-01-04 15:30 (Disable Line notifications (quota issues))</p>
+            <p class="version-header">v2026-01-11 03:30 (Add Give 100 baht peer-to-peer transfer feature + fix transaction sorting)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -127,7 +127,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2026-01-04 15:30 (Disable Line notifications (quota issues))</p>
+                <p class="version">v2026-01-11 03:30 (Add Give 100 baht peer-to-peer transfer feature + fix transaction sorting)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -158,6 +158,13 @@
                 <div id="guestRegistrationBtn" style="display: none; margin-top: 15px;">
                     <button type="button" onclick="handleGuestRegistration()" class="btn btn-secondary" style="background: #8b5cf6; color: white; width: 100%; padding: 12px; border-radius: 8px;">
                         <span class="thai-text">ลงทะเบียนแขก</span> 👤<br><span class="eng-text">Register Guest</span>
+                    </button>
+                </div>
+
+                <!-- Give 100 Baht Button -->
+                <div id="give100BahtBtn" style="display: none; margin-top: 15px;">
+                    <button type="button" onclick="showGive100Modal()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0, 0, 0, 0.15)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 6px rgba(0, 0, 0, 0.1)';">
+                        🎁 <span class="thai-text">ให้ 100 บาท</span><br><span class="eng-text">Give 100 baht</span>
                     </button>
                 </div>
             </div>
@@ -426,6 +433,27 @@
         </div>
     </div>
 
+    <!-- Give 100 Baht Modal -->
+    <div class="modal" id="give100Modal" style="display: none;" onclick="closeGive100Modal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>🎁 Give 100 baht / ให้ 100 บาท</h2>
+                <button class="close-btn" onclick="closeGive100Modal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                    <span class="thai-text">เลือกผู้รับ (ยอดเงินต่ำกว่า 10 บาท)</span><br>
+                    <span class="eng-text">Select recipient (balance below 10 baht)</span>
+                </p>
+                <div id="give100RecipientsList" style="max-height: 400px; overflow-y: auto;"></div>
+                <p id="give100NoRecipients" style="display: none; text-align: center; padding: 20px; color: #10b981; font-weight: bold;">
+                    ✅ <span class="thai-text">ทุกคนมีเงินเพียงพอ!</span><br>
+                    <span class="eng-text">Everyone has sufficient balance!</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -433,9 +461,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20260104-1530"></script>
+    <script src="firebase-config.js?v=20260111-0330"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20260104-1530"></script>
+    <script src="app.js?v=20260111-0330"></script>
 </body>
 </html>
