@@ -3746,10 +3746,14 @@ async function checkLoggedInUser() {
 // ============================================
 
 function logoutUser() {
+    // Confirm logout
+    if (!confirm('Logout? / ออกจากระบบ?')) {
+        return;
+    }
+
     state.loggedInUser = null;
     localStorage.removeItem('loggedInUser');
     updateUI();
-    // No alert - just update UI
 }
 
 // ============================================
