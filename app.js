@@ -3620,9 +3620,9 @@ async function markAsPaid() {
         return;
     }
 
-    // Check if sufficient balance
-    if (currentBalance < state.paymentAmount) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nBalance: ${currentBalance} THB\nRequired: ${state.paymentAmount} THB\nShortfall: ${state.paymentAmount - currentBalance} THB\n\nPlease contact admin to top up your wallet.`);
+    // Check if sufficient balance (must have minimum balance)
+    if (currentBalance < MINIMUM_BALANCE) {
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nBalance: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงิน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท\n\nPlease contact admin to top up your wallet.`);
         return;
     }
 
