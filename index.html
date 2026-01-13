@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2026-01-13 10:20 (Add logout button)</p>
+            <p class="version-header">v2026-01-13 16:10 (Fix login & balance check)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -127,17 +127,12 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2026-01-13 10:20 (Add logout button)</p>
+                <p class="version">v2026-01-13 16:10 (Fix login & balance check)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
                     <button onclick="cancelRegistration()" id="cancelBtn" style="display: none; background: #dc2626; color: white; width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer;">
                         <span class="thai-text" style="color: white;">ยกเลิกการลงทะเบียน</span><br><span class="eng-text" style="color: rgba(255,255,255,0.8);">Cancel Registration</span>
-                    </button>
-
-                    <!-- Logout Button -->
-                    <button onclick="logoutUser()" id="logoutBtn" style="margin-top: 10px; background: #6b7280; color: white; width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer;">
-                        <span class="thai-text" style="color: white;">ออกจากระบบ</span><br><span class="eng-text" style="color: rgba(255,255,255,0.8);">Logout</span>
                     </button>
                 </div>
 
@@ -466,9 +461,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20260113-1020"></script>
+    <script src="firebase-config.js?v=20260113-1610"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20260113-1020"></script>
+    <script src="app.js?v=20260113-1610"></script>
 </body>
 </html>

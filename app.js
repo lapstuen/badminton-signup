@@ -478,14 +478,14 @@ async function updateUserBalance(userId, userName, amountChange, description, si
         const currentBalance = userDoc.data().balance || 0;
         const newBalance = currentBalance + amountChange;
 
-        // Only prevent negative balance when WITHDRAWING money (negative amountChange)
-        // Allow negative balance when ADDING money (positive amountChange) - e.g., gifts to users in debt
-        if (newBalance < 0 && amountChange < 0) {
-            // User is trying to spend money they don't have
+        // Only check MINIMUM_BALANCE when WITHDRAWING money (negative amountChange)
+        // Allow negative balance after payment - just need MINIMUM_BALANCE before payment
+        if (currentBalance < MINIMUM_BALANCE && amountChange < 0) {
+            // User doesn't have minimum balance required to make payment
             if (!silent) {
-                alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${Math.abs(amountChange)} THB`);
+                alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB`);
             }
-            console.log(`⚠️ Insufficient balance for ${userName}: ${currentBalance} THB (need ${Math.abs(amountChange)} THB)`);
+            console.log(`⚠️ Insufficient balance for ${userName}: ${currentBalance} THB (need ${MINIMUM_BALANCE} THB minimum)`);
             return false;
         }
 
@@ -721,7 +721,7 @@ async function handleSignup(e) {
     // Check balance and deduct payment IMMEDIATELY (for all players, including waiting list)
     const currentBalance = authorizedUser.balance || 0;
     if (currentBalance < MINIMUM_BALANCE) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท`);
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
@@ -873,7 +873,7 @@ async function handleGuestRegistration() {
     // Check balance from host and deduct payment IMMEDIATELY
     const currentBalance = state.loggedInUser.balance || 0;
     if (currentBalance < MINIMUM_BALANCE) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท`);
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
@@ -3622,7 +3622,7 @@ async function markAsPaid() {
 
     // Check if sufficient balance (must have minimum balance)
     if (currentBalance < MINIMUM_BALANCE) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nBalance: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงิน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท\n\nPlease contact admin to top up your wallet.`);
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nBalance: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงิน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท\n\nPlease contact admin to top up your wallet.`);
         return;
     }
 
@@ -3921,7 +3921,6 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
         localStorage.setItem('loggedInUser', JSON.stringify(state.loggedInUser));
 
         console.log('🔄 Calling updateUI()...');
-        document.getElementById('loginForm').reset();
         updateUI();
         console.log('✅ Login complete!');
         // No alert - just go straight to the app
@@ -4105,7 +4104,7 @@ function updateUI() {
                     signupButton.disabled = true;
                     signupButton.style.background = '#9ca3af';
                     signupButton.style.cursor = 'not-allowed';
-                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ขั้นต่ำ: ${MINIMUM_BALANCE} THB)</small>`;
+                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ต้องการ: ${MINIMUM_BALANCE} THB)</small>`;
                 } else {
                     // Sufficient balance - green button
                     signupButton.disabled = false;
@@ -6000,7 +5999,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
                     if (userBalance < MINIMUM_BALANCE) {
                         // Skip this player due to insufficient balance
                         skippedLowBalance.push({name: playerName, balance: userBalance});
-                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB, minimum ${MINIMUM_BALANCE} THB)`);
+                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB, need ${MINIMUM_BALANCE} THB)`);
                         continue; // Skip to next player
                     }
 
@@ -6236,8 +6235,8 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
                     `ไม่สามารถเพิ่ม ${user.name}\n\n` +
                     `Balance: ${userBalance} THB\n` +
                     `ยอดเงิน: ${userBalance} บาท\n\n` +
-                    `Minimum required: ${MINIMUM_BALANCE} THB\n` +
-                    `ขั้นต่ำ: ${MINIMUM_BALANCE} บาท\n\n` +
+                    `Needed: ${MINIMUM_BALANCE} THB\n` +
+                    `ต้องการ: ${MINIMUM_BALANCE} บาท\n\n` +
                     `Please top up wallet first!\n` +
                     `กรุณาเติมเงินก่อน!`
                 );
