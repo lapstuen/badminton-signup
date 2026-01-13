@@ -344,7 +344,7 @@ async function loadSessionData() {
             state.sessionDate = data.date || state.sessionDate;
             state.sessionDay = data.day || state.sessionDay;
             state.sessionTime = data.time || state.sessionTime;
-            state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 150;
+            state.paymentAmount = data.paymentAmount !== undefined ? data.paymentAmount : 10;
             state.published = data.published !== undefined ? data.published : true; // Default true for old sessions
             state.maintenanceMode = data.maintenanceMode !== undefined ? data.maintenanceMode : false; // Default false
             state.shuttlecocksUsed = data.shuttlecocksUsed !== undefined ? data.shuttlecocksUsed : 0; // Default 0 for old sessions
