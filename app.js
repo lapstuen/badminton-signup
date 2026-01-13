@@ -4809,7 +4809,12 @@ function loginAdmin() {
     if (password === 'SikkertPassord1955') {
         state.isAdmin = true;
         document.getElementById('adminPassword').style.display = 'none';
-        event.target.style.display = 'none';
+
+        // Hide the login button
+        const loginButtons = document.querySelectorAll('#adminPanel button');
+        if (loginButtons[0]) {
+            loginButtons[0].style.display = 'none';
+        }
 
         const actionsDiv = document.getElementById('adminActions');
         actionsDiv.style.display = 'block';
