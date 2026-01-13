@@ -4013,7 +4013,7 @@ function updateUI() {
             // Add color indicator
             if (balance < MINIMUM_BALANCE) {
                 balanceEl.style.color = '#ef4444'; // Red - insufficient for registration
-            } else if (balance < MINIMUM_BALANCE * 3) {
+            } else if (balance < 140) {
                 balanceEl.style.color = '#f59e0b'; // Orange - low balance warning
             } else {
                 balanceEl.style.color = '#10b981'; // Green - healthy balance
@@ -4563,7 +4563,6 @@ const adminGroupButtons = {
     money: [
         { label: 'Trans', onclick: 'viewTransactions()', bg: '#3b82f6', color: 'white' },
         { label: 'Report', onclick: 'viewAccountingReport()', bg: '#8b5cf6', color: 'white', bold: true },
-        { label: 'Financial', onclick: 'showFinancialReport()', bg: '#10b981', color: 'white', bold: true },
         { label: 'Debug', onclick: 'debugViewRawData()', bg: '#f59e0b' },
         { label: 'Expense', onclick: 'addManualExpense()', bg: '#ef4444', color: 'white' }
     ],
@@ -5767,7 +5766,7 @@ function updateAuthorizedUsersList() {
         const item = document.createElement('div');
         item.className = 'authorized-user-item';
         const balance = user.balance || 0;
-        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
+        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < 140 ? '#f59e0b' : '#10b981';
 
         item.innerHTML = `
             <div class="user-info">
@@ -5906,7 +5905,7 @@ function manageWallets() {
 
     sortedUsers.forEach(user => {
         const balance = user.balance || 0;
-        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
+        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < 140 ? '#f59e0b' : '#10b981';
 
         const item = document.createElement('div');
         item.className = 'user-selection-item';
@@ -6099,7 +6098,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
         registeredUsers.forEach(user => {
             const balance = user.balance || 0;
-            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
+            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < 140 ? '#f59e0b' : '#10b981';
 
             // Show status badge
             let statusBadge = '';
@@ -6141,7 +6140,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
         unregisteredUsers.forEach(user => {
             const balance = user.balance || 0;
-            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
+            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < 140 ? '#f59e0b' : '#10b981';
 
             const item = document.createElement('div');
             item.className = 'user-selection-item';
