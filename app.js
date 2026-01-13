@@ -720,9 +720,8 @@ async function handleSignup(e) {
 
     // Check balance and deduct payment IMMEDIATELY (for all players, including waiting list)
     const currentBalance = authorizedUser.balance || 0;
-    const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-    if (currentBalance < requiredBalance) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nRequired: ${requiredBalance} THB (${state.paymentAmount} THB payment + ${MINIMUM_BALANCE} THB minimum balance)\n\nต้องการ: ${requiredBalance} บาท (${state.paymentAmount} บาท + ${MINIMUM_BALANCE} บาทขั้นต่ำ)`);
+    if (currentBalance < MINIMUM_BALANCE) {
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
@@ -873,9 +872,8 @@ async function handleGuestRegistration() {
 
     // Check balance from host and deduct payment IMMEDIATELY
     const currentBalance = state.loggedInUser.balance || 0;
-    const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-    if (currentBalance < requiredBalance) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nRequired: ${requiredBalance} THB (${state.paymentAmount} THB payment + ${MINIMUM_BALANCE} THB minimum balance)\n\nต้องการ: ${requiredBalance} บาท (${state.paymentAmount} บาท + ${MINIMUM_BALANCE} บาทขั้นต่ำ)`);
+    if (currentBalance < MINIMUM_BALANCE) {
+        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nMinimum required: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nขั้นต่ำ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
@@ -4010,10 +4008,9 @@ function updateUI() {
             balanceEl.textContent = balance;
 
             // Add color indicator
-            const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-            if (balance < requiredBalance) {
+            if (balance < MINIMUM_BALANCE) {
                 balanceEl.style.color = '#ef4444'; // Red - insufficient for registration
-            } else if (balance < requiredBalance * 3) {
+            } else if (balance < MINIMUM_BALANCE * 3) {
                 balanceEl.style.color = '#f59e0b'; // Orange - low balance warning
             } else {
                 balanceEl.style.color = '#10b981'; // Green - healthy balance
@@ -4099,13 +4096,12 @@ function updateUI() {
 
                 // Check if user has enough balance
                 const userBalance = state.loggedInUser.balance || 0;
-                const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-                if (userBalance < requiredBalance) {
+                if (userBalance < MINIMUM_BALANCE) {
                     // Insufficient balance - gray button with warning
                     signupButton.disabled = true;
                     signupButton.style.background = '#9ca3af';
                     signupButton.style.cursor = 'not-allowed';
-                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ต้องการ: ${requiredBalance} THB)</small>`;
+                    signupButton.innerHTML = `<span class="thai-text">ยอดเงินไม่เพียงพอ</span><br><span class="eng-text">Insufficient Balance</span><br><small style="font-size: 12px;">ยอดเงิน: ${userBalance} THB (ขั้นต่ำ: ${MINIMUM_BALANCE} THB)</small>`;
                 } else {
                     // Sufficient balance - green button
                     signupButton.disabled = false;
@@ -5037,8 +5033,7 @@ async function previewSession() {
                 const user = state.authorizedUsers.find(u => u.id === player.userId);
                 if (user) {
                     const balance = user.balance || 0;
-                    const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-                    if (balance >= requiredBalance) {
+                    if (balance >= MINIMUM_BALANCE) {
                         playersToCharge.push({name: player.name, balance: balance});
                     } else {
                         playersToRemove.push({name: player.name, balance: balance});
@@ -5058,11 +5053,10 @@ async function previewSession() {
                 const user = state.authorizedUsers.find(u => u.name === playerName);
                 if (user) {
                     const balance = user.balance || 0;
-                    const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
                     missingRegularPlayers.push({
                         name: playerName,
                         balance: balance,
-                        insufficient: balance < requiredBalance
+                        insufficient: balance < MINIMUM_BALANCE
                     });
                 }
             }
@@ -5204,9 +5198,8 @@ async function publishSession() {
                     const userDoc = await usersRef.doc(player.userId).get();
                     if (userDoc.exists) {
                         const currentBalance = userDoc.data().balance || 0;
-                        const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
 
-                        if (currentBalance >= requiredBalance) {
+                        if (currentBalance >= MINIMUM_BALANCE) {
                             // Deduct money
                             const newBalance = currentBalance - state.paymentAmount;
                             await usersRef.doc(player.userId).update({
@@ -5766,8 +5759,7 @@ function updateAuthorizedUsersList() {
         const item = document.createElement('div');
         item.className = 'authorized-user-item';
         const balance = user.balance || 0;
-        const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-        const balanceColor = balance < requiredBalance ? '#ef4444' : balance < requiredBalance * 3 ? '#f59e0b' : '#10b981';
+        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
 
         item.innerHTML = `
             <div class="user-info">
@@ -5906,8 +5898,7 @@ function manageWallets() {
 
     sortedUsers.forEach(user => {
         const balance = user.balance || 0;
-        const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-        const balanceColor = balance < requiredBalance ? '#ef4444' : balance < requiredBalance * 3 ? '#f59e0b' : '#10b981';
+        const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
 
         const item = document.createElement('div');
         item.className = 'user-selection-item';
@@ -5996,12 +5987,11 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
                 if (user) {
                     // CHECK BALANCE FIRST
                     const userBalance = user.balance || 0;
-                    const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
 
-                    if (userBalance < requiredBalance) {
+                    if (userBalance < MINIMUM_BALANCE) {
                         // Skip this player due to insufficient balance
                         skippedLowBalance.push({name: playerName, balance: userBalance});
-                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB, needs ${requiredBalance} THB)`);
+                        console.log(`⚠️ SKIPPED ${playerName} - insufficient balance (${userBalance} THB, minimum ${MINIMUM_BALANCE} THB)`);
                         continue; // Skip to next player
                     }
 
@@ -6101,8 +6091,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
         registeredUsers.forEach(user => {
             const balance = user.balance || 0;
-            const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-        const balanceColor = balance < requiredBalance ? '#ef4444' : balance < requiredBalance * 3 ? '#f59e0b' : '#10b981';
+            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
 
             // Show status badge
             let statusBadge = '';
@@ -6144,8 +6133,7 @@ async function manageTodaysPlayers(skipAutoLoad = false) {
 
         unregisteredUsers.forEach(user => {
             const balance = user.balance || 0;
-            const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
-        const balanceColor = balance < requiredBalance ? '#ef4444' : balance < requiredBalance * 3 ? '#f59e0b' : '#10b981';
+            const balanceColor = balance < MINIMUM_BALANCE ? '#ef4444' : balance < MINIMUM_BALANCE * 3 ? '#f59e0b' : '#10b981';
 
             const item = document.createElement('div');
             item.className = 'user-selection-item';
@@ -6231,17 +6219,16 @@ async function togglePlayerForToday(user, isCurrentlyRegistered) {
         } else {
             // User not registered - CHECK BALANCE FIRST
             const userBalance = user.balance || 0;
-            const requiredBalance = state.paymentAmount + MINIMUM_BALANCE;
 
-            if (userBalance < requiredBalance) {
+            if (userBalance < MINIMUM_BALANCE) {
                 // Insufficient balance - CANNOT add
                 alert(
                     `❌ Cannot add ${user.name}\n` +
                     `ไม่สามารถเพิ่ม ${user.name}\n\n` +
                     `Balance: ${userBalance} THB\n` +
                     `ยอดเงิน: ${userBalance} บาท\n\n` +
-                    `Required: ${requiredBalance} THB (${state.paymentAmount} THB + ${MINIMUM_BALANCE} THB minimum)\n` +
-                    `ต้องการ: ${requiredBalance} บาท (${state.paymentAmount} บาท + ${MINIMUM_BALANCE} บาทขั้นต่ำ)\n\n` +
+                    `Minimum required: ${MINIMUM_BALANCE} THB\n` +
+                    `ขั้นต่ำ: ${MINIMUM_BALANCE} บาท\n\n` +
                     `Please top up wallet first!\n` +
                     `กรุณาเติมเงินก่อน!`
                 );
