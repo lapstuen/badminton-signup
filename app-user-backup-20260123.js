@@ -43,13 +43,6 @@ let state = {
 const currentSessionRef = () => sessionsRef.doc(currentSessionId);
 const playersRef = () => currentSessionRef().collection('players');
 
-
-// ============================================
-// UTILITIES - Position Recalculation
-// ============================================
-// Reorder players after deletions
-// ============================================
-
 // ============================================
 // POSITION RECALCULATION HELPER
 // ============================================
@@ -106,13 +99,6 @@ async function recalculatePlayerPositions() {
         console.error('❌ Error recalculating positions:', error);
     }
 }
-
-
-// ============================================
-// UTILITIES - Session Lock
-// ============================================
-// Calculate lock time, check if session locked
-// ============================================
 
 // ============================================
 // SESSION LOCK TIME CALCULATION
@@ -208,13 +194,6 @@ function isSessionLocked() {
     return isLocked;
 }
 
-
-// ============================================
-// UTILITIES - Private Mode Detection
-// ============================================
-// Detect incognito/private browsing
-// ============================================
-
 // ============================================
 // PRIVATE MODE DETECTION
 // ============================================
@@ -282,13 +261,6 @@ function checkPrivateMode() {
     }
 }
 
-
-// ============================================
-// APP INITIALIZATION & STARTUP
-// ============================================
-// DOMContentLoaded, visibility change, app init
-// ============================================
-
 // ============================================
 // INITIALIZE APP
 // ============================================
@@ -326,13 +298,6 @@ async function refreshBalance() {
         if (btn) btn.style.transform = '';
     }, 300);
 }
-
-
-// ============================================
-// FIREBASE - Data Operations
-// ============================================
-// Load/save session data, load users
-// ============================================
 
 async function initializeApp() {
     try {
@@ -478,13 +443,6 @@ async function loadAuthorizedUsers() {
 }
 
 // Create transaction record
-
-// ============================================
-// WALLET - Transactions & Balance
-// ============================================
-// Create transactions, update balances
-// ============================================
-
 async function createTransaction(userId, userName, amount, description) {
     // Skip transaction logging if amount is 0
     if (amount === 0) {
@@ -557,13 +515,6 @@ async function updateUserBalance(userId, userName, amountChange, description, si
 // REALTIME LISTENERS
 // ============================================
 
-
-// ============================================
-// FIREBASE - Real-time Listeners
-// ============================================
-// onSnapshot listeners for session/players/users
-// ============================================
-
 function setupRealtimeListeners() {
     // Listen to SESSION changes (day, time, maxPlayers, etc.)
     currentSessionRef().onSnapshot((doc) => {
@@ -633,13 +584,6 @@ function setupRealtimeListeners() {
 // EVENT LISTENERS
 // ============================================
 
-
-// ============================================
-// EVENT LISTENERS - Form Events
-// ============================================
-// Form submit, input change, blur events
-// ============================================
-
 function setupEventListeners() {
     document.getElementById('signupForm').addEventListener('submit', handleSignup);
 
@@ -653,13 +597,6 @@ function setupEventListeners() {
  * Check if user should see Login button or Reset Password button
  * Based on password length in database (UUID = long, 123 = short)
  */
-
-// ============================================
-// AUTHENTICATION - Login UI
-// ============================================
-// Check login method, show/hide password field
-// ============================================
-
 async function checkLoginMethod() {
     const name = document.getElementById('loginName').value.trim();
 
@@ -703,13 +640,6 @@ function showResetPassword() {
  * Handle login button click
  * Separated from form submit to allow manual triggering
  */
-
-// ============================================
-// AUTHENTICATION - Login Flow
-// ============================================
-// Handle login click, validate credentials
-// ============================================
-
 async function handleLoginClick() {
     const name = document.getElementById('loginName').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -724,13 +654,6 @@ async function handleLoginClick() {
 
 // ============================================
 // USER REGISTRATION
-// ============================================
-
-
-// ============================================
-// REGISTRATION - Sign Up
-// ============================================
-// Register user for session, deduct wallet
 // ============================================
 
 async function handleSignup(e) {
@@ -883,13 +806,6 @@ async function handleSignup(e) {
  * - Displayed as: "GuestName 👤 (HostName)"
  * - If host cancels, all their guests are also cancelled
  */
-
-// ============================================
-// REGISTRATION - Guest Management
-// ============================================
-// Register multiple guests
-// ============================================
-
 async function handleGuestRegistration() {
     // Check maintenance mode
     if (state.maintenanceMode && !state.isAdmin) {
@@ -1133,13 +1049,6 @@ async function handleGuestRegistration() {
  * Sends session announcement without validation checks
  * Uses mock data if no real players exist
  */
-
-// ============================================
-// REGISTRATION - Test Announcement
-// ============================================
-// Test Line notification
-// ============================================
-
 async function testSessionAnnouncement() {
     try {
         // Use current state data (may be incomplete, but that's OK for testing)
@@ -1237,13 +1146,6 @@ async function testSessionAnnouncement() {
 
 // ============================================
 // CANCEL REGISTRATION
-// ============================================
-
-
-// ============================================
-// REGISTRATION - Cancellation
-// ============================================
-// Cancel registration, refund wallet
 // ============================================
 
 async function cancelRegistration() {
@@ -1418,13 +1320,6 @@ async function cancelRegistration() {
  * This is for players who were added by admin (paid: false)
  * and need to pay themselves instead of waiting for publish
  */
-
-// ============================================
-// PAYMENT - Mark as Paid
-// ============================================
-// Self-service payment (DISABLED)
-// ============================================
-
 async function markAsPaid() {
     // DISABLED: All payments are now processed at publish time
     alert('⚠️ Payment function disabled.\n\nAll payments will be processed when admin publishes the session.\n\nฟังก์ชันชำระเงินถูกปิดใช้งาน\n\nการชำระเงินจะดำเนินการเมื่อผู้ดูแลเผยแพร่เซสชัน');
@@ -1511,13 +1406,6 @@ async function markAsPaid() {
 // LOGGED IN USER CHECK
 // ============================================
 
-
-// ============================================
-// AUTHENTICATION - Auto Login
-// ============================================
-// Restore login from localStorage
-// ============================================
-
 async function checkLoggedInUser() {
     const loggedInData = localStorage.getItem('loggedInUser');
     if (loggedInData) {
@@ -1586,13 +1474,6 @@ async function checkLoggedInUser() {
 // USER LOGOUT
 // ============================================
 
-
-// ============================================
-// AUTHENTICATION - Logout
-// ============================================
-// Clear localStorage and reload
-// ============================================
-
 function logoutUser() {
     // Confirm logout
     if (!confirm('Logout? / ออกจากระบบ?')) {
@@ -1612,13 +1493,6 @@ function logoutUser() {
  * Reset password to default (123) for users with UUID passwords
  * Logs reset in Firestore and sends Line notification
  */
-
-// ============================================
-// AUTHENTICATION - Password Reset
-// ============================================
-// Reset password to 123
-// ============================================
-
 async function resetPassword() {
     const name = document.getElementById('loginName').value.trim();
 
@@ -1713,13 +1587,6 @@ async function resetPassword() {
 // USER LOGIN
 // ============================================
 
-
-// ============================================
-// AUTHENTICATION - Login Handler
-// ============================================
-// Main login function with validation
-// ============================================
-
 async function handleLogin(e, nameParam = null, passwordParam = null) {
     e.preventDefault();
 
@@ -1796,13 +1663,6 @@ async function handleLogin(e, nameParam = null, passwordParam = null) {
 // SUCCESS MESSAGE
 // ============================================
 
-
-// ============================================
-// UI - Success Message
-// ============================================
-// Show player card after registration
-// ============================================
-
 function showSuccessMessage(player) {
     document.getElementById('registrationForm').style.display = 'none';
     document.getElementById('successMessage').style.display = 'block';
@@ -1846,13 +1706,6 @@ function generatePaymentQR() {
 */
 
 // Get current player from localStorage
-
-// ============================================
-// UI - Helper Functions
-// ============================================
-// Get current player, QR code generation
-// ============================================
-
 function getCurrentPlayer() {
     const name = localStorage.getItem('userName');
     if (name) {
@@ -1863,13 +1716,6 @@ function getCurrentPlayer() {
 
 // ============================================
 // UI UPDATE
-// ============================================
-
-
-// ============================================
-// UI - Main Update Function
-// ============================================
-// 400+ lines - Updates entire UI based on state
 // ============================================
 
 function updateUI() {
@@ -2291,13 +2137,6 @@ function updateUI() {
 // ADMIN STATUS & GROUP MANAGEMENT
 // ============================================
 
-
-// ============================================
-// UI - Admin Panel Definitions
-// ============================================
-// Admin button groups (not used in user app)
-// ============================================
-
 let currentAdminGroup = null; // Track selected group
 
 
@@ -2386,13 +2225,6 @@ const adminGroupButtons = {
 
 // ============================================
 // USER MODAL: showMyTransactions
-// ============================================
-
-
-// ============================================
-// MODALS - User Transactions
-// ============================================
-// Show/close transaction history modal
 // ============================================
 
 async function showMyTransactions() {
@@ -2535,13 +2367,6 @@ function closeMyTransactions() {
 
 // ============================================
 // USER MODAL: showGive100Modal
-// ============================================
-
-
-// ============================================
-// MODALS - Give 100 Baht
-// ============================================
-// Transfer money between users
 // ============================================
 
 async function showGive100Modal() {
@@ -2769,13 +2594,6 @@ function closeGive100Modal() {
 
 // ============================================
 // USER MODAL: showLowBalanceWarning
-// ============================================
-
-
-// ============================================
-// MODALS - Low Balance Warning
-// ============================================
-// Show/close warning modal
 // ============================================
 
 function showLowBalanceWarning(players) {
