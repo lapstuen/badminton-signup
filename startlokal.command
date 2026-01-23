@@ -1,19 +1,22 @@
 #!/bin/bash
-
-# Navigate to the script's directory
 cd "$(dirname "$0")"
 
-echo "🚀 Starting local server for Badminton App..."
-echo "📂 Directory: $(pwd)"
+PORT=8000
+
+# Finn ledig port
+while lsof -i :$PORT >/dev/null 2>&1; do
+  echo "⚠️  Port $PORT er i bruk – prøver neste..."
+  PORT=$((PORT + 1))
+done
+
+echo "🚀 Starter lokal server..."
+echo "🌐 Åpne: http://localhost:$PORT"
 echo ""
-echo "🌐 Open in browser: http://localhost:8000"
-echo ""
-echo "⚠️  Press Ctrl+C to stop the server"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠️  Når du kjører dette fra gTerminal, husk å krysse av for"
+echo "    'Run in background' når du legger til kommandoen!"
 echo ""
 
-# Open browser automatically after 2 seconds
-(sleep 2 && open http://localhost:8000) &
-
-# Start Python HTTP server
-python3 -m http.server 8000
+# Start serveren (venter på å bli avsluttet)
+# Når dette kjøres fra gTerminal med "Run in background" aktivert,
+# vil gTerminal håndtere bakgrunnskjøringen
+python3 -m http.server $PORT

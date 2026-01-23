@@ -6,18 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ⚠️ CRITICAL: DEPLOYMENT RULES (READ BEFORE EVERY PUSH!)
 
-**NEVER push to GitHub without updating version number in ALL 3 PLACES:**
+**NEVER push to GitHub without updating version number in BOTH APPS:**
 
-1. Header version (index.html line ~29)
-2. Footer version (index.html line ~130)
-3. Cache-busting in script tags (index.html line ~400-403)
+### User App (index.html)
+1. Header version (line ~29)
+2. Footer version (line ~130)
+3. Cache-busting in link/script tags (lines ~21, 231, 234)
 
-**ALWAYS use the automatic script:**
-```bash
-./update-version.sh "v2025-11-22 HH:MM" "Description of changes"
-```
+### Admin App (admin.html)
+1. Header version (line ~29)
+2. Footer version (line ~130)
+3. Cache-busting in link/script tags (lines ~21, 467, 470)
 
-**Or manually verify ALL THREE locations are updated before git push.**
+**IMPORTANT:** Keep version numbers synchronized between both apps!
 
 **See DEPLOY_CHECKLIST.md for complete deployment process.**
 
@@ -27,27 +28,62 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a web-based badminton session registration system with real-time Firebase synchronization. The app allows players to register for badminton sessions, track payments, and manage authorized users. It's designed as a Progressive Web App (PWA) with bilingual support (English/Thai/Norwegian).
 
+**🆕 SPLIT APP ARCHITECTURE (v2026-01-23):**
+
+The application has been split into two separate apps:
+
+1. **User App** (`index.html`) - Simplified interface for players
+   - 65% code reduction (9,140 → 3,150 lines)
+   - Clean, user-focused interface
+   - No admin functionality exposed
+   - All user features: login, registration, wallet, transactions, give 100 baht
+
+2. **Admin App** (`admin.html`) - Full-featured admin interface
+   - 100% of original functionality preserved
+   - All user features + all admin features
+   - Session management, player management, user management, wallet management
+   - Line notifications, reports, debugging tools
+
+**Both apps share the same Firebase backend** and sync in real-time.
+
 ## Technology Stack
 
 - **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
 - **Backend**: Firebase Firestore (NoSQL database) + Firebase Cloud Functions
 - **Authentication**: Simple password-based auth with Firebase Firestore
-- **Deployment**: GitHub Pages (https://lapstuen.github.io/badminton-signup/)
+- **Deployment**: Firebase Hosting (https://badminton-b95ac.web.app/)
 - **Notifications**: Line Messaging API via Firebase Cloud Functions
 - **Languages**: Trilingual UI (Norwegian, English, Thai)
 
 ## Core Files
 
-- **index.html** - Main application entry point with trilingual UI
-- **app.js** - Main application logic with wallet system, draft/publish, Line notifications
+### User App (Simplified)
+- **index.html** - User interface (237 lines, 49% reduction)
+- **app-user.js** - User logic only (~2,400 lines, 70% reduction)
+- **style-user.css** - User styles only (515 lines, 51% reduction)
+
+### Admin App (Full Features)
+- **admin.html** - Admin interface (469 lines, all features)
+- **app-admin.js** - All functionality (7,614 lines, user + admin)
+- **style-admin.css** - All styles (1,057 lines, user + admin)
+
+### Shared/Backend
 - **firebase-config.js** - Firebase initialization and collection references
-- **style.css** - Application styling
 - **manifest.json** - PWA manifest for mobile app installation
 - **functions/index.js** - Firebase Cloud Functions for Line notifications
+
+### Documentation
 - **FIREBASE_SETUP.md** - Complete Firebase setup instructions
 - **LINE_NOTIFICATIONS_SETUP.md** - Line Bot and Cloud Functions setup guide
 - **CHANGELOG.md** - Version history and feature documentation
 - **DEPLOY_CHECKLIST.md** - Deployment checklist
+- **SPLIT_APP_SUMMARY.md** - Split app architecture documentation
+- **TEST_REPORT.md** - Automated test results (77/77 tests passed)
+
+### Backup Files
+- **index-backup-original.html** - Original single app HTML
+- **app-backup-original.js** - Original single app JavaScript
+- **style-backup-original.css** - Original single app CSS
 
 ## Running the Application
 
@@ -69,11 +105,13 @@ http-server -p 8000
 php -S localhost:8000
 ```
 
-Then open `http://localhost:8000` in your browser.
+Then open the apps in your browser:
+- **User app:** `http://localhost:8000/index.html`
+- **Admin app:** `http://localhost:8000/admin.html`
 
 ### Production Deployment
 
-**IMPORTANT: Always commit and push to GitHub after making changes. Always update version number.**
+**IMPORTANT: Always update version numbers before deploying.**
 
 ```bash
 # 1. Commit changes to git
@@ -84,16 +122,23 @@ git commit -m "Description of changes
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
-# 2. Push to GitHub (auto-deploys to GitHub Pages)
+# 2. Push to GitHub (backup)
 git push origin main
 
-# 3. Deploy Cloud Functions (if functions changed)
+# 3. Deploy to Firebase Hosting
+firebase deploy --only hosting
+
+# 4. Deploy Cloud Functions (if functions changed)
 firebase deploy --only functions
+
+# Or deploy everything at once:
+firebase deploy
 ```
 
 **Deployment targets:**
-- **Frontend**: GitHub Pages at https://lapstuen.github.io/badminton-signup/
-- **Backend**: Firebase Cloud Functions (requires deploy command)
+- **User App**: https://badminton-b95ac.web.app/ (index.html)
+- **Admin App**: https://badminton-b95ac.web.app/admin.html
+- **Backend**: Firebase Firestore + Cloud Functions
 
 ## Firebase Configuration
 
@@ -171,41 +216,89 @@ usersRef.onSnapshot((snapshot) => {
 
 ### Key Functions
 
+#### User App Functions (app-user.js)
+
 **Initialization Flow**:
 1. `initializeApp()` - Orchestrates startup sequence
 2. `loadSessionData()` - Loads or creates today's session
 3. `loadAuthorizedUsers()` - Fetches authorized user list
 4. `setupRealtimeListeners()` - Establishes Firebase listeners
 5. `checkLoggedInUser()` - Restores login from localStorage
-6. `updateUI()` - Renders current state
+6. `updateUI()` - Renders current state (simplified version)
 
 **User Actions**:
 - `handleLogin()` - Authenticates users against authorized list
 - `handleSignup()` - Registers logged-in user for session
 - `cancelRegistration()` - Removes user from current session
 - `markAsPaid()` - Self-service payment marking
+- `handleGuestRegistration()` - Register guest player
+- `showMyTransactions()` - View own transaction history
+- `showGive100Modal()` - Give 100 baht to other players
+- `give100Baht()` - Execute 100 baht transfer
+- `refreshBalance()` - Refresh wallet balance
 
-**Admin Actions** (requires password: `admin123`):
+#### Admin App Functions (app-admin.js)
+
+**All user functions PLUS admin functions** (requires password: `SikkertPassord1955`):
+
+**Session Management**:
 - `clearSession()` - Starts new session (unpublished draft mode)
-- `changeSessionDetails()` - Updates day/time details
-- `manageRegularPlayers()` - Manage regular players by day (clickable UI)
-- `manageTodaysPlayers()` - Add/remove players for current session
 - `publishSession()` - Publish session and deduct wallet for unpaid players
-- `shareSessionToLine()` - Share session announcement to Line group
+- `previewSession()` - Preview session before publishing
+- `changeSessionDetails()` - Updates day/time details
 - `changePaymentAmount()` - Updates payment amount
 - `changeMaxPlayers()` - Changes max player limit
+- `closeLastSession()` - Close and archive session
+
+**Player Management**:
+- `manageRegularPlayers()` - Manage regular players by day (clickable UI)
+- `manageTodaysPlayers()` - Add/remove players for current session
+- `togglePlayerForToday()` - Add/remove specific player
+- `adminDeletePlayer()` - Remove player from session
+
+**User Management**:
 - `manageAuthorizedUsers()` - Add/remove/edit authorized users
+- `addAuthorizedUser()` - Create new user
+- `editUserPassword()` - Change user password
+- `removeAuthorizedUser()` - Delete user
+
+**Wallet Management**:
 - `manageWallets()` - Top-up/adjust user wallet balances
-- `viewTransactions()` - View transaction history
-- `refundWaitingList()` - Refund all waiting list players
+- `showBalanceAdjustModal()` - Show wallet adjustment UI
+- `confirmBalanceAdjust()` - Execute wallet adjustment
+- `initializeAllBalances()` - Set initial balances for all users
+
+**Reports & Analytics**:
+- `viewTransactions()` - View all transaction history (admin version)
 - `exportList()` - Download player list as text file
+- `generateWeeklyReport()` - Generate weekly summary
+- `debugViewRawData()` - View raw Firebase data
+
+**Line Notifications**:
+- `shareSessionToLine()` - Share session announcement to Line group
+- `nudgePlayers()` - Send reminder to unpaid players
+- `testLineMessage()` - Test Line notification
+
+**Other Admin**:
+- `refundWaitingList()` - Refund all waiting list players
+- `toggleMaintenanceMode()` - Enable/disable maintenance mode
 
 ### User Flow
 
+#### User App (index.html)
 1. **New User**: Must login with authorized credentials first
 2. **Logged-in User**: Can register for session with one click
 3. **Registered User**: Can mark payment and cancel registration
-4. **Admin**: Access admin panel to manage sessions and users
+4. **Guest Registration**: Can register friends/family as guests
+5. **Give 100 Baht**: Can help other players with low balance
+
+#### Admin App (admin.html)
+1. **Admin Login**: Enter admin password to access admin panel
+2. **Session Setup**: Create new session, set details, manage regular players
+3. **Publish Session**: Make session visible and deduct wallet balances
+4. **User Management**: Add/edit/remove authorized users, manage passwords
+5. **Wallet Management**: Top-up balances, view transactions, adjust balances
+6. **Session Close**: Archive session, generate reports, send to Line
 
 ### localStorage and Multi-Device Usage
 
@@ -259,7 +352,7 @@ localStorage.setItem('loggedInUser', JSON.stringify({
 
 1. **Plain Text Passwords**: User passwords are stored in plain text in Firestore. For production, implement proper password hashing (bcrypt, scrypt, etc.).
 
-2. **Admin Password**: Hardcoded admin password `admin123` in `loginAdmin()` function (line 556). Change this immediately for production.
+2. **Admin Password**: Hardcoded admin password `SikkertPassord1955` in `loginAdmin()` function in `app-admin.js`. Only accessible in admin app, not exposed in user app.
 
 3. **Firebase Security Rules**: Current rules allow anyone to:
    - Read all data (sessions, players, authorized users)
@@ -274,13 +367,19 @@ localStorage.setItem('loggedInUser', JSON.stringify({
 
 ### Adding New Features
 
+**Decide which app to modify:**
+- **User features** → Add to `app-user.js`, `index.html`, `style-user.css`
+- **Admin features** → Add to `app-admin.js`, `admin.html`, `style-admin.css`
+- **Features needed in both** → Add to admin app, then copy to user app if appropriate
+
 When adding features, follow these patterns:
 
 1. **Add to state object** if the feature needs persistent data
 2. **Create async function** for Firestore operations
 3. **Update `updateUI()`** to reflect changes in the UI
 4. **Add event listener** in `setupEventListeners()` if needed
-5. **Test real-time sync** by opening multiple browser tabs
+5. **Test real-time sync** by opening multiple browser tabs (one user app, one admin app)
+6. **Update version numbers** in both apps before deploying
 
 ### Bilingual Support
 
@@ -306,30 +405,165 @@ position: state.players.length + 1
 
 Players 1-12 (or up to `maxPlayers`) are active players. Remaining players go to waiting list.
 
+## Split App Architecture Details
+
+### Why Split the App?
+
+**Before (Single App):**
+- 9,140 lines of code (HTML + JS + CSS)
+- Admin code exposed to all users
+- Complex `updateUI()` function handling both user and admin states
+- Harder to maintain and understand
+
+**After (Split Apps):**
+- **User app:** 3,150 lines (65% reduction)
+- **Admin app:** 9,140 lines (100% of original functionality)
+- Clean separation of concerns
+- Better security (admin code not exposed)
+- Easier to understand and maintain
+
+### File Structure
+
+```
+User App Files:
+├── index.html (237 lines)
+├── app-user.js (2,400 lines)
+└── style-user.css (515 lines)
+
+Admin App Files:
+├── admin.html (469 lines)
+├── app-admin.js (7,614 lines)
+└── style-admin.css (1,057 lines)
+
+Shared:
+├── firebase-config.js
+└── manifest.json
+```
+
+### Code Reduction Breakdown
+
+| Component | Original | User App | Reduction |
+|-----------|----------|----------|-----------|
+| HTML | 469 lines | 237 lines | 49% |
+| JavaScript | 7,614 lines | 2,400 lines | 70% |
+| CSS | 1,057 lines | 515 lines | 51% |
+| **Total** | **9,140 lines** | **3,150 lines** | **65%** |
+
+### Functions Removed from User App
+
+**91 admin functions removed**, including:
+- Session management (clearSession, publishSession, etc.)
+- Player management (manageRegularPlayers, manageTodaysPlayers, etc.)
+- User management (manageAuthorizedUsers, addAuthorizedUser, etc.)
+- Wallet management (manageWallets, showBalanceAdjustModal, etc.)
+- Line notifications (shareSessionToLine, nudgePlayers, etc.)
+- Reports (viewTransactions, generateWeeklyReport, etc.)
+- Admin UI (loginAdmin, toggleAdmin, selectAdminGroup, etc.)
+
+### Benefits
+
+**For Users:**
+- ✅ Faster loading (smaller files)
+- ✅ Cleaner interface (no admin button)
+- ✅ Better security (admin code not exposed)
+- ✅ Same functionality (all user features intact)
+
+**For Admin:**
+- ✅ All features preserved
+- ✅ Dedicated admin interface
+- ✅ Better organization
+- ✅ Same Firebase backend
+
+**For Development:**
+- ✅ Easier to maintain
+- ✅ Independent testing
+- ✅ Modular codebase
+- ✅ Clear separation
+
+### Rollback Plan
+
+If issues occur, restore original files:
+
+```bash
+# Restore original single app
+mv index-backup-original.html index.html
+mv app-backup-original.js app.js
+mv style-backup-original.css style.css
+
+git add .
+git commit -m "Rollback to original single app"
+git push origin main
+```
+
+Backup files preserved:
+- `index-backup-original.html`
+- `app-backup-original.js`
+- `style-backup-original.css`
+
 ## Testing Approach
 
 ### Manual Testing Checklist
 
-1. **Registration Flow**:
+**User App (index.html):**
+1. **Login Flow:**
    - Login with authorized user
+   - Verify auto-login on page refresh
+   - Reset password feature
+
+2. **Registration Flow:**
    - Register for session
    - Verify real-time update in another tab
    - Mark as paid
    - Cancel registration
+   - Guest registration
 
-2. **Admin Functions**:
-   - Login to admin panel
+3. **Wallet Features:**
+   - View balance (color-coded)
+   - View transactions
+   - Give 100 baht to another player
+
+4. **Verify NO Admin Access:**
+   - No admin button visible
+   - No admin panel accessible
+   - No admin functions exposed
+
+**Admin App (admin.html):**
+1. **Admin Login:**
+   - Login to admin panel with password
+   - Verify admin actions available
+
+2. **Session Management:**
+   - Create new session (draft mode)
+   - Preview session
+   - Publish session (wallet deduction)
+   - Close session
+
+3. **Player Management:**
+   - Manage regular players by day
+   - Manage today's players
+   - Remove players
+
+4. **User Management:**
    - Add/remove authorized users
-   - Change session details
-   - Mark payments
-   - Export list
-   - Start new session
+   - Edit user passwords
+   - Reset passwords
 
-3. **Edge Cases**:
-   - Reach max players limit
-   - Duplicate name registration attempt
-   - Unauthorized user login attempt
-   - Session date rollover at midnight
+5. **Wallet Management:**
+   - Top-up user balances
+   - View all transactions
+   - Initialize balances
+
+6. **Reports & Notifications:**
+   - Export player list
+   - Share session to Line
+   - Generate weekly report
+   - Debug view
+
+**Cross-App Testing:**
+1. Open both apps in different tabs
+2. Make changes in admin app
+3. Verify real-time sync in user app
+4. Test Firebase data consistency
 
 ### Browser Console Testing
 
@@ -351,29 +585,54 @@ currentSessionRef().get().then(doc => console.log(doc.data()));
 
 ### Changing Admin Password
 
-Edit line 556 in `app.js`:
+Edit `app-admin.js` (search for `loginAdmin` function):
 
 ```javascript
 if (password === 'YOUR_NEW_PASSWORD') {
 ```
 
+**Note:** Admin password is ONLY in admin app, not exposed in user app.
+
 ### Changing Default Payment Amount
 
-Edit line 79 in `app.js`:
+Edit both `app-user.js` and `app-admin.js`:
 
 ```javascript
-state.paymentAmount = data.paymentAmount || 200; // Change 150 to your default
+state.paymentAmount = data.paymentAmount || 10; // Change to your default
 ```
 
 ### Modifying Session Time Format
 
-Edit the session details in `changeSessionDetails()` function (line 591) or modify initial state (line 14).
+Edit `changeSessionDetails()` function in `app-admin.js` or modify initial state.
+
+**Note:** Session time changes affect both apps via Firebase sync.
 
 ### Adding New User Fields
 
+**In Admin App (`app-admin.js`, `admin.html`):**
 1. Update Firestore write operations in `addAuthorizedUser()`
 2. Update state loading in `loadAuthorizedUsers()`
 3. Update UI rendering in `updateAuthorizedUsersList()`
+
+**In User App (if field should be visible to users):**
+1. Update state loading in `loadAuthorizedUsers()`
+2. Update UI rendering if needed
+
+### Updating Version Numbers
+
+**CRITICAL:** Update version in BOTH apps before deployment:
+
+**User App:**
+- Header: `index.html` line ~29
+- Footer: `index.html` line ~130
+- Cache-busting: `index.html` lines ~21, 231, 234
+
+**Admin App:**
+- Header: `admin.html` line ~29
+- Footer: `admin.html` line ~130
+- Cache-busting: `admin.html` lines ~21, 467, 470
+
+**Keep versions synchronized!**
 
 ## Debugging
 

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="stylesheet" href="style.css?v=20251206-1215">
+    <link rel="stylesheet" href="style-user.css?v=20260123-0845">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#10b981">
 </head>
@@ -26,7 +26,7 @@
     <div class="container">
         <header>
             <h1>🏸 <span class="thai-text">แบดมินตัน</span> <span class="eng-text">Badminton</span></h1>
-            <p class="version-header">v2026-01-13 16:20 (Update balance colors & remove report)</p>
+            <p class="version-header">v2026-01-23 08:45 (User App - Split from Admin)</p>
 
             <!-- Wallet Section (styled like session-details) -->
             <div class="wallet-section" id="loggedInInfo" style="display: none;">
@@ -127,7 +127,7 @@
                 <p>.</p>
                 <p>.</p>
                 <p>─────────────────</p>
-                <p class="version">v2026-01-13 16:20 (Update balance colors & remove report)</p>
+                <p class="version">v2026-01-23 08:45 (User App - Split from Admin)</p>
 
                 <div class="bottom-buttons">
                     <!-- Cancel Registration Button (only when registered) -->
@@ -169,114 +169,6 @@
                 </div>
             </div>
         </main>
-
-        <button class="admin-btn" onclick="toggleAdmin()">👤</button>
-        
-        <div class="admin-panel" id="adminPanel" style="display: none;">
-            <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <h2 style="margin: 0;">Admin</h2>
-                    <div id="adminStatusIndicator" style="padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; display: none;">
-                        <span id="statusText">⚙️</span>
-                    </div>
-                </div>
-                <button class="close-btn" onclick="toggleAdmin()">✕</button>
-            </div>
-            <div class="admin-controls">
-                <input type="password" id="adminPassword" placeholder="Admin password / รหัสผ่าน">
-                <button onclick="loginAdmin()">Login / เข้าสู่ระบบ</button>
-                <div id="adminActions" style="display: none;">
-
-                    <!-- COMPACT GROUP BUTTONS (horizontal) -->
-                    <div class="admin-group-tabs" style="display: flex; gap: 5px; margin-bottom: 10px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;">
-                        <button class="group-tab" data-group="setup" onclick="selectAdminGroup('setup')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            🆕 Setup
-                        </button>
-                        <button class="group-tab" data-group="close" onclick="selectAdminGroup('close')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            🏁 Close
-                        </button>
-                        <button class="group-tab" data-group="users" onclick="selectAdminGroup('users')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            👤 Users
-                        </button>
-                        <button class="group-tab" data-group="money" onclick="selectAdminGroup('money')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            💰 Money
-                        </button>
-                        <button class="group-tab" data-group="line" onclick="selectAdminGroup('line')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            📲 Line
-                        </button>
-                        <button class="group-tab" data-group="settings" onclick="selectAdminGroup('settings')" style="display: inline-block; flex: 0 0 auto; padding: 8px 10px; font-size: 12px; border: 2px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; cursor: pointer; white-space: nowrap;">
-                            ⚙️ Set
-                        </button>
-                    </div>
-
-                    <!-- COMPACT ACTION BUTTONS (horizontal, shown based on selected group) -->
-                    <div id="adminActionButtons" style="display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; flex-wrap: wrap;">
-                        <!-- Buttons will be injected here by JavaScript -->
-                    </div>
-
-                    <!-- PAYMENT LIST (shown when Users group is selected) -->
-                    <div id="paymentStatusSection" style="display: none; margin-top: 20px; padding: 12px; background: #f9fafb; border-radius: 8px;">
-                        <h4 style="margin: 0 0 10px 0; color: #374151; font-size: 14px;">💳 Payment Status</h4>
-                        <div id="paymentList"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="authorized-users-management" id="authorizedUsersSection" style="display: none;">
-                <h3>Authorized Users / ผู้ใช้ที่ได้รับอนุญาต</h3>
-                <button onclick="addAuthorizedUser()" class="btn-add-user">+ Add User / เพิ่มผู้ใช้</button>
-                <div id="authorizedUsersList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Admin Transaction History Modal -->
-    <div class="modal" id="adminTransactionModal" style="display: none;" onclick="closeAdminTransactions()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>Transaction History / ประวัติการทำรายการ</h2>
-                <button class="close-btn" onclick="closeAdminTransactions()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Last 50 transactions / 50 รายการล่าสุด</p>
-                <div id="transactionsList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Session Announcement Modal -->
-    <div class="modal" id="announcementModal" style="display: none;" onclick="closeAnnouncementModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>📢 Session Announcement / ประกาศเซสชัน</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="copyAnnouncementText()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        📋 Copy / คัดลอก
-                    </button>
-                    <button class="close-btn" onclick="closeAnnouncementModal()">✕</button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <pre id="announcementText" style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; margin: 0; padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;"></pre>
-            </div>
-        </div>
-    </div>
-
-    <!-- Debug Report Modal -->
-    <div class="modal" id="debugReportModal" style="display: none;" onclick="closeDebugReport()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>🔍 Debug Report</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="copyDebugReport()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        📋 Copy
-                    </button>
-                    <button class="close-btn" onclick="closeDebugReport()">✕</button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <pre id="debugReportContent" style="white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.5; margin: 0;"></pre>
-            </div>
-        </div>
     </div>
 
     <!-- User Transaction History Modal (outside container for full-screen overlay) -->
@@ -288,131 +180,6 @@
             </div>
             <div class="modal-body">
                 <div id="userTransactionsList"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- User Selection Modal for Wallet Management -->
-    <div class="modal" id="userSelectionModal" style="display: none;" onclick="closeUserSelection()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>Select User / เลือกผู้ใช้</h2>
-                <button class="close-btn" onclick="closeUserSelection()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">Select a user to adjust wallet balance / เลือกผู้ใช้เพื่อปรับยอดเงิน</p>
-                <div id="userSelectionList" style="max-height: 400px; overflow-y: auto;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Balance Adjustment Modal -->
-    <div class="modal" id="balanceAdjustModal" style="display: none;" onclick="closeBalanceAdjust()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2 id="balanceAdjustTitle">Adjust Balance</h2>
-                <button class="close-btn" onclick="closeBalanceAdjust()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p id="balanceAdjustInfo" style="margin-bottom: 15px; color: #666;"></p>
-
-                <p style="font-weight: bold; margin-bottom: 10px;">Quick Select / เลือกด่วน:</p>
-                <div class="quick-amount-buttons">
-                    <button onclick="selectAmount(200)">200</button>
-                    <button onclick="selectAmount(300)">300</button>
-                    <button onclick="selectAmount(400)">400</button>
-                    <button onclick="selectAmount(500)">500</button>
-                    <button onclick="selectAmount(1000)">1000</button>
-                </div>
-
-                <p style="font-weight: bold; margin: 15px 0 10px 0;">Or enter custom amount / หรือใส่จำนวนเอง:</p>
-                <input type="number" id="balanceAdjustAmount" placeholder="Enter amount (e.g., 700 or -300 to correct)"
-                       style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 15px;">
-
-                <button onclick="confirmBalanceAdjust()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
-                    Confirm / ยืนยัน
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Preview Session Modal -->
-    <div class="modal" id="previewSessionModal" style="display: none;" onclick="closePreviewSession()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>📋 Session Preview / ตรวจสอบเซสชัน</h2>
-                <button class="close-btn" onclick="closePreviewSession()">✕</button>
-            </div>
-            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                <pre id="previewSessionContent" style="white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.6;"></pre>
-            </div>
-        </div>
-    </div>
-
-    <!-- Session Summary Modal -->
-    <div class="modal" id="sessionSummaryModal" style="display: none;" onclick="closeSessionSummary()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2>🏁 Session Summary / Seanseoppsummering</h2>
-                <button class="close-btn" onclick="closeSessionSummary()">✕</button>
-            </div>
-            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                <div id="sessionSummaryContent"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Manage Regular Players Modal -->
-    <div class="modal" id="manageRegularPlayersModal" style="display: none;" onclick="closeRegularPlayers()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2 id="manageRegularPlayersTitle">Manage Regular Players / จัดการผู้เล่นประจำ</h2>
-                <button class="close-btn" onclick="closeRegularPlayers()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-                    <span class="thai-text">เลือกวัน</span> <span class="eng-text">Select day:</span>
-                </p>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px;">
-                    <button onclick="selectDayForRegularPlayers(1)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">1. <span class="thai-text">จันทร์</span> <span class="eng-text">Monday</span></button>
-                    <button onclick="selectDayForRegularPlayers(2)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">2. <span class="thai-text">อังคาร</span> <span class="eng-text">Tuesday</span></button>
-                    <button onclick="selectDayForRegularPlayers(3)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">3. <span class="thai-text">พุธ</span> <span class="eng-text">Wednesday</span></button>
-                    <button onclick="selectDayForRegularPlayers(4)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">4. <span class="thai-text">พฤหัส</span> <span class="eng-text">Thursday</span></button>
-                    <button onclick="selectDayForRegularPlayers(5)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">5. <span class="thai-text">ศุกร์</span> <span class="eng-text">Friday</span></button>
-                    <button onclick="selectDayForRegularPlayers(6)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px;">6. <span class="thai-text">เสาร์</span> <span class="eng-text">Saturday</span></button>
-                    <button onclick="selectDayForRegularPlayers(7)" style="padding: 10px; background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 14px; grid-column: span 2;">7. <span class="thai-text">อาทิตย์</span> <span class="eng-text">Sunday</span></button>
-                </div>
-                <div id="regularPlayersSelectionArea" style="display: none;">
-                    <h3 id="regularPlayersSelectedDay" style="margin-bottom: 10px; color: #333;"></h3>
-                    <p style="margin-bottom: 15px; color: #666; font-size: 13px;">
-                        Click to add/remove regular players for this day<br>
-                        คลิกเพื่อเพิ่ม/ลบผู้เล่นประจำ
-                    </p>
-                    <div id="regularPlayersSelectionList" style="max-height: 300px; overflow-y: auto;"></div>
-                    <button onclick="closeRegularPlayers()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 15px;">
-                        Done / เสร็จสิ้น
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Manage Today's Players Modal -->
-    <div class="modal" id="manageTodaysPlayersModal" style="display: none;" onclick="closeManagedPlayers()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2 id="manageTodaysPlayersTitle">Manage Today's Players / จัดการผู้เล่นวันนี้</h2>
-                <button class="close-btn" onclick="closeManagedPlayers()">✕</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;" id="manageTodaysPlayersSubtitle">
-                    Click to add/remove players from today's session<br>
-                    คลิกเพื่อเพิ่ม/ลบผู้เล่นจากเซสชันวันนี้
-                </p>
-                <div id="managedPlayersSelectionList" style="max-height: 400px; overflow-y: auto;"></div>
-                <button onclick="closeManagedPlayers()" class="btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 15px;">
-                    Done / เสร็จสิ้น
-                </button>
             </div>
         </div>
     </div>
@@ -461,9 +228,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js?v=20260113-1620"></script>
+    <script src="firebase-config.js?v=20260123-0845"></script>
 
     <!-- App JavaScript -->
-    <script src="app.js?v=20260113-1620"></script>
+    <script src="app-user.js?v=20260123-0845"></script>
 </body>
 </html>
