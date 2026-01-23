@@ -354,9 +354,6 @@ async function initializeApp() {
         // Update UI (this will also show success message if user is registered)
         updateUI();
 
-        // Generate share link
-        generateShareLink();
-
         console.log('✅ App initialized successfully!');
     } catch (error) {
         console.error('❌ Error initializing app:', error);
