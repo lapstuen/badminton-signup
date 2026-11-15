@@ -15,7 +15,10 @@
       "functions/**",
       "CLAUDE.md",
       "FIREBASE_SETUP.md",
-      "*.md"
+      "*.md",
+      "*-backup/",
+      "*-backup-*/",
+      "*.backup.*"
     ],
     "rewrites": [
       {

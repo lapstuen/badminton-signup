@@ -5,3 +5,12 @@ node_modules/
 .firebase/
 functions/.env
 .claude/settings.local.json
+
+# Service account keys (NEVER commit!)
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# Backup files and folders
+*-backup/
+*-backup-*/
+*.backup.*

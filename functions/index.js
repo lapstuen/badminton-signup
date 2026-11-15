@@ -200,6 +200,56 @@ exports.sendSessionAnnouncement = onCall({
 
         console.log('✅ Session announcement sent successfully:', response.data);
 
+        // ==========================================
+        // SEND FCM PUSH NOTIFICATIONS TO ALL ACTIVE USERS
+        // ==========================================
+        try {
+            const db = admin.firestore();
+            const usersSnapshot = await db.collection('authorizedUsers').get();
+
+            const tokens = [];
+            usersSnapshot.forEach(doc => {
+                const data = doc.data();
+                // Include users where active !== false (includes true, null, undefined)
+                if (data.fcmToken && data.active !== false) {
+                    tokens.push(data.fcmToken);
+                }
+            });
+
+            if (tokens.length > 0) {
+                console.log(`📱 Sending FCM to ${tokens.length} user(s)`);
+
+                const fcmMessage = {
+                    notification: {
+                        title: `🏸 Ny sesjon: ${sessionDay}`,
+                        body: `${sessionDate} ${sessionTime} - ${availableSpots} ledige plasser`
+                    },
+                    data: {
+                        sessionDay: sessionDay,
+                        sessionDate: sessionDate,
+                        sessionTime: sessionTime,
+                        availableSpots: String(availableSpots),
+                        type: 'session_published'
+                    },
+                    tokens: tokens
+                };
+
+                const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+                console.log(`✅ FCM sent: ${fcmResponse.successCount} success, ${fcmResponse.failureCount} failed`);
+
+                // Log detailed errors
+                if (fcmResponse.failureCount > 0) {
+                    fcmResponse.responses.forEach((resp, idx) => {
+                        if (!resp.success) {
+                            console.log(`❌ FCM failed for token ${idx}:`, resp.error?.code, resp.error?.message);
+                        }
+                    });
+                }
+            }
+        } catch (fcmError) {
+            console.error('❌ FCM error:', fcmError.message);
+        }
+
         return {
             success: true,
             message: 'Session announcement sent to Line group'
@@ -982,26 +1032,37 @@ exports.onPlayerDeleted = onDocumentDeleted({
             : `${playerName} cancelled. Now ${currentPlayers}/${maxPlayers} players`;
 
         // ==========================================
-        // SEND FCM PUSH NOTIFICATIONS TO ADMINS
+        // SEND FCM PUSH NOTIFICATIONS TO ALL ACTIVE USERS
         // ==========================================
         try {
-            // Get all admin users with FCM tokens
-            const adminsSnapshot = await db.collection('authorizedUsers')
-                .where('role', '==', 'admin')
-                .get();
+            // Get all users with FCM tokens (include users without 'active' field, exclude active: false)
+            const usersSnapshot = await db.collection('authorizedUsers').get();
 
             const tokens = [];
-            adminsSnapshot.forEach(doc => {
+            usersSnapshot.forEach(doc => {
                 const data = doc.data();
-                if (data.fcmToken) {
+                // Include users where active !== false (includes true, null, undefined)
+                if (data.fcmToken && data.active !== false) {
                     tokens.push(data.fcmToken);
                 }
             });
 
             if (tokens.length > 0) {
-                console.log(`📱 Sending FCM to ${tokens.length} admin(s)`);
+                // Log Firebase Admin SDK environment
+                console.log('🔧 Firebase Admin SDK Info:');
+                console.log(`  - SDK Initialized: ${admin.apps.length > 0}`);
+                console.log(`  - App Name: ${admin.app().name}`);
+                console.log(`  - Project ID: ${admin.app().options.projectId || 'N/A'}`);
 
-                // Send to all admin tokens
+                console.log(`\n📱 Preparing to send FCM to ${tokens.length} user(s)`);
+
+                // Log FCM tokens
+                console.log('\n📱 FCM Tokens:');
+                tokens.forEach((token, idx) => {
+                    console.log(`  [${idx}] ${token}`);
+                });
+
+                // Send to all user tokens
                 const fcmMessage = {
                     notification: {
                         title: title,
@@ -1014,30 +1075,85 @@ exports.onPlayerDeleted = onDocumentDeleted({
                         maxPlayers: String(maxPlayers),
                         click_action: 'https://lapstuen.github.io/badminton-signup/'
                     },
+                    apns: {
+                        payload: {
+                            aps: {
+                                alert: {
+                                    title: title,
+                                    body: body
+                                },
+                                sound: 'default',
+                                badge: 1
+                            }
+                        }
+                    },
                     tokens: tokens
                 };
 
-                const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
-                console.log(`✅ FCM sent: ${fcmResponse.successCount} success, ${fcmResponse.failureCount} failed`);
+                // Log complete FCM payload
+                console.log('\n📱 FCM Message Payload:');
+                console.log(JSON.stringify(fcmMessage, null, 2));
 
-                // Log any failures
+                // Send FCM
+                console.log('\n📤 Sending FCM message...');
+                const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
+                console.log(`\n📊 FCM Response: ${fcmResponse.successCount} success, ${fcmResponse.failureCount} failed`);
+
+                // Log failures with detailed info
                 if (fcmResponse.failureCount > 0) {
+                    console.log('\n❌ FCM Failures - Detailed Analysis:');
                     fcmResponse.responses.forEach((resp, idx) => {
                         if (!resp.success) {
-                            console.log(`❌ FCM failed for token ${idx}:`, resp.error?.message);
+                            console.log(`\n  ═══════════════════════════════════════`);
+                            console.log(`  Token Index: ${idx}`);
+                            console.log(`  Token Value: ${tokens[idx]}`);
+                            console.log(`  Error Code: ${resp.error?.code}`);
+                            console.log(`  Error Message: ${resp.error?.message}`);
+
+                            if (resp.error) {
+                                console.log(`  Full Error:`);
+                                console.log(JSON.stringify(resp.error, null, 2));
+                            }
+
+                            if (resp.error?.code === 'messaging/third-party-auth-error') {
+                                console.log(`  ⚠️  APNs Authentication Error Detected!`);
+                                console.log(`  Possible causes:`);
+                                console.log(`    - APNs key invalid or expired in Firebase Console`);
+                                console.log(`    - Team ID mismatch (expected: FMT6QLJK76)`);
+                                console.log(`    - Key ID mismatch (expected: 6722C7PW8A)`);
+                                console.log(`    - Bundle ID mismatch (expected: no.1955.BadmintonWalletManager.BadmintonPlayer)`);
+                                console.log(`    - Token generated with wrong provisioning profile`);
+                            }
+
+                            console.log(`  ═══════════════════════════════════════\n`);
+                        }
+                    });
+                }
+
+                // Log successes for comparison
+                if (fcmResponse.successCount > 0) {
+                    console.log('\n✅ FCM Successes:');
+                    fcmResponse.responses.forEach((resp, idx) => {
+                        if (resp.success) {
+                            console.log(`  [${idx}] ${tokens[idx].substring(0, 30)}... → Message ID: ${resp.messageId}`);
                         }
                     });
                 }
             } else {
-                console.log('📱 No admin FCM tokens found');
+                console.log('📱 No user FCM tokens found');
             }
         } catch (fcmError) {
-            console.error('❌ FCM error:', fcmError.message);
+            console.error('\n❌ FCM Exception Caught:');
+            console.error(`  Message: ${fcmError.message}`);
+            console.error(`  Code: ${fcmError.code || 'N/A'}`);
+            console.error(`  Stack: ${fcmError.stack || 'N/A'}`);
         }
 
         // ==========================================
         // SEND EMAIL NOTIFICATION
+        // DISABLED: E-post kommer for sent, bruker Telegram i stedet
         // ==========================================
+        /*
         try {
             const emailSubject = hasWaitingList
                 ? `🏸 ${playerName} avmeldt`
@@ -1057,6 +1173,8 @@ Se: https://lapstuen.github.io/badminton-signup/`;
         } catch (emailError) {
             console.error('📧 Email error:', emailError.message);
         }
+        */
+        console.log('📧 Email notifications disabled (onPlayerDeleted trigger) - using Telegram instead');
 
         // ==========================================
         // SEND TELEGRAM NOTIFICATION
@@ -1219,22 +1337,34 @@ exports.onPlayerCreated = onDocumentCreated({
             ? `Posisjon ${position} (venteliste)`
             : `Posisjon ${position}/${maxPlayers}`;
 
-        // Send FCM to admins
+        // Send FCM to admins AND players
         try {
-            const adminsSnapshot = await db.collection('authorizedUsers')
-                .where('role', '==', 'admin')
-                .get();
+            // Get all users with FCM tokens (include users without 'active' field, exclude active: false)
+            const usersSnapshot = await db.collection('authorizedUsers').get();
 
             const tokens = [];
-            adminsSnapshot.forEach(doc => {
+            usersSnapshot.forEach(doc => {
                 const data = doc.data();
-                if (data.fcmToken) {
+                // Include users where active !== false (includes true, null, undefined)
+                if (data.fcmToken && data.active !== false) {
                     tokens.push(data.fcmToken);
                 }
             });
 
             if (tokens.length > 0) {
-                console.log(`📱 Sending FCM to ${tokens.length} admin(s)`);
+                // Log Firebase Admin SDK environment
+                console.log('🔧 Firebase Admin SDK Info:');
+                console.log(`  - SDK Initialized: ${admin.apps.length > 0}`);
+                console.log(`  - App Name: ${admin.app().name}`);
+                console.log(`  - Project ID: ${admin.app().options.projectId || 'N/A'}`);
+
+                console.log(`\n📱 Preparing to send FCM to ${tokens.length} user(s)`);
+
+                // Log FCM tokens
+                console.log('\n📱 FCM Tokens:');
+                tokens.forEach((token, idx) => {
+                    console.log(`  [${idx}] ${token}`);
+                });
 
                 const fcmMessage = {
                     notification: {
@@ -1247,19 +1377,85 @@ exports.onPlayerCreated = onDocumentCreated({
                         position: String(position),
                         type: 'registration'
                     },
+                    apns: {
+                        payload: {
+                            aps: {
+                                alert: {
+                                    title: title,
+                                    body: body
+                                },
+                                sound: 'default',
+                                badge: 1
+                            }
+                        }
+                    },
                     tokens: tokens
                 };
 
+                // Log complete FCM payload
+                console.log('\n📱 FCM Message Payload:');
+                console.log(JSON.stringify(fcmMessage, null, 2));
+
+                // Send FCM
+                console.log('\n📤 Sending FCM message...');
                 const fcmResponse = await admin.messaging().sendEachForMulticast(fcmMessage);
-                console.log(`✅ FCM sent: ${fcmResponse.successCount} success`);
+                console.log(`\n📊 FCM Response: ${fcmResponse.successCount} success, ${fcmResponse.failureCount} failed`);
+
+                // Log failures with detailed info
+                if (fcmResponse.failureCount > 0) {
+                    console.log('\n❌ FCM Failures - Detailed Analysis:');
+                    fcmResponse.responses.forEach((resp, idx) => {
+                        if (!resp.success) {
+                            console.log(`\n  ═══════════════════════════════════════`);
+                            console.log(`  Token Index: ${idx}`);
+                            console.log(`  Token Value: ${tokens[idx]}`);
+                            console.log(`  Error Code: ${resp.error?.code}`);
+                            console.log(`  Error Message: ${resp.error?.message}`);
+
+                            if (resp.error) {
+                                console.log(`  Full Error:`);
+                                console.log(JSON.stringify(resp.error, null, 2));
+                            }
+
+                            if (resp.error?.code === 'messaging/third-party-auth-error') {
+                                console.log(`  ⚠️  APNs Authentication Error Detected!`);
+                                console.log(`  Possible causes:`);
+                                console.log(`    - APNs key invalid or expired in Firebase Console`);
+                                console.log(`    - Team ID mismatch (expected: FMT6QLJK76)`);
+                                console.log(`    - Key ID mismatch (expected: 6722C7PW8A)`);
+                                console.log(`    - Bundle ID mismatch (expected: no.1955.BadmintonWalletManager.BadmintonPlayer)`);
+                                console.log(`    - Token generated with wrong provisioning profile`);
+                            }
+
+                            console.log(`  ═══════════════════════════════════════\n`);
+                        }
+                    });
+                }
+
+                // Log successes for comparison
+                if (fcmResponse.successCount > 0) {
+                    console.log('\n✅ FCM Successes:');
+                    fcmResponse.responses.forEach((resp, idx) => {
+                        if (resp.success) {
+                            console.log(`  [${idx}] ${tokens[idx].substring(0, 30)}... → Message ID: ${resp.messageId}`);
+                        }
+                    });
+                }
+            } else {
+                console.log('📱 No user FCM tokens found');
             }
         } catch (fcmError) {
-            console.error('❌ FCM error:', fcmError.message);
+            console.error('\n❌ FCM Exception Caught:');
+            console.error(`  Message: ${fcmError.message}`);
+            console.error(`  Code: ${fcmError.code || 'N/A'}`);
+            console.error(`  Stack: ${fcmError.stack || 'N/A'}`);
         }
 
         // ==========================================
         // SEND EMAIL NOTIFICATION
+        // DISABLED: E-post kommer for sent, bruker Telegram i stedet
         // ==========================================
+        /*
         try {
             const emailSubject = isWaitingList
                 ? `📋 ${playerName} på venteliste (${position})`
@@ -1274,6 +1470,8 @@ Se alle påmeldte: https://lapstuen.github.io/badminton-signup/`;
         } catch (emailError) {
             console.error('📧 Email error:', emailError.message);
         }
+        */
+        console.log('📧 Email notifications disabled (onPlayerCreated trigger) - using Telegram instead');
 
         // ==========================================
         // SEND TELEGRAM NOTIFICATION

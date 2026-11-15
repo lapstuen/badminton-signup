@@ -483,9 +483,9 @@ async function updateUserBalance(userId, userName, amountChange, description, si
         if (currentBalance < MINIMUM_BALANCE && amountChange < 0) {
             // User doesn't have minimum balance required to make payment
             if (!silent) {
-                alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB`);
+                alert(`x5 Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB`);
             }
-            console.log(`⚠️ Insufficient balance for ${userName}: ${currentBalance} THB (need ${MINIMUM_BALANCE} THB minimum)`);
+            console.log(`⚠️ x4 Insufficient balance for ${userName}: ${currentBalance} THB (need ${MINIMUM_BALANCE} THB minimum)`);
             return false;
         }
 
@@ -721,7 +721,7 @@ async function handleSignup(e) {
     // Check balance and deduct payment IMMEDIATELY (for all players, including waiting list)
     const currentBalance = authorizedUser.balance || 0;
     if (currentBalance < MINIMUM_BALANCE) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
+        alert(`x2 Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
@@ -873,7 +873,7 @@ async function handleGuestRegistration() {
     // Check balance from host and deduct payment IMMEDIATELY
     const currentBalance = state.loggedInUser.balance || 0;
     if (currentBalance < MINIMUM_BALANCE) {
-        alert(`Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
+        alert(`x3 Insufficient balance / ยอดเงินไม่เพียงพอ\n\nCurrent: ${currentBalance} THB\nNeeded: ${MINIMUM_BALANCE} THB\n\nยอดเงินปัจจุบัน: ${currentBalance} บาท\nต้องการ: ${MINIMUM_BALANCE} บาท`);
         return;
     }
 
